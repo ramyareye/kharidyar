@@ -24,7 +24,8 @@
 		"drizzle.config.ts",
 		"vite.config.ts",
 		"vitest.config.ts",
-		"src/auth",
-		"src/db"
+		"src/auth/schema-config.ts",
+		"src/auth/shared-options.ts",
+		"src/db/schema"
 	]
 }

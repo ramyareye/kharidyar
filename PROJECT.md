@@ -2,7 +2,7 @@
 
 - Status: Approved by the product owner
 - Last updated: 2026-08-30
-- Implementation status: Tasks 1 and 2 complete and validated; Task 3 has not started
+- Implementation status: Tasks 1 through 3 complete and validated; Task 4 has not started
 
 ## Purpose of this document
 
@@ -59,7 +59,10 @@ Pay particular attention to:
 - Better Auth uses its Drizzle adapter, while Wrangler applies generated SQL migrations to D1.
 - Better Auth implicit account linking is disabled; additional providers are linked explicitly from account settings.
 - Invitation tokens are authoritative, single-use, expiring, and stored only as hashes. An invited email is an optional additional restriction.
+- The invitation UI defaults to a verified-email restriction when an email is supplied, but the inviter may deliberately create an unrestricted bearer-link invitation.
 - Permission evaluation is capability-based. Roles are named bundles of capabilities rather than scattered role comparisons.
+- Only a Workspace-scoped Owner may grant or remove Owner access in the MVP. Collection-scoped Owners may administer non-Owner members in their Collection, but cannot create or remove another Owner.
+- The `record_purchase` capability belongs only to Owners in the MVP. It may be added to another role bundle later without changing purchase records or membership storage.
 - Workspace grants apply to every current and future Collection. Collection grants apply only to explicitly selected Collections.
 - When multiple grants apply, capabilities are combined. The MVP has no explicit deny grants.
 - Money is stored as integer minor units plus an ISO 4217 currency code.
@@ -457,7 +460,7 @@ An immutable, access-filtered representation of the information supplied to an A
 
 ## Roles and capabilities
 
-Roles are convenient bundles. Authorization code evaluates capabilities at a specific resource scope. The minimum role for the `record_purchase` capability remains intentionally unresolved in Open Decision 13; the role descriptions below do not implicitly assign it.
+Roles are convenient bundles. Authorization code evaluates capabilities at a specific resource scope. In the MVP, `record_purchase` belongs only to the Owner bundle; changing that bundle later does not require a membership or purchase-record schema change.
 
 ### Viewer
 
@@ -499,10 +502,12 @@ Includes Contributor capabilities, plus:
 Includes Editor capabilities, plus the relevant scope's administration:
 
 - Edit settings.
-- Invite, change, and remove members.
+- Invite, change, and remove non-Owner members within the Owner's scope.
 - Revoke invitations.
+- Record purchases through explicit human actions.
 - Archive or delete the scope with confirmation.
-- Transfer or grant ownership while preserving at least one owner.
+- A Workspace-scoped Owner may transfer, grant, or remove Owner access while preserving at least one Workspace-scoped Owner.
+- A Collection-scoped Owner cannot grant or remove Owner access in the MVP.
 
 ### Scope resolution
 
@@ -526,7 +531,7 @@ Includes Editor capabilities, plus the relevant scope's administration:
 
 ### Invitation creation and delivery
 
-1. An owner chooses the Workspace or Collections, role, expiry, and optional verified-email restriction.
+1. An authorized owner chooses the Workspace or Collections, role, expiry, and optional verified-email restriction. When an email is supplied, the UI enables that restriction by default, but the owner may explicitly turn it off.
 2. The server generates a cryptographically secure token with at least 256 bits of entropy, stores only its hash, and returns the raw token once inside the invitation URL.
 3. The MVP displays a copy/share action and clearly explains any email restriction. It does not send transactional email.
 4. The owner can inspect pending invitations and revoke them before acceptance.
@@ -547,7 +552,7 @@ Includes Editor capabilities, plus the relevant scope's administration:
 3. A contributor creates an Item with constraints.
 4. Members add Candidates and Offers manually or through promoted research results.
 5. Members comment and vote.
-6. An authorized human selects a Candidate and later records a purchase or skip decision.
+6. An authorized member selects a Candidate; an Owner later records a purchase, while permitted non-purchase status changes remain available to Editors.
 
 ### Future Concept visualization
 
@@ -1137,6 +1142,8 @@ Completion criteria:
 
 ### Task 3: Google authentication
 
+Status: completed and validated on 2026-08-30.
+
 Scope:
 
 - Configure Better Auth, Google provider, Hono routes, session middleware, and browser client.
@@ -1156,6 +1163,7 @@ Scope:
 
 - Implement role capabilities, Workspace membership, Collection membership, and permission evaluation.
 - Implement invitation creation, preview, acceptance, revocation, expiration, and email restriction.
+- Enforce the MVP ownership boundary: only Workspace-scoped Owners manage Owner access, and only Owners record purchases.
 - Implement acceptance as one D1 `batch()` with conditional writes and database uniqueness constraints for membership and invitation consumption.
 
 Completion criteria:
@@ -1163,6 +1171,9 @@ Completion criteria:
 - Every role has allow and deny tests.
 - Workspace grants cover new Collections.
 - Collection grants cannot access siblings.
+- Collection-scoped Owners cannot grant or remove Owner access; Workspace-scoped Owners can do so while preserving at least one Workspace-scoped Owner.
+- The email restriction defaults on when an invitation email is supplied, remains explicitly optional, and both paths have tests.
+- `record_purchase` is allowed for Owners and denied for every lower role.
 - Invitation preview is rate-limited and exposes only approved metadata.
 - Repeated or concurrent acceptance cannot create duplicate memberships or consume an invitation twice; tests cover constraint failure, rollback, and retry behavior.
 
@@ -1429,10 +1440,16 @@ Risk: web-specific assumptions leak into shared packages.
 
 Mitigation: runtime-independent domain/contracts/i18n packages and a fetch/session strategy that can be replaced by the Expo client.
 
-## Open decisions for product-owner review
+## Product-owner decisions
 
-1. Should a Collection-scoped owner be able to invite and remove other Collection owners, provided at least one remains?
-2. Should invitation email restriction be mandatory in the MVP UI or merely the default?
+### Resolved for Task 4
+
+1. Only Workspace-scoped Owners may grant or remove Owner access in the MVP. Collection-scoped Owners may administer non-Owner Collection members. This policy may be broadened later without adding a special original-creator role.
+2. Verified-email restriction is optional. The invitation UI enables it by default when an email is supplied, and an authorized inviter may explicitly turn it off.
+13. Only Owners receive `record_purchase` in the MVP. The capability may be added to another role bundle later without a schema migration.
+
+### Open decisions for later tasks
+
 3. Should comments support Item and Candidate targets only in the MVP, or also Offers and Research Results?
 4. Is voting a simple preference, an up/down vote, or a ranked score?
 5. Should one Item support more than one selected/final Product, for bundles or recurring purchases?
@@ -1442,29 +1459,30 @@ Mitigation: runtime-independent domain/contracts/i18n packages and a fetch/sessi
 10. Which retailers or domains are approved for initial Browser Run extraction?
 11. What retention period applies to research snapshots, raw Import Draft input, comments, and audit history?
 12. Is hard deletion required for privacy requests, and which historical records should instead be anonymized?
-13. Which role receives the distinct `record_purchase` capability: Contributor, Editor, or Owner?
 14. Should scheduled price monitoring be a post-MVP paid feature, a general feature, or remain undecided?
 15. What retention and deletion policy applies to original base photos, reference images, edited variants, provider inputs, and backups?
 16. Should the first AI Concept visualizer support both `space` and `person`, or launch with one subject kind first?
 17. Which image-edit provider is approved, in which processing region, and with what retention and training terms?
 
-None of these blocks Task 1. Decisions 1, 2, and 13 must be resolved before Task 4; Decisions 6 and 7 must be resolved before Task 5B; Decision 11 must be resolved before Task 9A; Decision 15 must be resolved before the future Concept media foundation; Decisions 16 and 17 must be resolved before the future AI Concept visualization task; all other decisions affecting schema, permissions, or external providers must be resolved before their corresponding implementation task begins.
+Decisions 1, 2, and 13 are resolved, so Task 4 has no remaining product-decision gate. Decisions 6 and 7 must be resolved before Task 5B; Decision 11 before Task 9A; Decision 15 before the future Concept media foundation; Decisions 16 and 17 before the future AI Concept visualization task; all other decisions affecting schema, permissions, or external providers must be resolved before their corresponding implementation task begins.
 
 ## Current repository state
 
 - Branch: `main`.
-- History: scaffold baseline followed by the Task 1 monorepo foundation; Task 2 is the current implementation milestone.
-- Tasks 1 and 2 are complete and validated; Task 3 has not started.
+- History: scaffold baseline followed by the committed Task 1 monorepo and Task 2 domain/D1 foundations; Task 3 is the current uncommitted implementation milestone.
+- Tasks 1 through 3 are complete and validated; Task 4 has not started.
 - The repository is a Bun `1.3.12` workspace with `apps/web`, `packages/domain`, and `packages/contracts`. No mobile, API-client, i18n, or config package has been created.
 - `bun.lock` is the sole package-manager lockfile present, and Bun workspaces are declared in the root `package.json`.
-- The original Vite/React frontend and Hono Worker behavior remain unchanged. `apps/web` now has environment-separated D1 bindings and generated Worker types.
-- Drizzle is the unified schema source. The first generated migration includes Better Auth's generated tables plus Workspace-private Products and the initial collaboration/planning tables; later feature tables remain owned by their roadmap tasks.
+- The Vite/React frontend now provides the Google sign-in surface and a session-gated empty shell. The Hono Worker preserves the scaffold health response while adding Better Auth routes and a protected session endpoint.
+- Drizzle is the unified schema source. The first generated migration includes Better Auth's generated tables plus Workspace-private Products and the initial collaboration/planning tables; a second migration adds persistent Better Auth rate-limit storage. Later feature tables remain owned by their roadmap tasks.
 - Local migration, migration-list, schema-check, seed, type-generation, and quality commands are available from the workspace root. The fixed development seed is idempotent.
 - Runtime-independent domain primitives preserve separate Item-needed and Candidate-planned purchase quantities, money/budget validation, group labels, and honest Offer price/shipping semantics.
 - The root `CONTEXT.md` defines the purchase-planning language and guards the Item/Candidate/Product/Offer boundaries.
 - The baseline Worker regression test preserves `GET /api/` returning `200` with `{ "name": "Cloudflare" }`.
+- Better Auth uses explicit origins, environment-bound secrets, database-backed sessions, secure production cookies, edge-controlled client-IP rate-limit keys, and disabled implicit account linking. Google is the only enabled provider.
+- Auth integration tests cover anonymous rejection, Google authorization URL construction, untrusted callback rejection, authenticated session loading, sign-out revocation, and separate internal User/provider Account records.
 - Domain and Cloudflare-runtime database tests cover migration idempotency, positive independent quantities, planned Candidate/Offer ownership, price/budget constraints, palette bounds, and no inferred pack conversion.
-- Runtime authentication, authorization, feature APIs/UI, localization catalogs, and research behavior are not yet implemented.
+- Runtime authorization, invitations, feature CRUD, localization catalogs, and research behavior are not yet implemented.
 
 ## Current reference basis
 
@@ -1491,6 +1509,8 @@ These links informed the architecture and must be rechecked before implementing 
 - [Better Auth Drizzle adapter](https://better-auth.com/docs/adapters/drizzle)
 - [Better Auth users and accounts](https://better-auth.com/docs/concepts/users-accounts)
 - [Better Auth Expo integration](https://better-auth.com/docs/integrations/expo)
+- [Better Auth Google authentication](https://better-auth.com/docs/authentication/google)
+- [Better Auth Apple authentication](https://better-auth.com/docs/authentication/apple)
 - [Hono RPC guide](https://hono.dev/docs/guides/rpc)
 - [Hono validation guide](https://hono.dev/docs/guides/validation)
 - [Drizzle with Cloudflare D1](https://orm.drizzle.team/docs/sqlite/connect-cloudflare-d1)
@@ -1511,4 +1531,8 @@ The product owner approved this specification and explicitly authorized Task 1 o
 
 The product owner explicitly authorized Task 2 on 2026-08-30. Task 2 implements the conservative Workspace-private Product boundary for the MVP and is complete and validated.
 
-The next ordered implementation task is Task 3: Google authentication. It starts only after explicit product-owner instruction in a later session.
+The product owner explicitly authorized Task 3 on 2026-08-30. Task 3 implements Google authentication, database-backed sessions, the browser login/protected-shell flow, and safe multi-provider foundations; it is complete and validated.
+
+Before Task 4, the product owner resolved its three gated decisions conservatively: Workspace-scoped Owners alone manage Owner access, verified-email invitation restriction is the overridable default, and `record_purchase` belongs only to Owners. Each permission may be broadened later through capability-policy changes without introducing a special original-creator role.
+
+The next ordered implementation task is Task 4: authorization and invitations. Its product-decision gate is resolved; implementation starts only after the product owner explicitly authorizes it in a later session.

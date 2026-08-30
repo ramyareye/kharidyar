@@ -91,7 +91,7 @@ describe("D1 migration workflow", () => {
 			"select count(*) as count from d1_migrations",
 		).first<{ count: number }>();
 
-		expect(before?.count).toBe(1);
+		expect(before?.count).toBe(env.TEST_MIGRATIONS.length);
 		expect(after?.count).toBe(before?.count);
 	});
 });

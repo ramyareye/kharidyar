@@ -1,9 +1,9 @@
 {
 	"name": "@kharidyar/web",
 	"version": "0.0.0",
-	"description": "A template for building a React application with Vite, Hono, and Cloudflare Workers",
+	"description": "Kharidyar web application and Cloudflare Worker",
 	"cloudflare": {
-		"label": "Vite React Template",
+		"label": "Kharidyar",
 		"products": [
 			"Workers"
 		],
@@ -13,6 +13,7 @@
 		"publish": true
 	},
 	"dependencies": {
+		"@better-auth/drizzle-adapter": "1.7.2",
 		"better-auth": "1.7.2",
 		"drizzle-orm": "0.45.2",
 		"hono": "4.11.1",
