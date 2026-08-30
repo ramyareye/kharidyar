@@ -88,7 +88,7 @@ bun run build
 bun run check
 ```
 
-`bun run check` runs all quality gates and a Wrangler dry run. The Worker tests execute in Cloudflare's Vitest integration, apply the D1 migrations to an isolated local database, protect the existing `GET /api/` response, exercise database constraints, and validate Google/session behavior without contacting Google.
+`bun run check` runs all quality gates and a Wrangler dry run. The Worker tests execute in Cloudflare's Vitest integration, apply the D1 migrations to an isolated local database, protect the existing `GET /api/` response, exercise database constraints, and validate Google/session, scoped authorization, and transactional invitation behavior without contacting Google.
 
 ## Database workflow
 
@@ -115,4 +115,4 @@ bun run cf-typegen
 bun run deploy
 ```
 
-Run `bun run cf-typegen` after changing Worker bindings. Deployment requires the appropriate Cloudflare account, D1 resources, and secrets; Tasks 1–3 do not create or mutate remote Cloudflare resources.
+Run `bun run cf-typegen` after changing Worker bindings. Deployment requires the appropriate Cloudflare account, D1 resources, and secrets; Tasks 1–4 do not create or mutate remote Cloudflare resources.

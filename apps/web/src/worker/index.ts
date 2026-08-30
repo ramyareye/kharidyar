@@ -1,10 +1,9 @@
 import { Hono } from "hono";
 
 import { createAuth } from "../auth/server";
-import {
-	requireSession,
-	type WorkerAppEnv,
-} from "./session-middleware";
+import { ApiError } from "./api-errors";
+import { collaborationRoutes } from "./collaboration-routes";
+import { requireSession, type WorkerAppEnv } from "./session-middleware";
 
 const app = new Hono<WorkerAppEnv>();
 
@@ -31,7 +30,29 @@ app.get("/api/session", requireSession, (context) => {
 	});
 });
 
+app.route("/api", collaborationRoutes);
+
 app.onError((error, context) => {
+	if (error instanceof ApiError) {
+		const headers = new Headers({
+			"cache-control": "no-store",
+			"content-type": "application/json; charset=UTF-8",
+		});
+		if (error.retryAfterSeconds !== undefined) {
+			headers.set("retry-after", error.retryAfterSeconds.toString());
+		}
+
+		return new Response(
+			JSON.stringify({
+				error: {
+					code: error.code,
+					message: error.message,
+				},
+			}),
+			{ headers, status: error.status },
+		);
+	}
+
 	console.error("worker_request_failed", {
 		errorName: error.name,
 		path: context.req.path,

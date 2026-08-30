@@ -19,6 +19,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@better-auth/drizzle-adapter": "1.7.2",
+        "@kharidyar/domain": "workspace:*",
         "better-auth": "1.7.2",
         "drizzle-orm": "0.45.2",
         "hono": "4.11.1",

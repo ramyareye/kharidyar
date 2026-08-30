@@ -1,15 +1,205 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	capabilities,
+	capabilitiesForRole,
+	canManageMembershipRole,
+	canRemoveWorkspaceOwner,
 	calculatePlannedCost,
 	comparePlannedCostToBudget,
 	DomainValidationError,
 	groupLabel,
+	hasCapability,
 	money,
 	offerTerms,
 	plannedPurchaseQuantity,
 	quantityPlan,
+	resolveCapabilities,
+	type MembershipGrant,
+	type MembershipRole,
 } from "../src";
+
+const roleOrder: readonly MembershipRole[] = [
+	"viewer",
+	"commenter",
+	"contributor",
+	"editor",
+	"owner",
+];
+
+describe("capability authorization", () => {
+	it("keeps every role bundle cumulative and record_purchase Owner-only", () => {
+		for (const [index, role] of roleOrder.entries()) {
+			const granted = capabilitiesForRole(role);
+			const previous =
+				index === 0 ? [] : capabilitiesForRole(roleOrder[index - 1]!);
+
+			for (const capability of previous) {
+				expect(granted.has(capability)).toBe(true);
+			}
+		}
+
+		for (const role of roleOrder) {
+			const granted = capabilitiesForRole(role);
+			for (const capability of capabilities) {
+				expect(granted.has(capability)).toBe(
+					roleCapabilitiesExpected(role, capability),
+				);
+			}
+		}
+
+		expect(capabilitiesForRole("owner").has("record_purchase")).toBe(true);
+		for (const role of roleOrder.slice(0, -1)) {
+			expect(capabilitiesForRole(role).has("record_purchase")).toBe(false);
+		}
+	});
+
+	it("applies Workspace grants to current and future Collections", () => {
+		const grants: MembershipGrant[] = [
+			{ scope: "workspace", workspaceId: "home", role: "contributor" },
+		];
+
+		expect(
+			hasCapability(
+				grants,
+				{ workspaceId: "home", collectionId: "existing" },
+				"item_create",
+			),
+		).toBe(true);
+		expect(
+			hasCapability(
+				grants,
+				{ workspaceId: "home", collectionId: "created-later" },
+				"item_create",
+			),
+		).toBe(true);
+	});
+
+	it("isolates Collection grants from siblings and the parent Workspace", () => {
+		const grants: MembershipGrant[] = [
+			{
+				scope: "collection",
+				workspaceId: "home",
+				collectionId: "bedroom",
+				role: "owner",
+			},
+		];
+
+		expect(
+			hasCapability(
+				grants,
+				{ workspaceId: "home", collectionId: "bedroom" },
+				"settings_edit",
+			),
+		).toBe(true);
+		expect(
+			hasCapability(
+				grants,
+				{ workspaceId: "home", collectionId: "living-room" },
+				"view",
+			),
+		).toBe(false);
+		expect(hasCapability(grants, { workspaceId: "home" }, "view")).toBe(false);
+	});
+
+	it("combines overlapping grants without creating a deny rule", () => {
+		const grants: MembershipGrant[] = [
+			{ scope: "workspace", workspaceId: "home", role: "viewer" },
+			{
+				scope: "collection",
+				workspaceId: "home",
+				collectionId: "bedroom",
+				role: "editor",
+			},
+		];
+
+		const bedroom = resolveCapabilities(grants, {
+			workspaceId: "home",
+			collectionId: "bedroom",
+		});
+		expect(bedroom.has("view")).toBe(true);
+		expect(bedroom.has("collection_brief_edit")).toBe(true);
+		expect(bedroom.has("record_purchase")).toBe(false);
+		expect(
+			hasCapability(
+				grants,
+				{ workspaceId: "home", collectionId: "living-room" },
+				"collection_brief_edit",
+			),
+		).toBe(false);
+	});
+
+	it("reserves Owner access management for Workspace-scoped Owners", () => {
+		const collectionOwner: MembershipGrant[] = [
+			{
+				scope: "collection",
+				workspaceId: "home",
+				collectionId: "bedroom",
+				role: "owner",
+			},
+		];
+		const workspaceOwner: MembershipGrant[] = [
+			{ scope: "workspace", workspaceId: "home", role: "owner" },
+		];
+		const bedroom = { workspaceId: "home", collectionId: "bedroom" };
+
+		expect(canManageMembershipRole(collectionOwner, bedroom, "editor")).toBe(
+			true,
+		);
+		expect(canManageMembershipRole(collectionOwner, bedroom, "owner")).toBe(
+			false,
+		);
+		expect(canManageMembershipRole(workspaceOwner, bedroom, "owner")).toBe(
+			true,
+		);
+		expect(canRemoveWorkspaceOwner(1)).toBe(false);
+		expect(canRemoveWorkspaceOwner(2)).toBe(true);
+	});
+});
+
+function roleCapabilitiesExpected(
+	role: MembershipRole,
+	capability: (typeof capabilities)[number],
+): boolean {
+	const minimumRoleByCapability: Record<
+		(typeof capabilities)[number],
+		MembershipRole
+	> = {
+		view: "viewer",
+		export_context: "viewer",
+		comment_create: "commenter",
+		comment_edit_own: "commenter",
+		comment_remove_own: "commenter",
+		vote_manage_own: "commenter",
+		item_create: "contributor",
+		item_edit: "contributor",
+		candidate_manage: "contributor",
+		product_manage: "contributor",
+		offer_manage: "contributor",
+		research_manage: "contributor",
+		offer_refresh: "contributor",
+		research_result_promote: "contributor",
+		collection_content_edit: "editor",
+		collection_brief_edit: "editor",
+		concept_edit: "editor",
+		item_archive: "editor",
+		candidate_archive: "editor",
+		item_status_non_purchase: "editor",
+		comment_moderate: "editor",
+		research_result_moderate: "editor",
+		settings_edit: "owner",
+		members_manage_non_owner: "owner",
+		invitations_manage: "owner",
+		record_purchase: "owner",
+		scope_archive: "owner",
+		scope_delete: "owner",
+	};
+
+	return (
+		roleOrder.indexOf(role) >=
+		roleOrder.indexOf(minimumRoleByCapability[capability])
+	);
+}
 
 describe("quantity planning", () => {
 	it("keeps Item need and Candidate purchase quantities independent", () => {
@@ -146,13 +336,17 @@ describe("group and budget primitives", () => {
 			plannedPurchaseQuantity(2),
 		);
 
-		expect(comparePlannedCostToBudget(exactCost, money(20_000, "EUR"))).toEqual({
-			status: "within_budget",
-			differenceMinor: 4_000,
-		});
-		expect(comparePlannedCostToBudget(exactCost, money(20_000, "USD"))).toEqual({
-			status: "currency_mismatch",
-		});
+		expect(comparePlannedCostToBudget(exactCost, money(20_000, "EUR"))).toEqual(
+			{
+				status: "within_budget",
+				differenceMinor: 4_000,
+			},
+		);
+		expect(comparePlannedCostToBudget(exactCost, money(20_000, "USD"))).toEqual(
+			{
+				status: "currency_mismatch",
+			},
+		);
 	});
 
 	it("does not call a starting-price lower bound within budget", () => {
@@ -168,7 +362,9 @@ describe("group and budget primitives", () => {
 			plannedPurchaseQuantity(2),
 		);
 
-		expect(comparePlannedCostToBudget(lowerBound, money(20_000, "EUR"))).toEqual({
+		expect(
+			comparePlannedCostToBudget(lowerBound, money(20_000, "EUR")),
+		).toEqual({
 			status: "lower_bound",
 			differenceMinor: 4_000,
 		});

@@ -24,6 +24,28 @@ _Avoid_: Topic, mood board, Collection
 An optional lightweight display section for Items, such as “Bedroom,” with no separate hierarchy or permissions.
 _Avoid_: Subcollection, room entity, category
 
+## Collaboration
+
+**Membership**:
+A role grant connecting one internal User to either a Workspace or one Collection.
+_Avoid_: Account, invitation, ownership proof
+
+**Role**:
+A named bundle of capabilities: Viewer, Commenter, Contributor, Editor, or Owner.
+_Avoid_: A hard-coded authorization shortcut
+
+**Capability**:
+One server-enforced permission resolved from all applicable Membership grants at the requested resource scope.
+_Avoid_: UI visibility, role-name comparison
+
+**Invitation**:
+An expiring, revocable proposal for one Workspace Membership or selected Collection Memberships; its bearer token is single-use and stored only as a hash.
+_Avoid_: Membership, emailed identity, reusable share link
+
+**Invitation Acceptance**:
+The authenticated, transactional conversion of one valid Invitation into Membership grants and one immutable consumption record.
+_Avoid_: Sign-in, invitation preview, client-only state
+
 ## Planning
 
 **Item**:

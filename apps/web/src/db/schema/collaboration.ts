@@ -1,8 +1,11 @@
+import { membershipRoles } from "@kharidyar/domain";
 import { sql } from "drizzle-orm";
 import {
 	check,
+	foreignKey,
 	index,
 	integer,
+	primaryKey,
 	sqliteTable,
 	text,
 	uniqueIndex,
@@ -10,14 +13,6 @@ import {
 
 import { user } from "./auth";
 import { createdAt, updatedAt } from "./columns";
-
-export const membershipRoles = [
-	"viewer",
-	"commenter",
-	"contributor",
-	"editor",
-	"owner",
-] as const;
 
 export const workspaces = sqliteTable(
 	"workspaces",
@@ -134,6 +129,143 @@ export const collectionMemberships = sqliteTable(
 	],
 );
 
+export const invitationScopeTypes = ["workspace", "collections"] as const;
+
+export const invitations = sqliteTable(
+	"invitations",
+	{
+		id: text("id").primaryKey(),
+		workspaceId: text("workspace_id")
+			.notNull()
+			.references(() => workspaces.id, { onDelete: "cascade" }),
+		scopeType: text("scope_type", { enum: invitationScopeTypes }).notNull(),
+		role: text("role", { enum: membershipRoles }).notNull(),
+		tokenHash: text("token_hash").notNull(),
+		invitedEmailNormalized: text("invited_email_normalized"),
+		emailRestrictionEnabled: integer("email_restriction_enabled", {
+			mode: "boolean",
+		})
+			.default(false)
+			.notNull(),
+		expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+		createdByUserId: text("created_by_user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "restrict" }),
+		revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
+		revokedByUserId: text("revoked_by_user_id").references(() => user.id, {
+			onDelete: "restrict",
+		}),
+		createdAt: createdAt(),
+		updatedAt: updatedAt(),
+	},
+	(table) => [
+		check(
+			"invitations_scope_type_check",
+			sql`${table.scopeType} in ('workspace', 'collections')`,
+		),
+		check(
+			"invitations_role_check",
+			sql`${table.role} in ('viewer', 'commenter', 'contributor', 'editor', 'owner')`,
+		),
+		check(
+			"invitations_token_hash_check",
+			sql`length(${table.tokenHash}) = 64 and ${table.tokenHash} = lower(${table.tokenHash}) and ${table.tokenHash} not glob '*[^0-9a-f]*'`,
+		),
+		check(
+			"invitations_email_restriction_check",
+			sql`(
+				(${table.emailRestrictionEnabled} = 0 and ${table.invitedEmailNormalized} is null)
+				or
+				(${table.emailRestrictionEnabled} = 1 and ${table.invitedEmailNormalized} is not null and ${table.invitedEmailNormalized} = lower(trim(${table.invitedEmailNormalized})) and length(${table.invitedEmailNormalized}) between 3 and 320)
+			)`,
+		),
+		check(
+			"invitations_expiry_check",
+			sql`${table.expiresAt} > ${table.createdAt}`,
+		),
+		check(
+			"invitations_revocation_check",
+			sql`(
+				(${table.revokedAt} is null and ${table.revokedByUserId} is null)
+				or
+				(${table.revokedAt} is not null and ${table.revokedByUserId} is not null)
+			)`,
+		),
+		uniqueIndex("invitations_token_hash_uidx").on(table.tokenHash),
+		uniqueIndex("invitations_id_workspace_uidx").on(
+			table.id,
+			table.workspaceId,
+		),
+		index("invitations_workspace_state_idx").on(
+			table.workspaceId,
+			table.revokedAt,
+			table.expiresAt,
+		),
+	],
+);
+
+export const invitationCollections = sqliteTable(
+	"invitation_collections",
+	{
+		invitationId: text("invitation_id").notNull(),
+		workspaceId: text("workspace_id").notNull(),
+		collectionId: text("collection_id").notNull(),
+		createdAt: createdAt(),
+	},
+	(table) => [
+		primaryKey({
+			columns: [table.invitationId, table.collectionId],
+			name: "invitation_collections_pk",
+		}),
+		foreignKey({
+			columns: [table.invitationId, table.workspaceId],
+			foreignColumns: [invitations.id, invitations.workspaceId],
+			name: "invitation_collections_invitation_workspace_fk",
+		}).onDelete("cascade"),
+		foreignKey({
+			columns: [table.collectionId, table.workspaceId],
+			foreignColumns: [collections.id, collections.workspaceId],
+			name: "invitation_collections_collection_workspace_fk",
+		}).onDelete("cascade"),
+		index("invitation_collections_collection_idx").on(table.collectionId),
+	],
+);
+
+export const invitationAcceptances = sqliteTable(
+	"invitation_acceptances",
+	{
+		invitationId: text("invitation_id")
+			.primaryKey()
+			.references(() => invitations.id, { onDelete: "cascade" }),
+		acceptedByUserId: text("accepted_by_user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "restrict" }),
+		acceptedAt: integer("accepted_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		index("invitation_acceptances_user_idx").on(table.acceptedByUserId),
+	],
+);
+
+export const collaborationRateLimits = sqliteTable(
+	"collaboration_rate_limits",
+	{
+		key: text("key").primaryKey(),
+		count: integer("count").notNull(),
+		windowStartedAt: integer("window_started_at", {
+			mode: "timestamp_ms",
+		}).notNull(),
+		updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		check(
+			"collaboration_rate_limits_count_check",
+			sql`typeof(${table.count}) = 'integer' and ${table.count} > 0`,
+		),
+		index("collaboration_rate_limits_updated_idx").on(table.updatedAt),
+	],
+);
+
 export const collectionBriefs = sqliteTable(
 	"collection_briefs",
 	{
@@ -149,9 +281,7 @@ export const collectionBriefs = sqliteTable(
 		updatedAt: updatedAt(),
 	},
 	(table) => [
-		uniqueIndex("collection_briefs_collection_uidx").on(
-			table.collectionId,
-		),
+		uniqueIndex("collection_briefs_collection_uidx").on(table.collectionId),
 		check(
 			"collection_briefs_budget_pair_check",
 			sql`(

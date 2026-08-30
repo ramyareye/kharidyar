@@ -2,7 +2,7 @@
 
 - Status: Approved by the product owner
 - Last updated: 2026-08-30
-- Implementation status: Tasks 1 through 3 complete and validated; Task 4 has not started
+- Implementation status: Tasks 1 through 4 complete and validated; Task 5A has not started
 
 ## Purpose of this document
 
@@ -1159,6 +1159,8 @@ Completion criteria:
 
 ### Task 4: Authorization and invitations
 
+Status: completed and validated on 2026-08-30.
+
 Scope:
 
 - Implement role capabilities, Workspace membership, Collection membership, and permission evaluation.
@@ -1469,20 +1471,22 @@ Decisions 1, 2, and 13 are resolved, so Task 4 has no remaining product-decision
 ## Current repository state
 
 - Branch: `main`.
-- History: scaffold baseline followed by the committed Task 1 monorepo and Task 2 domain/D1 foundations; Task 3 is the current uncommitted implementation milestone.
-- Tasks 1 through 3 are complete and validated; Task 4 has not started.
+- History: scaffold baseline followed by committed and pushed Task 1 monorepo, Task 2 domain/D1, and Task 3 Google-authentication milestones; Task 4 is the current uncommitted implementation milestone.
+- Tasks 1 through 4 are complete and validated; Task 5A has not started.
 - The repository is a Bun `1.3.12` workspace with `apps/web`, `packages/domain`, and `packages/contracts`. No mobile, API-client, i18n, or config package has been created.
 - `bun.lock` is the sole package-manager lockfile present, and Bun workspaces are declared in the root `package.json`.
 - The Vite/React frontend now provides the Google sign-in surface and a session-gated empty shell. The Hono Worker preserves the scaffold health response while adding Better Auth routes and a protected session endpoint.
-- Drizzle is the unified schema source. The first generated migration includes Better Auth's generated tables plus Workspace-private Products and the initial collaboration/planning tables; a second migration adds persistent Better Auth rate-limit storage. Later feature tables remain owned by their roadmap tasks.
+- Drizzle is the unified schema source. The first generated migration includes Better Auth's generated tables plus Workspace-private Products and the initial collaboration/planning tables; a second migration adds persistent Better Auth rate-limit storage; a third adds Invitations, selected-Collection targets, single-use acceptance provenance, and privacy-preserving collaboration rate limits. Later feature tables remain owned by their roadmap tasks.
 - Local migration, migration-list, schema-check, seed, type-generation, and quality commands are available from the workspace root. The fixed development seed is idempotent.
 - Runtime-independent domain primitives preserve separate Item-needed and Candidate-planned purchase quantities, money/budget validation, group labels, and honest Offer price/shipping semantics.
 - The root `CONTEXT.md` defines the purchase-planning language and guards the Item/Candidate/Product/Offer boundaries.
 - The baseline Worker regression test preserves `GET /api/` returning `200` with `{ "name": "Cloudflare" }`.
 - Better Auth uses explicit origins, environment-bound secrets, database-backed sessions, secure production cookies, edge-controlled client-IP rate-limit keys, and disabled implicit account linking. Google is the only enabled provider.
 - Auth integration tests cover anonymous rejection, Google authorization URL construction, untrusted callback rejection, authenticated session loading, sign-out revocation, and separate internal User/provider Account records.
-- Domain and Cloudflare-runtime database tests cover migration idempotency, positive independent quantities, planned Candidate/Offer ownership, price/budget constraints, palette bounds, and no inferred pack conversion.
-- Runtime authorization, invitations, feature CRUD, localization catalogs, and research behavior are not yet implemented.
+- Capability resolution combines applicable Workspace and Collection grants. Workspace grants reach future Collections, Collection grants remain isolated, only Workspace-scoped Owners manage Owner access, and atomic membership mutations preserve at least one Workspace-scoped Owner.
+- Invitation APIs create Workspace or selected-Collection grants, default supplied email addresses to a verified-email restriction with explicit opt-out, return fragment-based bearer URLs once, store SHA-256 hashes only, provide a rate-limited metadata-only preview, revoke pending invitations, and accept through one rollback-safe D1 batch.
+- Domain and Cloudflare-runtime database tests cover migration idempotency, all role allow/deny behavior, scope isolation, Owner boundaries, invitation expiry/revocation/email matching, rate limits, replay, competing acceptance, database uniqueness, forced rollback and retry, positive independent quantities, planned Candidate/Offer ownership, price/budget constraints, palette bounds, and no inferred pack conversion.
+- Core Workspace/Collection/Item CRUD, collaboration UI, localization catalogs, and research behavior are not yet implemented.
 
 ## Current reference basis
 
@@ -1506,6 +1510,7 @@ These links informed the architecture and must be rechecked before implementing 
 - [Better Auth Hono integration](https://better-auth.com/docs/integrations/hono)
 - [Better Auth database guide](https://better-auth.com/docs/concepts/database)
 - [Better Auth session management](https://better-auth.com/docs/concepts/session-management)
+- [Better Auth security and trusted-origin behavior](https://better-auth.com/docs/reference/security)
 - [Better Auth Drizzle adapter](https://better-auth.com/docs/adapters/drizzle)
 - [Better Auth users and accounts](https://better-auth.com/docs/concepts/users-accounts)
 - [Better Auth Expo integration](https://better-auth.com/docs/integrations/expo)
@@ -1535,4 +1540,6 @@ The product owner explicitly authorized Task 3 on 2026-08-30. Task 3 implements 
 
 Before Task 4, the product owner resolved its three gated decisions conservatively: Workspace-scoped Owners alone manage Owner access, verified-email invitation restriction is the overridable default, and `record_purchase` belongs only to Owners. Each permission may be broadened later through capability-policy changes without introducing a special original-creator role.
 
-The next ordered implementation task is Task 4: authorization and invitations. Its product-decision gate is resolved; implementation starts only after the product owner explicitly authorizes it in a later session.
+The product owner explicitly authorized Task 4 on 2026-08-30. Task 4 implements capability-based scoped authorization, membership administration, secure hashed-token invitations, privacy-preserving rate limits, and transactional idempotent acceptance; it is complete and validated.
+
+The next ordered implementation task is Task 5A: the core Workspace, Collection, and Item API through Hono RPC. It starts only after the product owner explicitly authorizes it in a later session.
