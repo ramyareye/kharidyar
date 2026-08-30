@@ -20,5 +20,11 @@
 		"noFallthroughCasesInSwitch": true,
 		"noUncheckedSideEffectImports": true
 	},
-	"include": ["vite.config.ts", "vitest.config.ts"]
+	"include": [
+		"drizzle.config.ts",
+		"vite.config.ts",
+		"vitest.config.ts",
+		"src/auth",
+		"src/db"
+	]
 }

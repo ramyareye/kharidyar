@@ -2,7 +2,7 @@
 
 - Status: Approved by the product owner
 - Last updated: 2026-08-30
-- Implementation status: Task 1 complete and validated; Task 2 has not started
+- Implementation status: Tasks 1 and 2 complete and validated; Task 3 has not started
 
 ## Purpose of this document
 
@@ -51,6 +51,7 @@ Pay particular attention to:
 - AI Concept visualization is image-to-image: the user supplies a base photo of a space or person, the original remains unchanged, and the system creates separate edited variants.
 - For a future `person` base image, only its uploader may request transmission to an AI image provider, with a fresh explicit confirmation for each request. Ownership role alone does not grant that permission.
 - EUR is required for the web MVP because planning purchases from Netherlands and other Euro-priced retailers is a current use case. IRR/toman display remains an open localization decision.
+- Products are Workspace-private in the MVP. Cross-Workspace canonicalization or sharing is deferred until a concrete need justifies its privacy and merge complexity.
 
 ### Proposed implementation decisions requiring review
 
@@ -1118,6 +1119,8 @@ Completion criteria:
 
 ### Task 2: Domain and D1 foundation
 
+Status: completed and validated on 2026-08-30.
+
 Scope:
 
 - Add D1 binding and generated types.
@@ -1435,7 +1438,6 @@ Mitigation: runtime-independent domain/contracts/i18n packages and a fetch/sessi
 5. Should one Item support more than one selected/final Product, for bundles or recurring purchases?
 6. EUR is required for the MVP. Can one Collection contain additional currencies and—if Iranian users are in scope—should IRR be entered and displayed as rial, toman, or an explicitly labeled user preference? Canonical storage and all conversion/display rules must be unambiguous; no implicit FX conversion is allowed.
 7. What is the default UI language for users whose browser preference is neither Persian nor English?
-8. Should Product edits be Workspace-private, or should canonical Products eventually be shared across Workspaces?
 9. Which search provider should power the first Research adapter?
 10. Which retailers or domains are approved for initial Browser Run extraction?
 11. What retention period applies to research snapshots, raw Import Draft input, comments, and audit history?
@@ -1451,15 +1453,18 @@ None of these blocks Task 1. Decisions 1, 2, and 13 must be resolved before Task
 ## Current repository state
 
 - Branch: `main`.
-- History: scaffold baseline followed by the Task 1 monorepo foundation.
-- Task 1 is complete and validated; Task 2 has not started.
+- History: scaffold baseline followed by the Task 1 monorepo foundation; Task 2 is the current implementation milestone.
+- Tasks 1 and 2 are complete and validated; Task 3 has not started.
 - The repository is a Bun `1.3.12` workspace with `apps/web`, `packages/domain`, and `packages/contracts`. No mobile, API-client, i18n, or config package has been created.
 - `bun.lock` is the sole package-manager lockfile present, and Bun workspaces are declared in the root `package.json`.
-- The original Vite/React frontend, Hono Worker, generated Worker types, Vite config, and Wrangler config were relocated to `apps/web`; application source and runtime configuration bytes are unchanged.
-- Root scripts provide development, lint, type checking, Cloudflare-runtime tests, production build, Wrangler dry-run, preview, type generation, and deployment entry points.
+- The original Vite/React frontend and Hono Worker behavior remain unchanged. `apps/web` now has environment-separated D1 bindings and generated Worker types.
+- Drizzle is the unified schema source. The first generated migration includes Better Auth's generated tables plus Workspace-private Products and the initial collaboration/planning tables; later feature tables remain owned by their roadmap tasks.
+- Local migration, migration-list, schema-check, seed, type-generation, and quality commands are available from the workspace root. The fixed development seed is idempotent.
+- Runtime-independent domain primitives preserve separate Item-needed and Candidate-planned purchase quantities, money/budget validation, group labels, and honest Offer price/shipping semantics.
+- The root `CONTEXT.md` defines the purchase-planning language and guards the Item/Candidate/Product/Offer boundaries.
 - The baseline Worker regression test preserves `GET /api/` returning `200` with `{ "name": "Cloudflare" }`.
-- `bun run check` passes from the workspace root with zero lint warnings, successful type checking, one passing Worker test, a production build, and a successful Wrangler dry run.
-- Database, authentication, product routing, localization, and domain behavior are not yet implemented.
+- Domain and Cloudflare-runtime database tests cover migration idempotency, positive independent quantities, planned Candidate/Offer ownership, price/budget constraints, palette bounds, and no inferred pack conversion.
+- Runtime authentication, authorization, feature APIs/UI, localization catalogs, and research behavior are not yet implemented.
 
 ## Current reference basis
 
@@ -1504,4 +1509,6 @@ A real multi-room IKEA-style research list then exposed and resolved planning ga
 
 The product owner approved this specification and explicitly authorized Task 1 on 2026-08-30. Task 1 is complete and validated.
 
-The next ordered implementation task is Task 2: Domain and D1 foundation. It starts only after explicit product-owner instruction in a later session.
+The product owner explicitly authorized Task 2 on 2026-08-30. Task 2 implements the conservative Workspace-private Product boundary for the MVP and is complete and validated.
+
+The next ordered implementation task is Task 3: Google authentication. It starts only after explicit product-owner instruction in a later session.

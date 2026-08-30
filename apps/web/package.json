@@ -13,6 +13,8 @@
 		"publish": true
 	},
 	"dependencies": {
+		"better-auth": "1.7.2",
+		"drizzle-orm": "0.45.2",
 		"hono": "4.11.1",
 		"react": "19.2.1",
 		"react-dom": "19.2.1"
@@ -24,6 +26,8 @@
 		"@types/react": "19.2.7",
 		"@types/react-dom": "19.2.3",
 		"@vitejs/plugin-react": "5.1.1",
+		"auth": "1.7.2",
+		"drizzle-kit": "0.31.10",
 		"typescript": "5.9.3",
 		"vite": "^7.0.0",
 		"vitest": "4.1.11",
@@ -31,9 +35,15 @@
 	},
 	"private": true,
 	"scripts": {
+		"auth:schema": "auth generate --config ./src/auth/schema-config.ts --output ./src/db/schema/auth.ts --adapter drizzle --dialect sqlite --yes",
 		"build": "tsc -b && vite build",
 		"cf-typegen": "wrangler types",
 		"check:deploy": "wrangler deploy --dry-run",
+		"db:check": "drizzle-kit check --config ./drizzle.config.ts",
+		"db:generate": "bun run auth:schema && drizzle-kit generate --config ./drizzle.config.ts",
+		"db:migrate:local": "wrangler d1 migrations apply kharidyar-local --local",
+		"db:migrations:list:local": "wrangler d1 migrations list kharidyar-local --local",
+		"db:seed:local": "wrangler d1 execute kharidyar-local --local --file ./seed/development.sql",
 		"deploy": "wrangler deploy",
 		"dev": "vite",
 		"preview": "bun run build && vite preview",

@@ -11,12 +11,17 @@
 	"scripts": {
 		"build": "bun run --filter @kharidyar/web build",
 		"cf-typegen": "bun run --filter @kharidyar/web cf-typegen",
-		"check": "bun run lint && bun run typecheck && bun run test && bun run build && bun run --filter @kharidyar/web check:deploy",
+		"check": "bun run lint && bun run typecheck && bun run db:check && bun run test && bun run build && bun run --filter @kharidyar/web check:deploy",
+		"db:check": "bun run --filter @kharidyar/web db:check",
+		"db:generate": "bun run --filter @kharidyar/web db:generate",
+		"db:migrate:local": "bun run --filter @kharidyar/web db:migrate:local",
+		"db:migrations:list:local": "bun run --filter @kharidyar/web db:migrations:list:local",
+		"db:seed:local": "bun run --filter @kharidyar/web db:seed:local",
 		"deploy": "bun run --filter @kharidyar/web deploy",
 		"dev": "bun run --filter @kharidyar/web dev",
 		"lint": "eslint . --max-warnings 0",
 		"preview": "bun run --filter @kharidyar/web preview",
-		"test": "bun run --filter @kharidyar/web test",
+		"test": "bun run --sequential --filter '@kharidyar/*' --if-present test",
 		"typecheck": "tsc -b"
 	},
 	"devDependencies": {

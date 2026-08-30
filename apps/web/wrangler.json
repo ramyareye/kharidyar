@@ -14,6 +14,33 @@
 		"enabled": true
 	},
 	"upload_source_maps": true,
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "kharidyar-local",
+			"migrations_dir": "migrations"
+		}
+	],
+	"env": {
+		"preview": {
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "kharidyar-preview",
+					"migrations_dir": "migrations"
+				}
+			]
+		},
+		"production": {
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "kharidyar-production",
+					"migrations_dir": "migrations"
+				}
+			]
+		}
+	},
 	"assets": {
 		"directory": "./dist/client",
 		"not_found_handling": "single-page-application"
