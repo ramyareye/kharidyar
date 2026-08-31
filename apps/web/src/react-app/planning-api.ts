@@ -3,9 +3,11 @@ import {
   collectionBriefResponseSchema,
 	collectionListResponseSchema,
 	collectionResponseSchema,
-  conceptResponseSchema,
+	conceptResponseSchema,
 	itemListResponseSchema,
 	itemResponseSchema,
+	itemStatusChangeResponseSchema,
+	itemWorkflowResponseSchema,
 	workspaceListResponseSchema,
 	workspaceResponseSchema,
 	type ApiErrorCode,
@@ -17,8 +19,12 @@ import {
   type ConceptInput,
   type ConceptResource,
 	type ItemCreateInput,
+	type ItemPermissions,
 	type ItemResource,
+	type ItemStatusChangeInput,
+	type ItemStatusDecisionEvent,
 	type ItemUpdateInput,
+	type DecisionEventResource,
 	type WorkspaceCreateInput,
 	type WorkspaceResource,
 	type WorkspaceSummary,
@@ -94,11 +100,12 @@ export interface PlanningApi {
     collectionId: string,
   ) => Promise<EditableResource<ConceptResource>>;
 	listCollections: (workspaceId: string) => Promise<CollectionResource[]>;
-	listItems: (collectionId: string) => Promise<ItemResource[]>;
+	listItems: (collectionId: string) => Promise<ItemListResult>;
 	listWorkspaces: () => Promise<WorkspaceSummary[]>;
 	restoreCollection: (collectionId: string) => Promise<CollectionResource>;
 	restoreItem: (itemId: string) => Promise<ItemResource>;
 	restoreWorkspace: (workspaceId: string) => Promise<WorkspaceResource>;
+	readItemWorkflow: (itemId: string) => Promise<ItemWorkflowResult>;
   removeConcept: (
     collectionId: string,
   ) => Promise<EditableResource<ConceptResource>>;
@@ -118,10 +125,25 @@ export interface PlanningApi {
 		itemId: string,
 		value: ItemUpdateInput,
 	) => Promise<ItemResource>;
+	changeItemStatus: (
+		itemId: string,
+		value: ItemStatusChangeInput,
+	) => Promise<{ item: ItemResource; event: ItemStatusDecisionEvent }>;
 	updateWorkspace: (
 		workspaceId: string,
 		value: WorkspaceUpdateInput,
 	) => Promise<WorkspaceResource>;
+}
+
+export interface ItemListResult {
+	items: ItemResource[];
+	permissions: ItemPermissions;
+}
+
+export interface ItemWorkflowResult {
+	item: ItemResource;
+	events: DecisionEventResource[];
+	permissions: ItemPermissions;
 }
 
 export interface EditableResource<T> {
@@ -250,7 +272,23 @@ export const planningApi: PlanningApi = {
 			param: { collectionId },
 			query: { includeArchived: "true", limit: "100", offset: "0" },
 		});
-		return (await parsedResponse(response, itemListResponseSchema)).items;
+		const body = await parsedResponse(response, itemListResponseSchema);
+		return { items: body.items, permissions: body.permissions };
+	},
+
+	async readItemWorkflow(itemId) {
+		const response = await client.items[":itemId"].workflow.$get({
+			param: { itemId },
+		});
+		return parsedResponse(response, itemWorkflowResponseSchema);
+	},
+
+	async changeItemStatus(itemId, value) {
+		const response = await client.items[":itemId"].status.$post({
+			json: value,
+			param: { itemId },
+		});
+		return parsedResponse(response, itemStatusChangeResponseSchema);
 	},
 
 	async createItem(collectionId, value) {

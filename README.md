@@ -89,17 +89,19 @@ bun run build
 bun run check
 ```
 
-`bun run check` runs all quality gates and a Wrangler dry run. The Worker tests execute in Cloudflare's Vitest integration, apply the D1 migrations to an isolated local database, protect the existing `GET /api/` response, exercise database constraints, and validate Google/session, scoped authorization, transactional invitations, typed Workspace/Collection/Item APIs, structured Collection Briefs, and text Concepts without contacting Google. Runtime-independent tests also cover locale policy, RTL/LTR direction, formatting, palette rules, and the web shell's loading, empty, error, unauthorized, and ready-state resolver.
+`bun run check` runs all quality gates and a Wrangler dry run. The Worker tests execute in Cloudflare's Vitest integration, apply the D1 migrations to an isolated local database, protect the existing `GET /api/` response, exercise database constraints, and validate Google/session, scoped authorization, transactional invitations, typed Workspace/Collection/Item APIs, structured Collection Briefs, text Concepts, Item workflow permissions, and atomic audited detail/status changes without contacting Google. Runtime-independent tests also cover locale policy, RTL/LTR direction, formatting, palette rules, status-transition classification, and the web shell's critical-state resolvers.
 
 ## Core API
 
-Authenticated Hono RPC routes expose Workspace, Collection, and Item create/read/update/archive/restore operations under `/api`. Collection-scoped routes also read/update the structured Brief and read/create/update/remove the optional text Concept. Shared Zod contracts live in `packages/contracts`; server-generated IDs and database-derived parent relationships prevent clients from asserting ownership. Item lists support status/group filtering, archived-history inclusion, and bounded pagination.
+Authenticated Hono RPC routes expose Workspace, Collection, and Item create/read/update/archive/restore operations under `/api`. Collection-scoped routes also read/update the structured Brief and read/create/update/remove the optional text Concept. `GET /api/items/:itemId/workflow` returns the complete Item, capability-derived actions, and Decision Event history; `POST /api/items/:itemId/status` is the only ordinary status mutation path. Shared Zod contracts live in `packages/contracts`; server-generated IDs and database-derived parent relationships prevent clients from asserting ownership. Item lists support status/group filtering, archived-history inclusion, and bounded pagination.
 
 Collection-only collaborators receive a minimal parent Workspace navigation summary. They remain unable to read Workspace details or access sibling Collections.
 
 ## Web planning studio
 
-Authenticated users can create, edit, archive, and restore Workspaces, Collections, and Items through the responsive web UI. Item creation includes quantity and an optional lightweight group label; selection is reflected in the URL so refreshes reopen the same Workspace and Collection.
+Authenticated users can create, edit, archive, and restore Workspaces, Collections, and Items through the responsive web UI. Item planning includes notes, requirements, priority, quantity, optional group, optional EUR budget, and optional deadline; selection is reflected in the URL so refreshes reopen the same Workspace and Collection.
+
+The Item detail dialog keeps full planning facts beside explicit status controls and newest-first human-authored history. Status never changes automatically. Editors can record non-purchase status decisions, while only Owners can mark an Item purchased under the current policy. Backward transitions remain possible but are warned before confirmation and labeled as reversals in history. Detail changes and status changes atomically append immutable Decision Events in D1.
 
 Each Collection can show and edit its practical Brief, optional EUR budget, ordered core/supporting color preference, HTTPS reference links, and one optional text Concept alongside its Items. Palettes allow up to six colors per group, preserve user order, normalize hex values, and always pair swatches with text. Concept images, uploads, R2 storage, and AI visualization remain intentionally absent until their future roadmap tasks.
 
@@ -119,7 +121,7 @@ bun run db:seed:local
 
 `bun run db:generate` first regenerates Better Auth's Drizzle tables and then creates a reviewable SQL migration for all schema changes. Do not edit `apps/web/src/db/schema/auth.ts` or generated migration metadata by hand. Review the generated SQL before applying or committing it.
 
-`bun run db:migrate:local` is safe to rerun; already-applied migrations are a no-op. `bun run db:seed:local` loads fixed, idempotent development data into the local database only. It includes an Item that needs four chairs and a Candidate plan that buys two, preserving the distinction between need units and Offer units.
+`bun run db:migrate:local` is safe to rerun; already-applied migrations are a no-op. `bun run db:seed:local` loads fixed, idempotent development data into the local database only. It includes an Item that needs four chairs, representative requirements and human decision history, and a Candidate plan that buys two, preserving the distinction between need units and Offer units.
 
 Preview and production use distinct D1 resources. Configure the Cloudflare account/resources for those environments before the first remote migration or deployment; the commands above never mutate a remote database. After changing any binding, regenerate Worker types with `bun run cf-typegen`.
 
@@ -130,4 +132,4 @@ bun run cf-typegen
 bun run deploy
 ```
 
-Run `bun run cf-typegen` after changing Worker bindings. Deployment requires the appropriate Cloudflare account, D1 resources, and secrets; Tasks 1–6A do not create or mutate remote Cloudflare resources.
+Run `bun run cf-typegen` after changing Worker bindings. Deployment requires the appropriate Cloudflare account, D1 resources, and secrets; Tasks 1–6B do not create or mutate remote Cloudflare resources.

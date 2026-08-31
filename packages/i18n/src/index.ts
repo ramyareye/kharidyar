@@ -71,6 +71,16 @@ export function formatDate(
 	}).format(new Date(value));
 }
 
+export function formatDateTime(
+	locale: Locale,
+	value: Date | number | string,
+): string {
+	return new Intl.DateTimeFormat(localeTags[locale], {
+		dateStyle: "medium",
+		timeStyle: "short",
+	}).format(new Date(value));
+}
+
 export function formatMoney(
 	locale: Locale,
 	minor: number,

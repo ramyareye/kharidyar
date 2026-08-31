@@ -1,4 +1,9 @@
-import { itemPriorities, itemStatuses } from "@kharidyar/domain";
+import {
+	decisionEventKinds,
+	itemPriorities,
+	itemStatuses,
+	itemStatusTransitionKinds,
+} from "@kharidyar/domain";
 import { sql } from "drizzle-orm";
 import {
 	check,
@@ -30,6 +35,7 @@ export const items = sqliteTable(
 		collectionId: text("collection_id").notNull(),
 		title: text("title").notNull(),
 		description: text("description"),
+		requirements: text("requirements"),
 		priority: text("priority", { enum: itemPriorities })
 			.default("nice_to_have")
 			.notNull(),
@@ -55,6 +61,10 @@ export const items = sqliteTable(
 		check(
 			"items_title_length_check",
 			sql`length(trim(${table.title})) between 1 and 200`,
+		),
+		check(
+			"items_requirements_length_check",
+			sql`${table.requirements} is null or length(trim(${table.requirements})) between 1 and 4000`,
 		),
 		check(
 			"items_priority_check",
@@ -89,6 +99,77 @@ export const items = sqliteTable(
 			table.collectionId,
 			table.groupLabel,
 		),
+	],
+);
+
+export const decisionEvents = sqliteTable(
+	"decision_events",
+	{
+		id: text("id").primaryKey(),
+		itemId: text("item_id")
+			.notNull()
+			.references(() => items.id, { onDelete: "cascade" }),
+		kind: text("kind", { enum: decisionEventKinds }).notNull(),
+		actorUserId: text("actor_user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "restrict" }),
+		beforeSnapshotJson: text("before_snapshot_json"),
+		afterSnapshotJson: text("after_snapshot_json"),
+		fromStatus: text("from_status", { enum: itemStatuses }),
+		toStatus: text("to_status", { enum: itemStatuses }),
+		transitionKind: text("transition_kind", {
+			enum: itemStatusTransitionKinds,
+		}),
+		note: text("note"),
+		createdAt: createdAt(),
+	},
+	(table) => [
+		check(
+			"decision_events_kind_check",
+			sql`${table.kind} in ('item_details_updated', 'item_status_changed')`,
+		),
+		check(
+			"decision_events_payload_check",
+			sql`(
+				(${table.kind} = 'item_details_updated'
+					and ${table.beforeSnapshotJson} is not null
+					and ${table.afterSnapshotJson} is not null
+					and ${table.fromStatus} is null
+					and ${table.toStatus} is null
+					and ${table.transitionKind} is null
+					and ${table.note} is null)
+				or
+				(${table.kind} = 'item_status_changed'
+					and ${table.beforeSnapshotJson} is null
+					and ${table.afterSnapshotJson} is null
+					and ${table.fromStatus} is not null
+					and ${table.toStatus} is not null
+					and ${table.fromStatus} <> ${table.toStatus}
+					and ${table.transitionKind} is not null)
+			)`,
+		),
+		check(
+			"decision_events_status_check",
+			sql`(
+				(${table.fromStatus} is null or ${table.fromStatus} in ('idea', 'researching', 'comparing', 'decided', 'purchased', 'skipped'))
+				and
+				(${table.toStatus} is null or ${table.toStatus} in ('idea', 'researching', 'comparing', 'decided', 'purchased', 'skipped'))
+			)`,
+		),
+		check(
+			"decision_events_transition_kind_check",
+			sql`${table.transitionKind} is null or ${table.transitionKind} in ('progression', 'alternate', 'reversal')`,
+		),
+		check(
+			"decision_events_note_check",
+			sql`${table.note} is null or length(trim(${table.note})) between 1 and 1000`,
+		),
+		index("decision_events_item_time_idx").on(
+			table.itemId,
+			table.createdAt,
+			table.id,
+		),
+		index("decision_events_actor_idx").on(table.actorUserId),
 	],
 );
 

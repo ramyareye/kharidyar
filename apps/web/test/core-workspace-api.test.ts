@@ -6,6 +6,8 @@ import {
   conceptResponseSchema,
 	itemListResponseSchema,
 	itemResponseSchema,
+	itemStatusChangeResponseSchema,
+	itemWorkflowResponseSchema,
 	workspaceListResponseSchema,
 	workspaceResponseSchema,
 } from "@kharidyar/contracts";
@@ -281,7 +283,7 @@ describe("typed Workspace to Item flow", () => {
 				priority: "essential",
 				quantityNeeded: 4,
 				groupLabel: "  Dining area  ",
-				budget: { minor: 24000, currency: "eur" },
+				budget: { minor: 24000, currency: "EUR" },
 				deadlineAt: "2026-12-31T12:00:00+01:00",
 			},
 			param: { collectionId: collectionBody.collection.id },
@@ -429,6 +431,206 @@ describe("authorization and scope filtering", () => {
 			{ userId: users.collectionOwner },
 		);
 		expect(collectionOwnerSibling.status).toBe(404);
+	});
+});
+
+describe("Item workflow and Decision Events", () => {
+	it("returns capability-derived Item workflow permissions", async () => {
+		const expected = {
+			[users.viewer]: {
+				canCreate: false,
+				canEdit: false,
+				canArchive: false,
+				canChangeNonPurchaseStatus: false,
+				canMarkPurchased: false,
+			},
+			[users.contributor]: {
+				canCreate: true,
+				canEdit: true,
+				canArchive: false,
+				canChangeNonPurchaseStatus: false,
+				canMarkPurchased: false,
+			},
+			[users.editor]: {
+				canCreate: true,
+				canEdit: true,
+				canArchive: true,
+				canChangeNonPurchaseStatus: true,
+				canMarkPurchased: false,
+			},
+			[users.owner]: {
+				canCreate: true,
+				canEdit: true,
+				canArchive: true,
+				canChangeNonPurchaseStatus: true,
+				canMarkPurchased: true,
+			},
+		} as const;
+
+		for (const [userId, permissions] of Object.entries(expected)) {
+			const response = await apiRequest(
+				`/api/collections/${collectionA1}/items?includeArchived=true`,
+				{ userId: userId as TestUserId },
+			);
+			expect(response.status).toBe(200);
+			expect(
+				itemListResponseSchema.parse(await response.json()).permissions,
+			).toEqual(permissions);
+		}
+	});
+
+	it("audits meaningful Item detail edits with before and after snapshots", async () => {
+		const updated = await apiRequest(`/api/items/${itemA1}`, {
+			body: {
+				description: "Low frame with calm lines.",
+				requirements: "Solid wood, maximum width 180 cm.",
+				priority: "soon",
+				quantityNeeded: 2,
+				groupLabel: "Main bedroom",
+				budget: { minor: 52_900, currency: "EUR" },
+				deadlineAt: "2026-11-15T12:00:00+01:00",
+			},
+			method: "PATCH",
+			userId: users.contributor,
+		});
+		expect(updated.status).toBe(200);
+		expect(itemResponseSchema.parse(await updated.json()).item).toMatchObject({
+			requirements: "Solid wood, maximum width 180 cm.",
+			priority: "soon",
+			quantityNeeded: 2,
+			groupLabel: "Main bedroom",
+			budget: { minor: 52_900, currency: "EUR" },
+			deadlineAt: "2026-11-15T11:00:00.000Z",
+		});
+
+		const workflow = await apiRequest(`/api/items/${itemA1}/workflow`, {
+			userId: users.viewer,
+		});
+		expect(workflow.status).toBe(200);
+		const body = itemWorkflowResponseSchema.parse(await workflow.json());
+		expect(body.events).toHaveLength(1);
+		expect(body.events[0]).toMatchObject({
+			kind: "item_details_updated",
+			actor: { id: users.contributor, name: "contributor" },
+			before: { quantityNeeded: 1, requirements: null },
+			after: {
+				quantityNeeded: 2,
+				requirements: "Solid wood, maximum width 180 cm.",
+			},
+		});
+
+		const noChange = await apiRequest(`/api/items/${itemA1}`, {
+			body: { quantityNeeded: 2 },
+			method: "PATCH",
+			userId: users.contributor,
+		});
+		expect(noChange.status).toBe(200);
+		const repeatedWorkflow = await apiRequest(
+			`/api/items/${itemA1}/workflow`,
+			{ userId: users.viewer },
+		);
+		expect(
+			itemWorkflowResponseSchema.parse(await repeatedWorkflow.json()).events,
+		).toHaveLength(1);
+	});
+
+	it("keeps status changes explicit, human-only, and role-gated", async () => {
+		const contributor = await apiRequest(`/api/items/${itemA1}/status`, {
+			body: { status: "researching" },
+			method: "POST",
+			userId: users.contributor,
+		});
+		expect(contributor.status).toBe(403);
+
+		const decided = await apiRequest(`/api/items/${itemA1}/status`, {
+			body: { status: "decided", note: "Ready for the final choice." },
+			method: "POST",
+			userId: users.editor,
+		});
+		expect(decided.status).toBe(200);
+		expect(
+			itemStatusChangeResponseSchema.parse(await decided.json()).event,
+		).toMatchObject({
+			fromStatus: "idea",
+			toStatus: "decided",
+			transitionKind: "progression",
+			unusual: false,
+			actor: { id: users.editor },
+		});
+
+		const editorPurchase = await apiRequest(`/api/items/${itemA1}/status`, {
+			body: { status: "purchased" },
+			method: "POST",
+			userId: users.editor,
+		});
+		expect(editorPurchase.status).toBe(403);
+
+		const purchased = await apiRequest(`/api/items/${itemA1}/status`, {
+			body: { status: "purchased", note: "Need fulfilled manually." },
+			method: "POST",
+			userId: users.owner,
+		});
+		expect(purchased.status).toBe(200);
+		expect(
+			itemStatusChangeResponseSchema.parse(await purchased.json()).item.status,
+		).toBe("purchased");
+
+		const reversal = await apiRequest(`/api/items/${itemA1}/status`, {
+			body: { status: "comparing", note: "Correcting a premature close." },
+			method: "POST",
+			userId: users.editor,
+		});
+		expect(reversal.status).toBe(200);
+		expect(
+			itemStatusChangeResponseSchema.parse(await reversal.json()).event,
+		).toMatchObject({
+			transitionKind: "reversal",
+			unusual: true,
+		});
+
+		const noOp = await apiRequest(`/api/items/${itemA1}/status`, {
+			body: { status: "comparing" },
+			method: "POST",
+			userId: users.owner,
+		});
+		expect(noOp.status).toBe(409);
+
+		const workflow = await apiRequest(`/api/items/${itemA1}/workflow`, {
+			userId: users.viewer,
+		});
+		const history = itemWorkflowResponseSchema.parse(
+			await workflow.json(),
+		).events;
+		expect(history.map((event) => event.kind)).toEqual([
+			"item_status_changed",
+			"item_status_changed",
+			"item_status_changed",
+		]);
+		expect(history[0]).toMatchObject({
+			fromStatus: "purchased",
+			toStatus: "comparing",
+		});
+	});
+
+	it("rejects hidden status fields, unsupported Item currency, and cross-scope history", async () => {
+		const hiddenStatus = await apiRequest(`/api/items/${itemA1}`, {
+			body: { status: "purchased" },
+			method: "PATCH",
+			userId: users.owner,
+		});
+		expect(hiddenStatus.status).toBe(400);
+
+		const unsupportedCurrency = await apiRequest(`/api/items/${itemA1}`, {
+			body: { budget: { minor: 100, currency: "USD" } },
+			method: "PATCH",
+			userId: users.owner,
+		});
+		expect(unsupportedCurrency.status).toBe(400);
+
+		const sibling = await apiRequest(`/api/items/${itemA2}/workflow`, {
+			userId: users.collectionOwner,
+		});
+		expect(sibling.status).toBe(404);
 	});
 });
 

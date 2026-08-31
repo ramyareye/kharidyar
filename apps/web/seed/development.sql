@@ -71,6 +71,7 @@ INSERT OR IGNORE INTO items (
 	collection_id,
 	title,
 	description,
+	requirements,
 	priority,
 	status,
 	quantity_needed,
@@ -85,14 +86,58 @@ VALUES (
 	'dev-collection',
 	'Dining chairs',
 	'Buy two now and leave room to add two later.',
+	'Natural wood, comfortable enough to test in person, and suitable for the Japanese-modern palette.',
 	'essential',
 	'comparing',
 	4,
-	'Living room',
+	'Dining room',
 	24000,
 	'EUR',
 	'dev-user'
 );
+
+-- Bring an older copy of this fixed fixture forward without overwriting user edits.
+UPDATE items
+SET requirements = coalesce(
+	requirements,
+	'Natural wood, comfortable enough to test in person, and suitable for the Japanese-modern palette.'
+)
+WHERE id = 'dev-item-chairs';
+
+INSERT OR IGNORE INTO decision_events (
+	id,
+	item_id,
+	kind,
+	actor_user_id,
+	from_status,
+	to_status,
+	transition_kind,
+	note,
+	created_at
+)
+VALUES
+	(
+		'dev-decision-chairs-researching',
+		'dev-item-chairs',
+		'item_status_changed',
+		'dev-user',
+		'idea',
+		'researching',
+		'progression',
+		'Compare natural-wood chairs that fit the shared Japanese-modern direction.',
+		cast(unixepoch('subsecond') * 1000 as integer) - 172800000
+	),
+	(
+		'dev-decision-chairs-comparing',
+		'dev-item-chairs',
+		'item_status_changed',
+		'dev-user',
+		'researching',
+		'comparing',
+		'progression',
+		'LISABO is the current lead; test comfort in person before deciding.',
+		cast(unixepoch('subsecond') * 1000 as integer) - 86400000
+	);
 
 INSERT OR IGNORE INTO products (
 	id,

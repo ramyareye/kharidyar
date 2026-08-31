@@ -29,6 +29,13 @@
       "when": 1788168056640,
       "tag": "0003_collection_brief_concept",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1788185035998,
+      "tag": "0004_item_workflow",
+      "breakpoints": true
     }
   ]
 }

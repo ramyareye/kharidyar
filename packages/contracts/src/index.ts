@@ -1,7 +1,9 @@
 import {
+  decisionEventKinds,
   inputHexColorPattern,
   itemPriorities,
   itemStatuses,
+  itemStatusTransitionKinds,
 } from "@kharidyar/domain";
 import { z } from "zod";
 
@@ -43,7 +45,7 @@ export const moneyInputSchema = z
 const eurBudgetSchema = z
   .object({
     minor: z.number().int().min(0).max(maximumSafeInteger),
-    currency: z.literal("EUR"),
+    currency: currencySchema.pipe(z.literal("EUR")),
   })
   .strict();
 
@@ -138,6 +140,7 @@ export const itemCreateInputSchema = z
 	.object({
 		title: requiredTrimmedText(200),
 		description: nullableTrimmedText(4_000).optional(),
+		requirements: nullableTrimmedText(4_000).optional(),
 		priority: z.enum(itemPriorities).optional(),
 		quantityNeeded: z
 			.number()
@@ -146,7 +149,7 @@ export const itemCreateInputSchema = z
 			.max(maximumSafeInteger)
 			.optional(),
 		groupLabel: nullableTrimmedText(80).optional(),
-		budget: moneyInputSchema.nullable().optional(),
+		budget: eurBudgetSchema.nullable().optional(),
 		deadlineAt: dateTimeInputSchema.nullable().optional(),
 	})
 	.strict();
@@ -156,6 +159,13 @@ export const itemUpdateInputSchema = itemCreateInputSchema
 	.extend({ title: requiredTrimmedText(200).optional() })
 	.partial()
 	.refine(nonEmptyPatch, { message: "At least one field is required." });
+
+export const itemStatusChangeInputSchema = z
+	.object({
+		status: z.enum(itemStatuses),
+		note: nullableTrimmedText(1_000).optional(),
+	})
+	.strict();
 
 const booleanQuerySchema = z
 	.enum(["true", "false"])
@@ -224,13 +234,79 @@ export const itemResourceSchema = z
 		collectionId: z.string(),
 		title: z.string(),
 		description: z.string().nullable(),
+		requirements: z.string().nullable(),
 		priority: z.enum(itemPriorities),
 		status: z.enum(itemStatuses),
 		quantityNeeded: z.number().int().positive(),
 		groupLabel: z.string().nullable(),
-		budget: moneyInputSchema.nullable(),
+		budget: eurBudgetSchema.nullable(),
 		deadlineAt: z.iso.datetime().nullable(),
 		...timestampFields,
+	})
+	.strict();
+
+export const itemPlanningSnapshotSchema = z
+	.object({
+		title: z.string(),
+		description: z.string().nullable(),
+		requirements: z.string().nullable(),
+		priority: z.enum(itemPriorities),
+		status: z.enum(itemStatuses),
+		quantityNeeded: z.number().int().positive(),
+		groupLabel: z.string().nullable(),
+		budget: eurBudgetSchema.nullable(),
+		deadlineAt: z.iso.datetime().nullable(),
+	})
+	.strict();
+
+const decisionActorSchema = z
+	.object({
+		id: z.string(),
+		name: z.string(),
+		image: z.string().nullable(),
+	})
+	.strict();
+
+const decisionEventBase = {
+	id: z.string(),
+	itemId: z.string(),
+	actor: decisionActorSchema,
+	createdAt: z.iso.datetime(),
+};
+
+const itemDetailsDecisionEventSchema = z
+	.object({
+		...decisionEventBase,
+		kind: z.literal(decisionEventKinds[0]),
+		before: itemPlanningSnapshotSchema,
+		after: itemPlanningSnapshotSchema,
+	})
+	.strict();
+
+export const itemStatusDecisionEventSchema = z
+	.object({
+		...decisionEventBase,
+		kind: z.literal(decisionEventKinds[1]),
+		fromStatus: z.enum(itemStatuses),
+		toStatus: z.enum(itemStatuses),
+		transitionKind: z.enum(itemStatusTransitionKinds),
+		unusual: z.boolean(),
+		note: z.string().nullable(),
+	})
+	.strict();
+
+export const decisionEventResourceSchema = z.discriminatedUnion("kind", [
+	itemDetailsDecisionEventSchema,
+	itemStatusDecisionEventSchema,
+]);
+
+export const itemPermissionsSchema = z
+	.object({
+		canCreate: z.boolean(),
+		canEdit: z.boolean(),
+		canArchive: z.boolean(),
+		canChangeNonPurchaseStatus: z.boolean(),
+		canMarkPurchased: z.boolean(),
 	})
 	.strict();
 
@@ -282,6 +358,7 @@ export const itemResponseSchema = z
 export const itemListResponseSchema = z
 	.object({
 		items: z.array(itemResourceSchema),
+		permissions: itemPermissionsSchema,
 		page: z
 			.object({
 				limit: z.number().int().min(1).max(100),
@@ -289,6 +366,21 @@ export const itemListResponseSchema = z
 				hasMore: z.boolean(),
 			})
 			.strict(),
+	})
+	.strict();
+
+export const itemWorkflowResponseSchema = z
+	.object({
+		item: itemResourceSchema,
+		events: z.array(decisionEventResourceSchema),
+		permissions: itemPermissionsSchema,
+	})
+	.strict();
+
+export const itemStatusChangeResponseSchema = z
+	.object({
+		item: itemResourceSchema,
+		event: itemStatusDecisionEventSchema,
 	})
 	.strict();
 
@@ -335,10 +427,23 @@ export type CollectionCreateInput = z.infer<typeof collectionCreateInputSchema>;
 export type CollectionUpdateInput = z.infer<typeof collectionUpdateInputSchema>;
 export type ItemCreateInput = z.infer<typeof itemCreateInputSchema>;
 export type ItemUpdateInput = z.infer<typeof itemUpdateInputSchema>;
+export type ItemStatusChangeInput = z.infer<
+	typeof itemStatusChangeInputSchema
+>;
 export type ArchiveListQuery = z.infer<typeof archiveListQuerySchema>;
 export type ItemListQuery = z.infer<typeof itemListQuerySchema>;
 export type WorkspaceResource = z.infer<typeof workspaceResourceSchema>;
 export type WorkspaceSummary = z.infer<typeof workspaceSummarySchema>;
 export type CollectionResource = z.infer<typeof collectionResourceSchema>;
 export type ItemResource = z.infer<typeof itemResourceSchema>;
+export type ItemPlanningSnapshot = z.infer<
+	typeof itemPlanningSnapshotSchema
+>;
+export type DecisionEventResource = z.infer<
+	typeof decisionEventResourceSchema
+>;
+export type ItemStatusDecisionEvent = z.infer<
+	typeof itemStatusDecisionEventSchema
+>;
+export type ItemPermissions = z.infer<typeof itemPermissionsSchema>;
 export type ApiErrorCode = (typeof apiErrorCodes)[number];

@@ -11,6 +11,7 @@ import {
 	DomainValidationError,
 	groupLabel,
 	hasCapability,
+	itemStatusTransition,
 	money,
   normalizeHexColor,
 	offerTerms,
@@ -20,6 +21,31 @@ import {
 	type MembershipGrant,
 	type MembershipRole,
 } from "../src";
+
+describe("Item status decisions", () => {
+	it("classifies progression, alternate skip, and unusual reversals", () => {
+		expect(itemStatusTransition("idea", "decided")).toMatchObject({
+			kind: "progression",
+			unusual: false,
+		});
+		expect(itemStatusTransition("researching", "skipped")).toMatchObject({
+			kind: "alternate",
+			unusual: false,
+		});
+		expect(itemStatusTransition("purchased", "comparing")).toMatchObject({
+			kind: "reversal",
+			unusual: true,
+		});
+		expect(itemStatusTransition("skipped", "idea")).toMatchObject({
+			kind: "reversal",
+			unusual: true,
+		});
+	});
+
+	it("does not create a transition for the current status", () => {
+		expect(itemStatusTransition("comparing", "comparing")).toBeNull();
+	});
+});
 
 describe("Collection color preference", () => {
   it("normalizes colors while preserving core and supporting order", () => {

@@ -4,6 +4,7 @@ import {
 	detectLocale,
 	directionForLocale,
 	fallbackLocale,
+	formatDateTime,
 	formatMoney,
 	formatNumber,
 	message,
@@ -44,5 +45,11 @@ describe("localized output", () => {
 		expect(formatNumber("fa", 12)).toMatch(/[۱۲]/u);
 		expect(formatMoney("en", 21_500, "EUR")).toContain("215");
 		expect(formatMoney("fa", 21_500, "EUR")).toMatch(/[۲]/u);
+		expect(formatDateTime("en", "2026-08-31T12:30:00.000Z")).toMatch(
+			/2026/u,
+		);
+		expect(formatDateTime("fa", "2026-08-31T12:30:00.000Z")).toMatch(
+			/[۰-۹]/u,
+		);
 	});
 });

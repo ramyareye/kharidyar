@@ -2,7 +2,7 @@
 
 - Status: Approved by the product owner
 - Last updated: 2026-08-31
-- Implementation status: Tasks 1 through 6A complete and validated; Task 6B is next
+- Implementation status: Tasks 1 through 6B complete and validated; Task 7 is next
 
 ## Purpose of this document
 
@@ -1233,6 +1233,8 @@ Completion criteria:
 
 ### Task 6B: Item workflow
 
+Status: Complete and validated on 2026-08-31.
+
 Scope:
 
 - Implement priority, status, Item budget, quantity, group label, deadline, requirements, and Decision Events.
@@ -1482,23 +1484,23 @@ Decisions 1, 2, 6, 7, and 13 are resolved. Decision 11 must be resolved before T
 ## Current repository state
 
 - Branch: `main`.
-- History: scaffold baseline followed by committed Task 1 monorepo, Task 2 domain/D1, Task 3 Google-authentication, Task 4 authorization/invitation, and combined Tasks 5A/5B core-planning milestones. Local `main` matches `origin/main`; Task 6A is the current uncommitted implementation milestone.
-- Tasks 1 through 6A are complete and validated; Task 6B is next.
+- History: scaffold baseline followed by committed Task 1 monorepo, Task 2 domain/D1, Task 3 Google-authentication, Task 4 authorization/invitation, combined Tasks 5A/5B core-planning milestones, and Task 6A Collection Brief/text Concept. Local `main` is one commit ahead of `origin/main`; Task 6B is the current uncommitted implementation milestone.
+- Tasks 1 through 6B are complete and validated; Task 7 is next.
 - The repository is a Bun `1.3.12` workspace with `apps/web`, `packages/domain`, `packages/contracts`, and `packages/i18n`. No mobile, API-client, or config package has been created.
 - `bun.lock` is the sole package-manager lockfile present, and Bun workspaces are declared in the root `package.json`.
-- The Vite/React frontend provides localized Google sign-in and a protected planning studio with Workspace, Collection, and Item create/edit/archive/restore flows, URL-restored selection, quantity-aware Item cards, lightweight group navigation, and a Collection direction surface for the Brief, EUR budget, ordered color preference, references, and optional text Concept. English and Persian layouts are responsive at desktop and narrow widths.
-- Drizzle is the unified schema source. The first generated migration includes Better Auth's generated tables plus Workspace-private Products and the initial collaboration/planning tables; a second migration adds persistent Better Auth rate-limit storage; a third adds Invitations, selected-Collection targets, single-use acceptance provenance, and privacy-preserving collaboration rate limits; the fourth extends the structured Collection Brief and adds the one-active-Concept record. Later feature tables remain owned by their roadmap tasks.
+- The Vite/React frontend provides localized Google sign-in and a protected planning studio with Workspace, Collection, and Item create/edit/archive/restore flows, URL-restored selection, quantity-aware Item cards, lightweight group navigation, a Collection direction surface for the Brief, EUR budget, ordered color preference, references, and optional text Concept, plus a permission-aware Item detail/status/history workflow. English and Persian layouts are responsive at desktop and narrow widths.
+- Drizzle is the unified schema source. The first generated migration includes Better Auth's generated tables plus Workspace-private Products and the initial collaboration/planning tables; a second migration adds persistent Better Auth rate-limit storage; a third adds Invitations, selected-Collection targets, single-use acceptance provenance, and privacy-preserving collaboration rate limits; the fourth extends the structured Collection Brief and adds the one-active-Concept record; the fifth adds Item requirements and immutable Decision Events. Later feature tables remain owned by their roadmap tasks.
 - Local migration, migration-list, schema-check, seed, type-generation, and quality commands are available from the workspace root. The fixed development seed is idempotent.
-- Runtime-independent domain primitives preserve separate Item-needed and Candidate-planned purchase quantities, money/budget validation, group labels, honest Offer price/shipping semantics, and normalized ordered core/supporting color rules.
+- Runtime-independent domain primitives preserve separate Item-needed and Candidate-planned purchase quantities, money/budget validation, group labels, honest Offer price/shipping semantics, normalized ordered core/supporting color rules, and deterministic Item status-transition classification.
 - The root `CONTEXT.md` defines the purchase-planning language and guards the Item/Candidate/Product/Offer boundaries.
 - The baseline Worker regression test preserves `GET /api/` returning `200` with `{ "name": "Cloudflare" }`.
 - Better Auth uses explicit origins, environment-bound secrets, database-backed sessions, secure production cookies, edge-controlled client-IP rate-limit keys, and disabled implicit account linking. Google is the only enabled provider.
 - Auth integration tests cover anonymous rejection, Google authorization URL construction, untrusted callback rejection, authenticated session loading, sign-out revocation, and separate internal User/provider Account records.
 - Capability resolution combines applicable Workspace and Collection grants. Workspace grants reach future Collections, Collection grants remain isolated, only Workspace-scoped Owners manage Owner access, and atomic membership mutations preserve at least one Workspace-scoped Owner.
 - Invitation APIs create Workspace or selected-Collection grants, default supplied email addresses to a verified-email restriction with explicit opt-out, return fragment-based bearer URLs once, store SHA-256 hashes only, provide a rate-limited metadata-only preview, revoke pending invitations, and accept through one rollback-safe D1 batch.
-- Shared Zod contracts and chained Hono RPC routes implement authenticated Workspace, Collection, Item, Collection Brief, and text Concept behavior. Brief replacement, including its ordered colors, is atomic; archived ancestors block ordinary mutations while authorized history reads remain available.
-- Domain, localization, UI-state, and Cloudflare-runtime database tests cover locale detection/direction/formatting, critical shell states, migration idempotency, all role allow/deny behavior, scope isolation, Owner boundaries, invitation expiry/revocation/email matching, rate limits, replay, competing acceptance, database uniqueness, forced rollback and retry, typed Workspace-to-Item creation, CRUD validation, archive/restore, Item filtering/pagination, positive independent quantities, planned Candidate/Offer ownership, price/budget constraints, palette bounds/normalization/order/uniqueness, structured Brief validation, and one-active-Concept behavior.
-- The core API, localized CRUD shell, and Collection Brief/text Concept surface are implemented. The collaboration UI, detailed Task 6B Item workflow, product comparison, and research behavior are not yet implemented.
+- Shared Zod contracts and chained Hono RPC routes implement authenticated Workspace, Collection, Item, Collection Brief, text Concept, and Item workflow behavior. Brief replacement, including its ordered colors, is atomic; Item detail and status writes atomically append Decision Events through D1 batches; archived ancestors block ordinary mutations while authorized history reads remain available.
+- Domain, localization, UI-state, and Cloudflare-runtime database tests cover locale detection/direction/formatting, critical shell states, migration idempotency, all role allow/deny behavior, scope isolation, Owner boundaries, invitation expiry/revocation/email matching, rate limits, replay, competing acceptance, database uniqueness, forced rollback and retry, typed Workspace-to-Item creation, CRUD validation, archive/restore, Item filtering/pagination, positive independent quantities, Item detail snapshots, explicit status transitions, reversal classification, purchase-only Owner authorization, Decision Event immutability, planned Candidate/Offer ownership, price/budget constraints, palette bounds/normalization/order/uniqueness, structured Brief validation, and one-active-Concept behavior.
+- The core API, localized CRUD shell, Collection Brief/text Concept surface, and detailed Task 6B Item workflow are implemented. The collaboration UI, product comparison, and research behavior are not yet implemented.
 
 ## Current reference basis
 
@@ -1560,4 +1562,6 @@ The product owner resolved the Task 5B gates as EUR-only Collections for the web
 
 The product owner explicitly authorized Task 6A on 2026-08-31. Task 6A implements structured Collection Brief editing, an optional EUR budget, ordered core/supporting color preferences, validated HTTPS references, and one optional text Concept with scoped read/write permissions. It is complete and validated through the real English/Persian browser flow at desktop and 390-pixel widths, with no Concept media, R2 binding, upload endpoint, AI placeholder, console error, or horizontal overflow.
 
-The next ordered implementation task is Task 6B: Item workflow. Implementation starts only after the product owner explicitly requests continuation in a later session.
+The product owner explicitly authorized Task 6B on 2026-08-31. Task 6B implements complete Item planning fields, capability-derived Item actions, explicit human-only status commands, immutable Decision Events with atomic detail/status writes, reversal warnings, and localized detail/history UI. It is complete and validated through automated domain, contract, database, Worker, localization, and UI-state coverage plus one real desktop flow and one Persian 390-pixel responsive check.
+
+The next ordered implementation task is Task 7: Products, Candidates, and Offers. Implementation starts only after the product owner explicitly requests continuation in a later session.

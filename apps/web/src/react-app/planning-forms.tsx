@@ -15,6 +15,14 @@ import {
 } from "react";
 
 import { useLocale } from "./locale-context";
+import {
+	euroInputFromMinor,
+	parseEuroAmount,
+} from "./collection-direction-state";
+import {
+	deadlineInputValue,
+	deadlineIsoValue,
+} from "./item-workflow-state";
 
 export function EditorDialog({
 	busy,
@@ -264,10 +272,20 @@ export function ItemForm({
 	const { t } = useLocale();
 	const [title, setTitle] = useState(initial?.title ?? "");
 	const [description, setDescription] = useState(initial?.description ?? "");
+	const [requirements, setRequirements] = useState(initial?.requirements ?? "");
+	const [priority, setPriority] = useState<ItemResource["priority"]>(
+		initial?.priority ?? "nice_to_have",
+	);
 	const [quantity, setQuantity] = useState(
 		String(initial?.quantityNeeded ?? 1),
 	);
 	const [groupLabel, setGroupLabel] = useState(initial?.groupLabel ?? "");
+	const [budget, setBudget] = useState(
+		euroInputFromMinor(initial?.budget?.minor),
+	);
+	const [deadline, setDeadline] = useState(
+		deadlineInputValue(initial?.deadlineAt ?? null),
+	);
 	const [validationError, setValidationError] = useState<string | null>(null);
 
 	async function submit(event: FormEvent<HTMLFormElement>) {
@@ -282,12 +300,24 @@ export function ItemForm({
 			setValidationError(t("form.quantityInvalid"));
 			return;
 		}
+		const parsedBudget = parseEuroAmount(budget);
+		if (!parsedBudget.valid) {
+			setValidationError(t("form.budgetInvalid"));
+			return;
+		}
 
 		setValidationError(null);
 		await onSubmit({
+			budget:
+				parsedBudget.minor === null
+					? null
+					: { minor: parsedBudget.minor, currency: "EUR" },
+			deadlineAt: deadlineIsoValue(deadline),
 			description: description.trim() || null,
 			groupLabel: groupLabel.trim() || null,
+			priority,
 			quantityNeeded: parsedQuantity,
+			requirements: requirements.trim() || null,
 			title,
 		});
 	}
@@ -327,7 +357,35 @@ export function ItemForm({
 						rows={3}
 					/>
 				</label>
+				<label className="field">
+					<span className="field__label">
+						{t("item.requirements")}
+						<small>{t("common.optional")}</small>
+					</span>
+					<textarea
+						value={requirements}
+						onChange={(event) => setRequirements(event.target.value)}
+						placeholder={t("item.requirementsPlaceholder")}
+						maxLength={4_000}
+						rows={4}
+					/>
+				</label>
 				<div className="field-row">
+					<label className="field">
+						<span className="field__label">{t("item.priority")}</span>
+						<select
+							value={priority}
+							onChange={(event) =>
+								setPriority(event.target.value as ItemResource["priority"])
+							}
+						>
+							<option value="essential">{t("priority.essential")}</option>
+							<option value="soon">{t("priority.soon")}</option>
+							<option value="nice_to_have">
+								{t("priority.nice_to_have")}
+							</option>
+						</select>
+					</label>
 					<label className="field">
 						<span className="field__label">
 							{t("item.quantity")}
@@ -342,6 +400,8 @@ export function ItemForm({
 							onChange={(event) => setQuantity(event.target.value)}
 						/>
 					</label>
+				</div>
+				<div className="field-row">
 					<label className="field">
 						<span className="field__label">
 							{t("item.group")}
@@ -354,7 +414,34 @@ export function ItemForm({
 							maxLength={80}
 						/>
 					</label>
+					<label className="field">
+						<span className="field__label">
+							{t("item.budgetInput")}
+							<small>{t("common.optional")}</small>
+						</span>
+						<div className="money-input">
+							<input
+								value={budget}
+								onChange={(event) => setBudget(event.target.value)}
+								placeholder="529.00"
+								inputMode="decimal"
+								dir="ltr"
+							/>
+							<span>EUR</span>
+						</div>
+					</label>
 				</div>
+				<label className="field">
+					<span className="field__label">
+						{t("item.deadlineInput")}
+						<small>{t("common.optional")}</small>
+					</span>
+					<input
+						type="date"
+						value={deadline}
+						onChange={(event) => setDeadline(event.target.value)}
+					/>
+				</label>
 				{validationError ? (
 					<p className="field-error" role="alert">
 						{validationError}

@@ -4,8 +4,11 @@ import type {
   CollectionBriefResource,
 	CollectionCreateInput,
 	CollectionResource,
+	DecisionEventResource,
 	ItemCreateInput,
+	ItemPermissions,
 	ItemResource,
+	ItemStatusChangeInput,
   ConceptInput,
   ConceptResource,
 	WorkspaceCreateInput,
@@ -22,6 +25,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { useLocale } from "./locale-context";
 import { CollectionDirection } from "./CollectionDirection";
+import { ItemWorkflowDialog } from "./ItemWorkflowDialog";
 import { CollectionBriefForm, ConceptForm } from "./collection-direction-forms";
 import {
 	PlanningApiError,
@@ -45,6 +49,7 @@ type EditorState =
 	| { kind: "collection-edit"; resource: CollectionResource }
 	| { kind: "item-create" }
 	| { kind: "item-edit"; resource: ItemResource }
+	| { kind: "item-workflow"; resource: ItemResource }
   | { kind: "concept-edit" }
 	| { kind: "workspace-create" }
 	| { kind: "workspace-edit"; resource: WorkspaceSummary };
@@ -71,6 +76,14 @@ const statusMessage: Record<ItemResource["status"], MessageKey> = {
 	purchased: "status.purchased",
 	researching: "status.researching",
 	skipped: "status.skipped",
+};
+
+const noItemPermissions: ItemPermissions = {
+	canCreate: false,
+	canEdit: false,
+	canArchive: false,
+	canChangeNonPurchaseStatus: false,
+	canMarkPurchased: false,
 };
 
 function selectionFromLocation(key: "collection" | "workspace"): null | string {
@@ -133,10 +146,10 @@ function EmptyPanel({
 	onAction,
 	title,
 }: {
-	action: string;
+	action?: string;
 	body: string;
 	eyebrow: string;
-	onAction: () => void;
+	onAction?: () => void;
 	title: string;
 }) {
 	return (
@@ -148,10 +161,16 @@ function EmptyPanel({
 				<p className="eyebrow">{eyebrow}</p>
 				<h2>{title}</h2>
 				<p>{body}</p>
-				<button type="button" className="button button--primary" onClick={onAction}>
-					{action}
-					<span aria-hidden="true">↗</span>
-				</button>
+				{action && onAction ? (
+					<button
+						type="button"
+						className="button button--primary"
+						onClick={onAction}
+					>
+						{action}
+						<span aria-hidden="true">↗</span>
+					</button>
+				) : null}
 			</div>
 			<div className="folio-empty__stamp" aria-hidden="true">
 				<span>PRIVATE</span>
@@ -198,15 +217,21 @@ function StatusPanel({
 function ResourceActions({
 	archived,
 	busy,
+	canArchive = true,
+	canEdit = true,
 	onArchive,
 	onEdit,
+	onOpen,
 	onRestore,
 	resourceName,
 }: {
 	archived: boolean;
 	busy: boolean;
+	canArchive?: boolean;
+	canEdit?: boolean;
 	onArchive: () => void;
 	onEdit: () => void;
+	onOpen?: () => void;
 	onRestore: () => void;
 	resourceName: string;
 }) {
@@ -214,36 +239,53 @@ function ResourceActions({
 
 	return (
 		<div className="resource-actions">
-			{archived ? (
+			{onOpen ? (
 				<button
 					type="button"
 					className="text-action"
-					onClick={onRestore}
+					onClick={onOpen}
 					disabled={busy}
-					aria-label={t("common.restoreNamed", { name: resourceName })}
+					aria-label={t("item.open") + `: ${resourceName}`}
 				>
-					{t("common.restore")}
+					{t("item.open")}
 				</button>
-			) : (
-				<>
+			) : null}
+			{archived ? (
+				canArchive ? (
 					<button
 						type="button"
 						className="text-action"
-						onClick={onEdit}
+						onClick={onRestore}
 						disabled={busy}
-						aria-label={t("common.editNamed", { name: resourceName })}
+						aria-label={t("common.restoreNamed", { name: resourceName })}
 					>
-						{t("common.edit")}
+						{t("common.restore")}
 					</button>
-					<button
-						type="button"
-						className="text-action text-action--danger"
-						onClick={onArchive}
-						disabled={busy}
-						aria-label={t("common.archiveNamed", { name: resourceName })}
-					>
-						{t("common.archive")}
-					</button>
+				) : null
+			) : (
+				<>
+					{canEdit ? (
+						<button
+							type="button"
+							className="text-action"
+							onClick={onEdit}
+							disabled={busy}
+							aria-label={t("common.editNamed", { name: resourceName })}
+						>
+							{t("common.edit")}
+						</button>
+					) : null}
+					{canArchive ? (
+						<button
+							type="button"
+							className="text-action text-action--danger"
+							onClick={onArchive}
+							disabled={busy}
+							aria-label={t("common.archiveNamed", { name: resourceName })}
+						>
+							{t("common.archive")}
+						</button>
+					) : null}
 				</>
 			)}
 		</div>
@@ -255,13 +297,17 @@ function ItemLedger({
 	items,
 	onArchive,
 	onEdit,
+	onOpen,
 	onRestore,
+	permissions,
 }: {
 	busy: boolean;
 	items: ItemResource[];
 	onArchive: (item: ItemResource) => void;
 	onEdit: (item: ItemResource) => void;
+	onOpen: (item: ItemResource) => void;
 	onRestore: (item: ItemResource) => void;
+	permissions: ItemPermissions;
 }) {
 	const { locale, t } = useLocale();
 	const groups = useMemo(() => {
@@ -343,11 +389,14 @@ function ItemLedger({
 										) : null}
 									</div>
 								</div>
-								<ResourceActions
-									archived={Boolean(item.archivedAt)}
-									busy={busy}
-									onArchive={() => onArchive(item)}
-									onEdit={() => onEdit(item)}
+				<ResourceActions
+					archived={Boolean(item.archivedAt)}
+					busy={busy}
+					canArchive={permissions.canArchive}
+					canEdit={permissions.canEdit}
+					onArchive={() => onArchive(item)}
+					onEdit={() => onEdit(item)}
+					onOpen={() => onOpen(item)}
 									onRestore={() => onRestore(item)}
 									resourceName={item.title}
 								/>
@@ -372,6 +421,15 @@ export function PlanningDashboard({
 	const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
 	const [collections, setCollections] = useState<CollectionResource[]>([]);
 	const [items, setItems] = useState<ItemResource[]>([]);
+	const [itemPermissions, setItemPermissions] =
+		useState<ItemPermissions>(noItemPermissions);
+	const [workflowEvents, setWorkflowEvents] = useState<DecisionEventResource[]>(
+		[],
+	);
+	const [workflowPermissions, setWorkflowPermissions] =
+		useState<ItemPermissions>(noItemPermissions);
+	const [workflowLoading, setWorkflowLoading] = useState(false);
+	const [workflowError, setWorkflowError] = useState<ApiErrorCode | null>(null);
   const [brief, setBrief] = useState<CollectionBriefResource | null>(null);
   const [concept, setConcept] = useState<ConceptResource | null>(null);
   const [canEditBrief, setCanEditBrief] = useState(false);
@@ -396,6 +454,8 @@ export function PlanningDashboard({
 	const [editor, setEditor] = useState<EditorState | null>(null);
 	const [busy, setBusy] = useState(false);
 	const [retryNonce, setRetryNonce] = useState(0);
+	const workflowItemId =
+		editor?.kind === "item-workflow" ? editor.resource.id : null;
 
 	useEffect(() => {
 		let current = true;
@@ -443,6 +503,7 @@ export function PlanningDashboard({
 		let current = true;
 		setCollections([]);
 		setItems([]);
+		setItemPermissions(noItemPermissions);
     setBrief(null);
     setConcept(null);
     setCanEditBrief(false);
@@ -502,6 +563,7 @@ export function PlanningDashboard({
 	useEffect(() => {
 		let current = true;
 		setItems([]);
+		setItemPermissions(noItemPermissions);
     setBrief(null);
     setConcept(null);
     setCanEditBrief(false);
@@ -523,9 +585,10 @@ export function PlanningDashboard({
       api.readCollectionBrief(selectedCollectionId),
       api.readConcept(selectedCollectionId),
     ])
-      .then(([itemResult, briefResult, conceptResult]) => {
+			.then(([itemResult, briefResult, conceptResult]) => {
 				if (!current) return;
-        setItems(itemResult);
+				setItems(itemResult.items);
+				setItemPermissions(itemResult.permissions);
         setBrief(briefResult.resource);
         setCanEditBrief(briefResult.canEdit);
         setConcept(conceptResult.resource);
@@ -548,6 +611,46 @@ export function PlanningDashboard({
 	useEffect(() => {
 		writeSelectionToLocation(selectedWorkspaceId, selectedCollectionId);
 	}, [selectedCollectionId, selectedWorkspaceId]);
+
+	useEffect(() => {
+		let current = true;
+		if (!workflowItemId) {
+			setWorkflowEvents([]);
+			setWorkflowPermissions(noItemPermissions);
+			setWorkflowLoading(false);
+			setWorkflowError(null);
+			return () => {
+				current = false;
+			};
+		}
+
+		setWorkflowLoading(true);
+		setWorkflowError(null);
+		void api
+			.readItemWorkflow(workflowItemId)
+			.then((result) => {
+				if (!current) return;
+				setWorkflowEvents(result.events);
+				setWorkflowPermissions(result.permissions);
+				setItems((items) => replaceResource(items, result.item));
+				setEditor((openEditor) =>
+					openEditor?.kind === "item-workflow" &&
+					openEditor.resource.id === result.item.id
+						? { kind: "item-workflow", resource: result.item }
+						: openEditor,
+				);
+				setWorkflowLoading(false);
+			})
+			.catch((error: unknown) => {
+				if (!current) return;
+				setWorkflowError(apiErrorCode(error));
+				setWorkflowLoading(false);
+			});
+
+		return () => {
+			current = false;
+		};
+	}, [api, workflowItemId]);
 
 	useEffect(() => {
 		if (!toast) return;
@@ -603,8 +706,7 @@ export function PlanningDashboard({
 		workspacePhase,
 	});
 
-	function errorMessage(error: unknown): string {
-		const code = apiErrorCode(error);
+	function errorMessageForCode(code: ApiErrorCode): string {
 		const messages: Partial<Record<ApiErrorCode, MessageKey>> = {
 			BAD_REQUEST: "status.validation",
 			FORBIDDEN: "status.permissionDenied",
@@ -615,10 +717,15 @@ export function PlanningDashboard({
 		return t(messages[code] ?? "status.genericMutationError");
 	}
 
+	function errorMessage(error: unknown): string {
+		return errorMessageForCode(apiErrorCode(error));
+	}
+
 	async function mutate<T>(
 		operation: () => Promise<T>,
 		onSuccess: (result: T) => void,
 		messageKey: MessageKey,
+		closeEditor = true,
 	): Promise<boolean> {
 		setBusy(true);
 		setActionError(null);
@@ -626,7 +733,7 @@ export function PlanningDashboard({
 			const result = await operation();
 			onSuccess(result);
 			setToast(t(messageKey));
-			setEditor(null);
+			if (closeEditor) setEditor(null);
 			return true;
 		} catch (error) {
 			setActionError(errorMessage(error));
@@ -777,6 +884,28 @@ export function PlanningDashboard({
 			() => api.updateItem(editor.resource.id, value),
 			(item) => setItems((current) => replaceResource(current, item)),
 			"toast.itemUpdated",
+		);
+	}
+
+	function openItemWorkflow(item: ItemResource) {
+		setWorkflowEvents([]);
+		setWorkflowPermissions(itemPermissions);
+		setWorkflowError(null);
+		setWorkflowLoading(true);
+		setEditor({ kind: "item-workflow", resource: item });
+	}
+
+	async function changeItemStatus(value: ItemStatusChangeInput) {
+		if (!editor || editor.kind !== "item-workflow") return false;
+		return mutate(
+			() => api.changeItemStatus(editor.resource.id, value),
+			(result) => {
+				setItems((current) => replaceResource(current, result.item));
+				setWorkflowEvents((current) => [result.event, ...current]);
+				setEditor({ kind: "item-workflow", resource: result.item });
+			},
+			"toast.itemStatusChanged",
+			false,
 		);
 	}
 
@@ -1051,7 +1180,8 @@ export function PlanningDashboard({
 														}
 														resourceName={selectedCollection.name}
 													/>
-													{!selectedCollection.archivedAt ? (
+											{!selectedCollection.archivedAt &&
+											itemPermissions.canCreate ? (
 														<button
 															type="button"
 															className="button button--primary"
@@ -1093,8 +1223,16 @@ export function PlanningDashboard({
 													eyebrow={t("item.emptyEyebrow")}
 													title={t("item.emptyTitle")}
 													body={t("item.emptyBody")}
-													action={t("item.emptyAction")}
-													onAction={() => setEditor({ kind: "item-create" })}
+												action={
+													itemPermissions.canCreate
+														? t("item.emptyAction")
+														: undefined
+												}
+												onAction={
+													itemPermissions.canCreate
+														? () => setEditor({ kind: "item-create" })
+														: undefined
+												}
 												/>
 											) : (
 												<>
@@ -1147,15 +1285,17 @@ export function PlanningDashboard({
 														</nav>
 													) : null}
 
-													<ItemLedger
-														busy={busy}
-														items={filteredItems}
-														onArchive={(item) => void archiveItem(item)}
-														onEdit={(item) =>
-															setEditor({ kind: "item-edit", resource: item })
-														}
-														onRestore={(item) => void restoreItem(item)}
-													/>
+												<ItemLedger
+													busy={busy}
+													items={filteredItems}
+													onArchive={(item) => void archiveItem(item)}
+													onEdit={(item) =>
+														setEditor({ kind: "item-edit", resource: item })
+													}
+													onOpen={openItemWorkflow}
+													onRestore={(item) => void restoreItem(item)}
+													permissions={itemPermissions}
+												/>
 												</>
 											)}
 										</section>
@@ -1223,6 +1363,23 @@ export function PlanningDashboard({
 					busy={busy}
 					onClose={() => setEditor(null)}
 					onSubmit={createItem}
+				/>
+			) : editor?.kind === "item-workflow" ? (
+				<ItemWorkflowDialog
+					busy={busy}
+					key={editor.resource.id}
+					error={
+						workflowError ? errorMessageForCode(workflowError) : null
+					}
+					events={workflowEvents}
+					item={editor.resource}
+					loading={workflowLoading}
+					onChangeStatus={changeItemStatus}
+					onClose={() => setEditor(null)}
+					onEdit={() =>
+						setEditor({ kind: "item-edit", resource: editor.resource })
+					}
+					permissions={workflowPermissions}
 				/>
 			) : editor?.kind === "item-edit" ? (
 				<ItemForm

@@ -163,6 +163,75 @@ describe("planning schema constraints", () => {
 		).rejects.toThrow(/item_candidates_planned_quantity_check/);
 	});
 
+	it("enforces Item requirements and Decision Event payload shapes", async () => {
+		await expect(
+			env.DB.prepare("update items set requirements = '   ' where id = ?")
+				.bind(itemId)
+				.run(),
+		).rejects.toThrow(/items_requirements_length_check/);
+
+		await expect(
+			env.DB.prepare(
+				"insert into decision_events (id, item_id, kind, actor_user_id) values (?, ?, ?, ?)",
+			)
+				.bind("invalid-details", itemId, "item_details_updated", userId)
+				.run(),
+		).rejects.toThrow(/decision_events_payload_check/);
+
+		await expect(
+			env.DB.prepare(
+				"insert into decision_events (id, item_id, kind, actor_user_id, from_status, to_status, transition_kind) values (?, ?, ?, ?, ?, ?, ?)",
+			)
+				.bind(
+					"invalid-status",
+					itemId,
+					"item_status_changed",
+					userId,
+					"idea",
+					"idea",
+					"progression",
+				)
+				.run(),
+		).rejects.toThrow(/decision_events_payload_check/);
+
+		await expect(
+			env.DB.prepare(
+				"insert into decision_events (id, item_id, kind, actor_user_id, from_status, to_status, transition_kind, note) values (?, ?, ?, ?, ?, ?, ?, ?)",
+			)
+				.bind(
+					"blank-note",
+					itemId,
+					"item_status_changed",
+					userId,
+					"idea",
+					"skipped",
+					"alternate",
+					"   ",
+				)
+				.run(),
+		).rejects.toThrow(/decision_events_note_check/);
+
+		await env.DB.prepare(
+			"insert into decision_events (id, item_id, kind, actor_user_id, from_status, to_status, transition_kind, note) values (?, ?, ?, ?, ?, ?, ?, ?)",
+		)
+			.bind(
+				"valid-status",
+				itemId,
+				"item_status_changed",
+				userId,
+				"idea",
+				"researching",
+				"progression",
+				"Explicit human decision",
+			)
+			.run();
+		await expect(
+			env.DB.prepare("update decision_events set note = ? where id = ?")
+				.bind("Rewritten", "valid-status")
+				.run(),
+		).rejects.toThrow(/decision_events are immutable/);
+	});
+
 	it("requires a planned Offer to belong to the Candidate Product", async () => {
 		await expect(
 			env.DB.prepare(

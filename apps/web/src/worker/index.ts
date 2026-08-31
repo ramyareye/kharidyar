@@ -6,6 +6,7 @@ import { ApiError } from "./api-errors";
 import { collaborationRoutes } from "./collaboration-routes";
 import { collectionDirectionRoutes } from "./collection-direction-routes";
 import { coreWorkspaceRoutes } from "./core-workspace-routes";
+import { itemWorkflowRoutes } from "./item-workflow-routes";
 import { requireSession, type WorkerAppEnv } from "./session-middleware";
 
 const app = new Hono<WorkerAppEnv>();
@@ -35,7 +36,8 @@ app.get("/api/session", requireSession, (context) => {
 
 const apiRoutes = new Hono<WorkerAppEnv>()
 	.route("/", collaborationRoutes)
-  .route("/", coreWorkspaceRoutes)
+	.route("/", coreWorkspaceRoutes)
+	.route("/", itemWorkflowRoutes)
   .route("/", collectionDirectionRoutes);
 
 app.route("/api", apiRoutes);

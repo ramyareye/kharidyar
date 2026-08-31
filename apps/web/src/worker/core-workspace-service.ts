@@ -5,6 +5,8 @@ import type {
 	CollectionUpdateInput,
 	ItemCreateInput,
 	ItemListQuery,
+	ItemPermissions,
+	ItemPlanningSnapshot,
 	ItemResource,
 	ItemUpdateInput,
 	WorkspaceCreateInput,
@@ -24,6 +26,7 @@ import {
 	requireCapability,
 } from "./authorization";
 import { conflict, notFound, resourceArchived } from "./api-errors";
+import { itemPermissionsForAccess } from "./item-workflow-permissions";
 
 interface WorkspaceRow {
 	id: string;
@@ -51,12 +54,13 @@ interface CollectionStateRow extends CollectionRow {
 	workspace_archived_at: number | null;
 }
 
-interface ItemRow {
+export interface ItemRow {
 	id: string;
 	workspace_id: string;
 	collection_id: string;
 	title: string;
 	description: string | null;
+	requirements: string | null;
 	priority: ItemPriority;
 	status: ItemStatus;
 	quantity_needed: number;
@@ -113,9 +117,12 @@ function collectionResource(row: CollectionRow): CollectionResource {
 	};
 }
 
-function itemResource(row: ItemRow): ItemResource {
+export function itemResource(row: ItemRow): ItemResource {
 	if ((row.budget_minor === null) !== (row.budget_currency === null)) {
 		throw new Error("Stored Item budget is inconsistent");
+	}
+	if (row.budget_currency !== null && row.budget_currency !== "EUR") {
+		throw new Error("Stored Item budget uses an unsupported currency");
 	}
 
 	return {
@@ -124,6 +131,7 @@ function itemResource(row: ItemRow): ItemResource {
 		collectionId: row.collection_id,
 		title: row.title,
 		description: row.description,
+		requirements: row.requirements,
 		priority: row.priority,
 		status: row.status,
 		quantityNeeded: row.quantity_needed,
@@ -136,6 +144,21 @@ function itemResource(row: ItemRow): ItemResource {
 		archivedAt: nullableTimestamp(row.archived_at),
 		createdAt: timestamp(row.created_at),
 		updatedAt: timestamp(row.updated_at),
+	};
+}
+
+function itemPlanningSnapshot(row: ItemRow): ItemPlanningSnapshot {
+	const resource = itemResource(row);
+	return {
+		title: resource.title,
+		description: resource.description,
+		requirements: resource.requirements,
+		priority: resource.priority,
+		status: resource.status,
+		quantityNeeded: resource.quantityNeeded,
+		groupLabel: resource.groupLabel,
+		budget: resource.budget,
+		deadlineAt: resource.deadlineAt,
 	};
 }
 
@@ -188,6 +211,7 @@ async function itemStateById(
 				i.collection_id,
 				i.title,
 				i.description,
+				i.requirements,
 				i.priority,
 				i.status,
 				i.quantity_needed,
@@ -813,11 +837,14 @@ export async function listItems(input: {
 }): Promise<{
 	items: readonly ItemResource[];
 	page: { limit: number; offset: number; hasMore: boolean };
+	permissions: ItemPermissions;
 }> {
-	await requireCollectionCapability(
-		input.database,
-		input.userId,
-		input.collectionId,
+	const access = requireCapability(
+		await loadCollectionAccess(
+			input.database,
+			input.userId,
+			input.collectionId,
+		),
 		"view",
 	);
 	const limit = input.query.limit ?? 50;
@@ -848,6 +875,7 @@ export async function listItems(input: {
 				i.collection_id,
 				i.title,
 				i.description,
+				i.requirements,
 				i.priority,
 				i.status,
 				i.quantity_needed,
@@ -869,6 +897,7 @@ export async function listItems(input: {
 	return {
 		items: result.results.slice(0, limit).map(itemResource),
 		page: { limit, offset, hasMore },
+		permissions: itemPermissionsForAccess(access),
 	};
 }
 
@@ -895,35 +924,35 @@ export async function createItem(input: {
 	const created = await input.database
 		.prepare(
 			`insert into items (
-				id, workspace_id, collection_id, title, description, priority,
+				id, workspace_id, collection_id, title, description, requirements, priority,
 				status, quantity_needed, group_label, budget_minor,
 				budget_currency, deadline_at, created_by_user_id,
 				created_at, updated_at
 			)
 			select
-				?1, c.workspace_id, c.id, ?2, ?3, ?4,
-				'idea', ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?11
+				?1, c.workspace_id, c.id, ?2, ?3, ?4, ?5,
+				'idea', ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?12
 			from collections c
 			join workspaces w on w.id = c.workspace_id
-			where c.id = ?12
+			where c.id = ?13
 				and c.archived_at is null
 				and w.archived_at is null
 				and (
 					exists (
 						select 1 from workspace_memberships actor_workspace
 						where actor_workspace.workspace_id = c.workspace_id
-							and actor_workspace.user_id = ?10
+							and actor_workspace.user_id = ?11
 							and actor_workspace.role in ('contributor', 'editor', 'owner')
 					)
 					or exists (
 						select 1 from collection_memberships actor_collection
 						where actor_collection.collection_id = c.id
-							and actor_collection.user_id = ?10
+							and actor_collection.user_id = ?11
 							and actor_collection.role in ('contributor', 'editor', 'owner')
 					)
 				)
 			returning
-				id, workspace_id, collection_id, title, description, priority,
+				id, workspace_id, collection_id, title, description, requirements, priority,
 				status, quantity_needed, group_label, budget_minor,
 				budget_currency, deadline_at, archived_at, created_at, updated_at`,
 		)
@@ -931,6 +960,7 @@ export async function createItem(input: {
 			itemId,
 			input.value.title,
 			input.value.description ?? null,
+			input.value.requirements ?? null,
 			input.value.priority ?? "nice_to_have",
 			input.value.quantityNeeded ?? 1,
 			input.value.groupLabel ?? null,
@@ -984,84 +1014,129 @@ export async function updateItem(input: {
 		input.itemId,
 		"item_edit",
 	);
-	const hasTitle = "title" in input.value;
-	const hasDescription = "description" in input.value;
-	const hasPriority = "priority" in input.value;
-	const hasQuantity = "quantityNeeded" in input.value;
-	const hasGroupLabel = "groupLabel" in input.value;
-	const hasBudget = "budget" in input.value;
-	const hasDeadline = "deadlineAt" in input.value;
-	const budgetMinor = input.value.budget?.minor ?? null;
-	const budgetCurrency = input.value.budget?.currency ?? null;
-	const deadlineAt =
-		input.value.deadlineAt === undefined || input.value.deadlineAt === null
-			? null
-			: Date.parse(input.value.deadlineAt);
-	const now = Date.now();
-	const updated = await input.database
-		.prepare(
-			`update items
-			set
-				title = case when ?1 = 1 then ?2 else title end,
-				description = case when ?3 = 1 then ?4 else description end,
-				priority = case when ?5 = 1 then ?6 else priority end,
-				quantity_needed = case when ?7 = 1 then ?8 else quantity_needed end,
-				group_label = case when ?9 = 1 then ?10 else group_label end,
-				budget_minor = case when ?11 = 1 then ?12 else budget_minor end,
-				budget_currency = case when ?11 = 1 then ?13 else budget_currency end,
-				deadline_at = case when ?14 = 1 then ?15 else deadline_at end,
-				updated_at = ?16
-			where id = ?17
-				and archived_at is null
-				and exists (
-					select 1
-					from collections c
-					join workspaces w on w.id = c.workspace_id
-					where c.id = items.collection_id
-						and c.archived_at is null
-						and w.archived_at is null
+	const next: ItemRow = {
+		...current,
+		title: input.value.title ?? current.title,
+		description:
+			"description" in input.value
+				? (input.value.description ?? null)
+				: current.description,
+		requirements:
+			"requirements" in input.value
+				? (input.value.requirements ?? null)
+				: current.requirements,
+		priority: input.value.priority ?? current.priority,
+		quantity_needed: input.value.quantityNeeded ?? current.quantity_needed,
+		group_label:
+			"groupLabel" in input.value
+				? (input.value.groupLabel ?? null)
+				: current.group_label,
+		budget_minor:
+			"budget" in input.value
+				? (input.value.budget?.minor ?? null)
+				: current.budget_minor,
+		budget_currency:
+			"budget" in input.value
+				? (input.value.budget?.currency ?? null)
+				: current.budget_currency,
+		deadline_at:
+			"deadlineAt" in input.value
+				? input.value.deadlineAt == null
+					? null
+					: Date.parse(input.value.deadlineAt)
+				: current.deadline_at,
+	};
+	const before = itemPlanningSnapshot(current);
+	const after = itemPlanningSnapshot(next);
+	if (JSON.stringify(before) === JSON.stringify(after)) {
+		return itemResource(current);
+	}
+
+	const eventId = crypto.randomUUID();
+	const now = Math.max(Date.now(), current.updated_at + 1);
+	next.updated_at = now;
+	const results = await input.database.batch([
+		input.database
+			.prepare(
+				`insert into decision_events (
+					id, item_id, kind, actor_user_id, before_snapshot_json,
+					after_snapshot_json, created_at
 				)
-				and (
-					exists (
-						select 1 from workspace_memberships actor_workspace
-						where actor_workspace.workspace_id = items.workspace_id
-							and actor_workspace.user_id = ?18
-							and actor_workspace.role in ('contributor', 'editor', 'owner')
+				select ?1, i.id, 'item_details_updated', ?2, ?3, ?4, ?5
+				from items i
+				join collections c on c.id = i.collection_id
+				join workspaces w on w.id = i.workspace_id
+				where i.id = ?6
+					and i.updated_at = ?7
+					and i.archived_at is null
+					and c.archived_at is null
+					and w.archived_at is null
+					and (
+						exists (
+							select 1 from workspace_memberships actor_workspace
+							where actor_workspace.workspace_id = i.workspace_id
+								and actor_workspace.user_id = ?2
+								and actor_workspace.role in ('contributor', 'editor', 'owner')
+						)
+						or exists (
+							select 1 from collection_memberships actor_collection
+							where actor_collection.collection_id = i.collection_id
+								and actor_collection.user_id = ?2
+								and actor_collection.role in ('contributor', 'editor', 'owner')
+						)
+					)`,
+			)
+			.bind(
+				eventId,
+				input.userId,
+				JSON.stringify(before),
+				JSON.stringify(after),
+				now,
+				input.itemId,
+				current.updated_at,
+			),
+		input.database
+			.prepare(
+				`update items
+				set title = ?1,
+					description = ?2,
+					requirements = ?3,
+					priority = ?4,
+					quantity_needed = ?5,
+					group_label = ?6,
+					budget_minor = ?7,
+					budget_currency = ?8,
+					deadline_at = ?9,
+					updated_at = ?10
+				where id = ?11
+					and updated_at = ?12
+					and exists (
+						select 1 from decision_events event
+						where event.id = ?13 and event.item_id = items.id
 					)
-					or exists (
-						select 1 from collection_memberships actor_collection
-						where actor_collection.collection_id = items.collection_id
-							and actor_collection.user_id = ?18
-							and actor_collection.role in ('contributor', 'editor', 'owner')
-					)
-				)
-			returning
-				id, workspace_id, collection_id, title, description, priority,
-				status, quantity_needed, group_label, budget_minor,
-				budget_currency, deadline_at, archived_at, created_at, updated_at`,
-		)
-		.bind(
-			hasTitle ? 1 : 0,
-			input.value.title ?? current.title,
-			hasDescription ? 1 : 0,
-			input.value.description ?? null,
-			hasPriority ? 1 : 0,
-			input.value.priority ?? current.priority,
-			hasQuantity ? 1 : 0,
-			input.value.quantityNeeded ?? current.quantity_needed,
-			hasGroupLabel ? 1 : 0,
-			input.value.groupLabel ?? null,
-			hasBudget ? 1 : 0,
-			budgetMinor,
-			budgetCurrency,
-			hasDeadline ? 1 : 0,
-			deadlineAt,
-			now,
-			input.itemId,
-			input.userId,
-		)
-		.first<ItemRow>();
-	if (updated === null) {
+				returning
+					id, workspace_id, collection_id, title, description, requirements, priority,
+					status, quantity_needed, group_label, budget_minor,
+					budget_currency, deadline_at, archived_at, created_at, updated_at`,
+			)
+			.bind(
+				next.title,
+				next.description,
+				next.requirements,
+				next.priority,
+				next.quantity_needed,
+				next.group_label,
+				next.budget_minor,
+				next.budget_currency,
+				next.deadline_at,
+				now,
+				input.itemId,
+				current.updated_at,
+				eventId,
+			),
+	]);
+	const updated = results[1]?.results[0] as ItemRow | undefined;
+	if (results[0]?.meta.changes !== 1 || updated === undefined) {
 		await requireMutableItem(
 			input.database,
 			input.userId,
@@ -1132,7 +1207,7 @@ export async function setItemArchived(input: {
 					)
 				)
 			returning
-				id, workspace_id, collection_id, title, description, priority,
+				id, workspace_id, collection_id, title, description, requirements, priority,
 				status, quantity_needed, group_label, budget_minor,
 				budget_currency, deadline_at, archived_at, created_at, updated_at`,
 		)
