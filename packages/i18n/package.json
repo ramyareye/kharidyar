@@ -1,0 +1,18 @@
+{
+	"name": "@kharidyar/i18n",
+	"version": "0.0.0",
+	"description": "Runtime-independent Persian and English localization for Kharidyar",
+	"private": true,
+	"scripts": {
+		"test": "vitest run"
+	},
+	"devDependencies": {
+		"vitest": "4.1.11"
+	},
+	"sideEffects": false,
+	"type": "module",
+	"types": "./src/index.ts",
+	"exports": {
+		".": "./src/index.ts"
+	}
+}

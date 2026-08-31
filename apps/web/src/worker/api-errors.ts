@@ -1,14 +1,4 @@
-export type ApiErrorCode =
-	| "BAD_REQUEST"
-	| "CONFLICT"
-	| "FORBIDDEN"
-	| "INVITATION_EMAIL_MISMATCH"
-	| "INVITATION_EXPIRED"
-	| "INVITATION_INVALID"
-	| "INVITATION_REVOKED"
-	| "NOT_FOUND"
-	| "RATE_LIMITED"
-	| "UNAUTHENTICATED";
+import type { ApiErrorCode } from "@kharidyar/contracts";
 
 export class ApiError extends Error {
 	readonly code: ApiErrorCode;
@@ -33,10 +23,22 @@ export function badRequest(message: string): ApiError {
 	return new ApiError(400, "BAD_REQUEST", message);
 }
 
+export function conflict(message: string): ApiError {
+	return new ApiError(409, "CONFLICT", message);
+}
+
 export function forbidden(message = "You do not have permission to do that.") {
 	return new ApiError(403, "FORBIDDEN", message);
 }
 
 export function notFound(message = "The requested resource was not found.") {
 	return new ApiError(404, "NOT_FOUND", message);
+}
+
+export function resourceArchived(resource: string): ApiError {
+	return new ApiError(
+		409,
+		"RESOURCE_ARCHIVED",
+		`${resource} is archived and must be restored before it can be changed.`,
+	);
 }

@@ -1,20 +1,38 @@
 :root {
-	font-family: "Helvetica Neue", "Noto Sans", Arial, sans-serif;
-	color: #22251f;
-	background: #f1eee6;
+	font-family:
+		"Avenir Next", Avenir, "Noto Sans Arabic", "Noto Sans", sans-serif;
+	color: #20241f;
+	background: #ebe7dc;
 	font-synthesis: none;
 	text-rendering: optimizeLegibility;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 
-	--paper: #f1eee6;
-	--paper-light: #f8f6ef;
-	--ink: #22251f;
-	--ink-muted: #686b62;
-	--line: #cbc7bb;
-	--moss: #53604c;
-	--moss-dark: #303a2d;
-	--clay: #b86144;
+	--font-display: "Iowan Old Style", Baskerville, "Noto Naskh Arabic", Georgia,
+		serif;
+	--paper: #ebe7dc;
+	--paper-deep: #dfdacd;
+	--paper-light: #f8f5ec;
+	--paper-white: #fcfaf4;
+	--ink: #20241f;
+	--ink-soft: #3d423a;
+	--ink-muted: #6a6d64;
+	--line: #c7c1b3;
+	--line-soft: #d9d4c8;
+	--moss: #59634f;
+	--moss-dark: #313a2e;
+	--moss-wash: #dfe3d7;
+	--clay: #b85f43;
+	--clay-dark: #8c422d;
+	--clay-wash: #ead8cd;
+	--danger: #8b3d2d;
+	--success: #466446;
+	--shadow-soft: 0 1.5rem 5rem rgba(33, 36, 31, 0.12);
+}
+
+:root:lang(fa) {
+	font-family: "Noto Sans Arabic", Tahoma, sans-serif;
+	--font-display: "Noto Naskh Arabic", "Geeza Pro", serif;
 }
 
 * {
@@ -24,6 +42,7 @@
 html {
 	min-inline-size: 320px;
 	background: var(--paper);
+	scroll-behavior: smooth;
 }
 
 body {
@@ -44,7 +63,10 @@ button {
 }
 
 button:focus-visible,
-a:focus-visible {
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
 	outline: 3px solid var(--clay);
 	outline-offset: 3px;
 }
@@ -52,4 +74,15 @@ a:focus-visible {
 ::selection {
 	color: var(--paper-light);
 	background: var(--moss-dark);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		scroll-behavior: auto !important;
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
 }

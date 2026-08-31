@@ -1,3 +1,4 @@
+import { itemPriorities, itemStatuses } from "@kharidyar/domain";
 import { sql } from "drizzle-orm";
 import {
 	check,
@@ -13,15 +14,6 @@ import { user } from "./auth";
 import { createdAt, updatedAt } from "./columns";
 import { collections, workspaces } from "./collaboration";
 
-export const itemPriorities = ["essential", "soon", "nice_to_have"] as const;
-export const itemStatuses = [
-	"idea",
-	"researching",
-	"comparing",
-	"decided",
-	"purchased",
-	"skipped",
-] as const;
 export const offerPriceKinds = ["exact", "starting_at", "unknown"] as const;
 export const shippingBases = ["per_line", "per_unit", "unknown"] as const;
 export const availabilityStates = [

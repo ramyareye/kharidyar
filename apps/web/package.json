@@ -14,7 +14,9 @@
 	},
 	"dependencies": {
 		"@better-auth/drizzle-adapter": "1.7.2",
+		"@kharidyar/contracts": "workspace:*",
 		"@kharidyar/domain": "workspace:*",
+		"@kharidyar/i18n": "workspace:*",
 		"better-auth": "1.7.2",
 		"drizzle-orm": "0.45.2",
 		"hono": "4.11.1",
@@ -49,7 +51,7 @@
 		"deploy": "wrangler deploy",
 		"dev": "vite",
 		"preview": "bun run build && vite preview",
-		"test": "vitest run",
+		"test": "vitest run && vitest run --config vitest.ui.config.ts",
 		"typecheck": "tsc -b"
 	},
 	"type": "module"

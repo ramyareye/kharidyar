@@ -12,6 +12,7 @@ apps/
 packages/
   contracts/    Runtime-independent API contracts
   domain/       Runtime-independent domain rules and types
+  i18n/         Persian/English catalogs and locale formatting
 ```
 
 The web app keeps its Cloudflare and Vite configuration in `apps/web`. Future packages and applications are created only when a roadmap task gives them a real consumer.
@@ -88,7 +89,19 @@ bun run build
 bun run check
 ```
 
-`bun run check` runs all quality gates and a Wrangler dry run. The Worker tests execute in Cloudflare's Vitest integration, apply the D1 migrations to an isolated local database, protect the existing `GET /api/` response, exercise database constraints, and validate Google/session, scoped authorization, and transactional invitation behavior without contacting Google.
+`bun run check` runs all quality gates and a Wrangler dry run. The Worker tests execute in Cloudflare's Vitest integration, apply the D1 migrations to an isolated local database, protect the existing `GET /api/` response, exercise database constraints, and validate Google/session, scoped authorization, transactional invitations, and typed Workspace/Collection/Item APIs without contacting Google. Runtime-independent tests also cover locale policy, RTL/LTR direction, formatting, and the web shell's loading, empty, error, unauthorized, and ready-state resolver.
+
+## Core API
+
+Authenticated Hono RPC routes expose Workspace, Collection, and Item create/read/update/archive/restore operations under `/api`. Shared Zod contracts live in `packages/contracts`; server-generated IDs and database-derived parent relationships prevent clients from asserting ownership. Item lists support status/group filtering, archived-history inclusion, and bounded pagination.
+
+Collection-only collaborators receive a minimal parent Workspace navigation summary. They remain unable to read Workspace details or access sibling Collections.
+
+## Web planning studio
+
+Authenticated users can create, edit, archive, and restore Workspaces, Collections, and Items through the responsive web UI. Item creation includes quantity and an optional lightweight group label; selection is reflected in the URL so refreshes reopen the same Workspace and Collection.
+
+The UI detects Persian or English browser preferences, falls back to English, and persists an explicit language switch. The document `lang` and `dir`, numbers, dates, and EUR amounts follow the active locale. Layout styles use logical properties so the same interface mirrors naturally between RTL and LTR.
 
 ## Database workflow
 
@@ -115,4 +128,4 @@ bun run cf-typegen
 bun run deploy
 ```
 
-Run `bun run cf-typegen` after changing Worker bindings. Deployment requires the appropriate Cloudflare account, D1 resources, and secrets; Tasks 1–4 do not create or mutate remote Cloudflare resources.
+Run `bun run cf-typegen` after changing Worker bindings. Deployment requires the appropriate Cloudflare account, D1 resources, and secrets; Tasks 1–5B do not create or mutate remote Cloudflare resources.

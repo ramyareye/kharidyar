@@ -19,7 +19,9 @@
       "version": "0.0.0",
       "dependencies": {
         "@better-auth/drizzle-adapter": "1.7.2",
+        "@kharidyar/contracts": "workspace:*",
         "@kharidyar/domain": "workspace:*",
+        "@kharidyar/i18n": "workspace:*",
         "better-auth": "1.7.2",
         "drizzle-orm": "0.45.2",
         "hono": "4.11.1",
@@ -44,9 +46,20 @@
     "packages/contracts": {
       "name": "@kharidyar/contracts",
       "version": "0.0.0",
+      "dependencies": {
+        "@kharidyar/domain": "workspace:*",
+        "zod": "4.5.4",
+      },
     },
     "packages/domain": {
       "name": "@kharidyar/domain",
+      "version": "0.0.0",
+      "devDependencies": {
+        "vitest": "4.1.11",
+      },
+    },
+    "packages/i18n": {
+      "name": "@kharidyar/i18n",
       "version": "0.0.0",
       "devDependencies": {
         "vitest": "4.1.11",
@@ -331,6 +344,8 @@
     "@kharidyar/contracts": ["@kharidyar/contracts@workspace:packages/contracts"],
 
     "@kharidyar/domain": ["@kharidyar/domain@workspace:packages/domain"],
+
+    "@kharidyar/i18n": ["@kharidyar/i18n@workspace:packages/i18n"],
 
     "@kharidyar/web": ["@kharidyar/web@workspace:apps/web"],
 

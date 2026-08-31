@@ -2,6 +2,10 @@
 	"name": "@kharidyar/contracts",
 	"version": "0.0.0",
 	"description": "Runtime-independent Kharidyar API contracts",
+	"dependencies": {
+		"@kharidyar/domain": "workspace:*",
+		"zod": "4.5.4"
+	},
 	"private": true,
 	"sideEffects": false,
 	"type": "module",

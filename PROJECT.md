@@ -1,8 +1,8 @@
 # Kharidyar Project Specification
 
 - Status: Approved by the product owner
-- Last updated: 2026-08-30
-- Implementation status: Tasks 1 through 4 complete and validated; Task 5A has not started
+- Last updated: 2026-08-31
+- Implementation status: Tasks 1 through 5B complete and validated; Task 6A has not started
 
 ## Purpose of this document
 
@@ -50,7 +50,8 @@ Pay particular attention to:
 - The collaborative MVP keeps Concept text-only. Private image upload, storage, and visualization are deferred to explicit future tasks.
 - AI Concept visualization is image-to-image: the user supplies a base photo of a space or person, the original remains unchanged, and the system creates separate edited variants.
 - For a future `person` base image, only its uploader may request transmission to an AI image provider, with a fresh explicit confirmation for each request. Ownership role alone does not grant that permission.
-- EUR is required for the web MVP because planning purchases from Netherlands and other Euro-priced retailers is a current use case. IRR/toman display remains an open localization decision.
+- Web-MVP Collections use EUR only because planning purchases from Netherlands and other Euro-priced retailers is the current use case. Multi-currency Collections and IRR/toman input or display are deferred until a concrete need defines their semantics.
+- Browser preferences select Persian or English when present; otherwise English is the default. A persisted explicit language switch always overrides browser detection.
 - Products are Workspace-private in the MVP. Cross-Workspace canonicalization or sharing is deferred until a concrete need justifies its privacy and merge complexity.
 
 ### Proposed implementation decisions requiring review
@@ -601,6 +602,7 @@ Includes Editor capabilities, plus the relevant scope's administration:
 
 - Users may create and belong to multiple Workspaces.
 - Workspace and Collection listing is filtered entirely by authorization.
+- A Collection-only member receives a minimal parent Workspace navigation summary but no Workspace resource, settings, sibling-Collection, or membership access.
 - Collections support active and archived states.
 - Collection Brief data is structured and validated.
 - A Collection Brief may define one overall budget and currency; planned rollups are derived rather than stored as editable totals.
@@ -744,7 +746,7 @@ The repository becomes a Bun workspace with these logical modules:
 - `packages/i18n`: created in Task 5B when the first Persian and English message keys exist.
 - `packages/config`: shared TypeScript, lint, or build configuration only when duplication justifies it.
 
-Task 1 creates only `apps/web`, `packages/domain`, and `packages/contracts`. `apps/mobile`, `packages/api-client`, `packages/i18n`, and `packages/config` remain target modules rather than empty directories until the task that first needs them. Runtime-independent packages must not import DOM APIs, React Web components, or Cloudflare bindings.
+Task 1 creates only `apps/web`, `packages/domain`, and `packages/contracts`. Task 5B creates `packages/i18n` for its first real catalogs and consumer. `apps/mobile`, `packages/api-client`, and `packages/config` remain target modules rather than empty directories until the task that first needs them. Runtime-independent packages must not import DOM APIs, React Web components, or Cloudflare bindings.
 
 ### Web frontend
 
@@ -1181,6 +1183,8 @@ Completion criteria:
 
 ### Task 5A: Core Workspace API
 
+Status: completed and validated on 2026-08-30.
+
 Scope:
 
 - Implement Workspace, Collection, and Item APIs through Hono RPC, including Item quantity and optional group label.
@@ -1193,6 +1197,8 @@ Completion criteria:
 - Request-level tests cover allowed, denied, invalid, archived, and cross-scope cases.
 
 ### Task 5B: Localized web shell and core CRUD UI
+
+Status: completed and validated on 2026-08-31.
 
 Scope:
 
@@ -1450,13 +1456,16 @@ Mitigation: runtime-independent domain/contracts/i18n packages and a fetch/sessi
 2. Verified-email restriction is optional. The invitation UI enables it by default when an email is supplied, and an authorized inviter may explicitly turn it off.
 13. Only Owners receive `record_purchase` in the MVP. The capability may be added to another role bundle later without a schema migration.
 
+### Resolved for Task 5B
+
+6. Each Collection uses EUR in the web MVP. Multi-currency Collections and IRR/toman semantics are deferred; the UI performs no implicit conversion.
+7. English is the fallback when browser preferences include neither Persian nor English. Explicit user selection is persisted and takes precedence.
+
 ### Open decisions for later tasks
 
 3. Should comments support Item and Candidate targets only in the MVP, or also Offers and Research Results?
 4. Is voting a simple preference, an up/down vote, or a ranked score?
 5. Should one Item support more than one selected/final Product, for bundles or recurring purchases?
-6. EUR is required for the MVP. Can one Collection contain additional currencies and—if Iranian users are in scope—should IRR be entered and displayed as rial, toman, or an explicitly labeled user preference? Canonical storage and all conversion/display rules must be unambiguous; no implicit FX conversion is allowed.
-7. What is the default UI language for users whose browser preference is neither Persian nor English?
 9. Which search provider should power the first Research adapter?
 10. Which retailers or domains are approved for initial Browser Run extraction?
 11. What retention period applies to research snapshots, raw Import Draft input, comments, and audit history?
@@ -1466,16 +1475,16 @@ Mitigation: runtime-independent domain/contracts/i18n packages and a fetch/sessi
 16. Should the first AI Concept visualizer support both `space` and `person`, or launch with one subject kind first?
 17. Which image-edit provider is approved, in which processing region, and with what retention and training terms?
 
-Decisions 1, 2, and 13 are resolved, so Task 4 has no remaining product-decision gate. Decisions 6 and 7 must be resolved before Task 5B; Decision 11 before Task 9A; Decision 15 before the future Concept media foundation; Decisions 16 and 17 before the future AI Concept visualization task; all other decisions affecting schema, permissions, or external providers must be resolved before their corresponding implementation task begins.
+Decisions 1, 2, 6, 7, and 13 are resolved. Decision 11 must be resolved before Task 9A; Decision 15 before the future Concept media foundation; Decisions 16 and 17 before the future AI Concept visualization task; all other decisions affecting schema, permissions, or external providers must be resolved before their corresponding implementation task begins.
 
 ## Current repository state
 
 - Branch: `main`.
-- History: scaffold baseline followed by committed and pushed Task 1 monorepo, Task 2 domain/D1, and Task 3 Google-authentication milestones; Task 4 is the current uncommitted implementation milestone.
-- Tasks 1 through 4 are complete and validated; Task 5A has not started.
-- The repository is a Bun `1.3.12` workspace with `apps/web`, `packages/domain`, and `packages/contracts`. No mobile, API-client, i18n, or config package has been created.
+- History: scaffold baseline followed by committed Task 1 monorepo, Task 2 domain/D1, Task 3 Google-authentication, and Task 4 authorization/invitation milestones; Tasks 5A and 5B are the current uncommitted implementation milestones. Local `main` is one Task 4 commit ahead of `origin/main`.
+- Tasks 1 through 5B are complete and validated; Task 6A has not started.
+- The repository is a Bun `1.3.12` workspace with `apps/web`, `packages/domain`, `packages/contracts`, and `packages/i18n`. No mobile, API-client, or config package has been created.
 - `bun.lock` is the sole package-manager lockfile present, and Bun workspaces are declared in the root `package.json`.
-- The Vite/React frontend now provides the Google sign-in surface and a session-gated empty shell. The Hono Worker preserves the scaffold health response while adding Better Auth routes and a protected session endpoint.
+- The Vite/React frontend provides localized Google sign-in and a protected planning studio with Workspace, Collection, and Item create/edit/archive/restore flows, URL-restored selection, quantity-aware Item cards, lightweight group navigation, and responsive RTL/LTR layouts. The Hono Worker preserves the scaffold health response while adding Better Auth, session, collaboration, and typed core Workspace routes.
 - Drizzle is the unified schema source. The first generated migration includes Better Auth's generated tables plus Workspace-private Products and the initial collaboration/planning tables; a second migration adds persistent Better Auth rate-limit storage; a third adds Invitations, selected-Collection targets, single-use acceptance provenance, and privacy-preserving collaboration rate limits. Later feature tables remain owned by their roadmap tasks.
 - Local migration, migration-list, schema-check, seed, type-generation, and quality commands are available from the workspace root. The fixed development seed is idempotent.
 - Runtime-independent domain primitives preserve separate Item-needed and Candidate-planned purchase quantities, money/budget validation, group labels, and honest Offer price/shipping semantics.
@@ -1485,8 +1494,9 @@ Decisions 1, 2, and 13 are resolved, so Task 4 has no remaining product-decision
 - Auth integration tests cover anonymous rejection, Google authorization URL construction, untrusted callback rejection, authenticated session loading, sign-out revocation, and separate internal User/provider Account records.
 - Capability resolution combines applicable Workspace and Collection grants. Workspace grants reach future Collections, Collection grants remain isolated, only Workspace-scoped Owners manage Owner access, and atomic membership mutations preserve at least one Workspace-scoped Owner.
 - Invitation APIs create Workspace or selected-Collection grants, default supplied email addresses to a verified-email restriction with explicit opt-out, return fragment-based bearer URLs once, store SHA-256 hashes only, provide a rate-limited metadata-only preview, revoke pending invitations, and accept through one rollback-safe D1 batch.
-- Domain and Cloudflare-runtime database tests cover migration idempotency, all role allow/deny behavior, scope isolation, Owner boundaries, invitation expiry/revocation/email matching, rate limits, replay, competing acceptance, database uniqueness, forced rollback and retry, positive independent quantities, planned Candidate/Offer ownership, price/budget constraints, palette bounds, and no inferred pack conversion.
-- Core Workspace/Collection/Item CRUD, collaboration UI, localization catalogs, and research behavior are not yet implemented.
+- Shared Zod contracts and chained Hono RPC routes implement authenticated Workspace, Collection, and Item create/read/update/archive/restore behavior. Workspace creation atomically grants its creator Owner access; Item input supports quantity, grouping, priority, budget, and deadline; archived ancestors block ordinary mutations while authorized history reads remain available.
+- Domain, localization, UI-state, and Cloudflare-runtime database tests cover locale detection/direction/formatting, critical shell states, migration idempotency, all role allow/deny behavior, scope isolation, Owner boundaries, invitation expiry/revocation/email matching, rate limits, replay, competing acceptance, database uniqueness, forced rollback and retry, typed Workspace-to-Item creation, CRUD validation, archive/restore, Item filtering/pagination, positive independent quantities, planned Candidate/Offer ownership, price/budget constraints, palette bounds, and no inferred pack conversion.
+- The core API and localized CRUD shell are implemented. The collaboration UI, Collection Brief/Concept APIs, product comparison, and research behavior are not yet implemented.
 
 ## Current reference basis
 
@@ -1542,4 +1552,8 @@ Before Task 4, the product owner resolved its three gated decisions conservative
 
 The product owner explicitly authorized Task 4 on 2026-08-30. Task 4 implements capability-based scoped authorization, membership administration, secure hashed-token invitations, privacy-preserving rate limits, and transactional idempotent acceptance; it is complete and validated.
 
-The next ordered implementation task is Task 5A: the core Workspace, Collection, and Item API through Hono RPC. It starts only after the product owner explicitly authorizes it in a later session.
+The product owner explicitly authorized Task 5A on 2026-08-30. Task 5A implements shared request/response validation, chained Hono RPC routes, and capability-filtered Workspace, Collection, and Item CRUD with archive/restore behavior; it is complete and validated.
+
+The product owner resolved the Task 5B gates as EUR-only Collections for the web MVP and English as the non-Persian/non-English browser fallback, then explicitly authorized Task 5B on 2026-08-31. Task 5B implements the runtime-independent Persian/English catalog, persisted locale selection, document direction, typed browser API client, protected responsive planning studio, Workspace/Collection/Item CRUD, quantity/group presentation, and critical-state tests; it is complete and validated in English and Persian at desktop and narrow widths.
+
+The next ordered implementation task is Task 6A: Collection Brief and text Concept. Implementation starts only after the product owner explicitly authorizes it in a later session.

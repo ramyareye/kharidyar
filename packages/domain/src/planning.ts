@@ -2,6 +2,19 @@ import type { Money } from "./money";
 import type { PlannedCost } from "./offer";
 import { DomainValidationError } from "./validation";
 
+export const itemPriorities = ["essential", "soon", "nice_to_have"] as const;
+export type ItemPriority = (typeof itemPriorities)[number];
+
+export const itemStatuses = [
+	"idea",
+	"researching",
+	"comparing",
+	"decided",
+	"purchased",
+	"skipped",
+] as const;
+export type ItemStatus = (typeof itemStatuses)[number];
+
 declare const groupLabelBrand: unique symbol;
 
 export type GroupLabel = string & {

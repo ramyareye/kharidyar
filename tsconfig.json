@@ -3,6 +3,7 @@
 	"references": [
 		{ "path": "./apps/web" },
 		{ "path": "./packages/domain" },
-		{ "path": "./packages/contracts" }
+		{ "path": "./packages/contracts" },
+		{ "path": "./packages/i18n" }
 	]
 }
