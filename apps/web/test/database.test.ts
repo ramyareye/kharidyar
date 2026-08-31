@@ -15,9 +15,11 @@ async function insertPlanningFixture(): Promise<void> {
 	const now = Date.now();
 
 	await env.DB.batch([
-		env.DB.prepare(
-			"insert into user (id, name, email) values (?, ?, ?)",
-		).bind(userId, "Test User", "test@example.com"),
+    env.DB.prepare("insert into user (id, name, email) values (?, ?, ?)").bind(
+      userId,
+      "Test User",
+      "test@example.com",
+    ),
 		env.DB.prepare(
 			"insert into workspaces (id, name, created_by_user_id) values (?, ?, ?)",
 		).bind(workspaceId, "Test Workspace", userId),
@@ -126,17 +128,13 @@ describe("planning schema constraints", () => {
 
 	it("rejects non-positive or fractional Item and Candidate quantities", async () => {
 		await expect(
-			env.DB.prepare(
-				"update items set quantity_needed = 0 where id = ?",
-			)
+      env.DB.prepare("update items set quantity_needed = 0 where id = ?")
 				.bind(itemId)
 				.run(),
 		).rejects.toThrow(/items_quantity_needed_check/);
 
 		await expect(
-			env.DB.prepare(
-				"update items set quantity_needed = 1.5 where id = ?",
-			)
+      env.DB.prepare("update items set quantity_needed = 1.5 where id = ?")
 				.bind(itemId)
 				.run(),
 		).rejects.toThrow(/items_quantity_needed_check/);
@@ -145,14 +143,7 @@ describe("planning schema constraints", () => {
 			env.DB.prepare(
 				"insert into item_candidates (id, workspace_id, item_id, product_id, planned_purchase_quantity, created_by_user_id) values (?, ?, ?, ?, ?, ?)",
 			)
-				.bind(
-					"candidate-zero",
-					workspaceId,
-					itemId,
-					firstProductId,
-					0,
-					userId,
-				)
+        .bind("candidate-zero", workspaceId, itemId, firstProductId, 0, userId)
 				.run(),
 		).rejects.toThrow(/item_candidates_planned_quantity_check/);
 
@@ -265,5 +256,66 @@ describe("planning schema constraints", () => {
 				.bind("seventh-core", "brief", "core", 6, "#ABCDEF")
 				.run(),
 		).rejects.toThrow(/collection_brief_colors_position_check/);
+
+    await env.DB.prepare(
+      "insert into collection_brief_colors (id, collection_brief_id, kind, position, hex) values (?, ?, ?, ?, ?)",
+    )
+      .bind("first-color", "brief", "core", 0, "#ABCDEF")
+      .run();
+    await expect(
+      env.DB.prepare(
+        "insert into collection_brief_colors (id, collection_brief_id, kind, position, hex) values (?, ?, ?, ?, ?)",
+      )
+        .bind("duplicate-color", "brief", "supporting", 0, "#ABCDEF")
+        .run(),
+    ).rejects.toThrow(/UNIQUE constraint failed/);
+  });
+
+  it("allows only one active Concept per Collection", async () => {
+    await env.DB.prepare(
+      "insert into concepts (id, collection_id, title, narrative, created_by_user_id, updated_by_user_id) values (?, ?, ?, ?, ?, ?)",
+    )
+      .bind(
+        "concept-a",
+        collectionId,
+        "Japanese modern",
+        "Warm wood and quiet lines.",
+        userId,
+        userId,
+      )
+      .run();
+
+    await expect(
+      env.DB.prepare(
+        "insert into concepts (id, collection_id, title, narrative, created_by_user_id, updated_by_user_id) values (?, ?, ?, ?, ?, ?)",
+      )
+        .bind(
+          "concept-b",
+          collectionId,
+          "Competing direction",
+          "This second active Concept must be rejected.",
+          userId,
+          userId,
+        )
+        .run(),
+    ).rejects.toThrow(/UNIQUE constraint failed/);
+
+    await env.DB.prepare("update concepts set archived_at = ? where id = ?")
+      .bind(Date.now(), "concept-a")
+      .run();
+    await expect(
+      env.DB.prepare(
+        "insert into concepts (id, collection_id, title, narrative, created_by_user_id, updated_by_user_id) values (?, ?, ?, ?, ?, ?)",
+      )
+        .bind(
+          "concept-b",
+          collectionId,
+          "New direction",
+          "A replacement after explicit removal is allowed.",
+          userId,
+          userId,
+        )
+        .run(),
+    ).resolves.toBeDefined();
 	});
 });

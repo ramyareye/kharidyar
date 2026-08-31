@@ -16,17 +16,19 @@ import {
 
 import { useLocale } from "./locale-context";
 
-function EditorDialog({
+export function EditorDialog({
 	busy,
 	children,
 	description,
 	onClose,
+  size = "default",
 	title,
 }: {
 	busy: boolean;
 	children: ReactNode;
 	description: string;
 	onClose: () => void;
+  size?: "default" | "wide";
 	title: string;
 }) {
 	const titleId = useId();
@@ -54,7 +56,11 @@ function EditorDialog({
 				aria-label={t("common.close")}
 			/>
 			<section
-				className="editor-dialog"
+        className={
+          size === "wide"
+            ? "editor-dialog editor-dialog--wide"
+            : "editor-dialog"
+        }
 				role="dialog"
 				aria-modal="true"
 				aria-labelledby={titleId}
@@ -74,7 +80,7 @@ function EditorDialog({
 	);
 }
 
-function FormActions({
+export function FormActions({
 	busy,
 	onCancel,
 	submitLabel,

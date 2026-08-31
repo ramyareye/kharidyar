@@ -1,9 +1,13 @@
 import type {
 	ApiErrorCode,
+  CollectionBriefInput,
+  CollectionBriefResource,
 	CollectionCreateInput,
 	CollectionResource,
 	ItemCreateInput,
 	ItemResource,
+  ConceptInput,
+  ConceptResource,
 	WorkspaceCreateInput,
 	WorkspaceResource,
 	WorkspaceSummary,
@@ -17,6 +21,8 @@ import {
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { useLocale } from "./locale-context";
+import { CollectionDirection } from "./CollectionDirection";
+import { CollectionBriefForm, ConceptForm } from "./collection-direction-forms";
 import {
 	PlanningApiError,
 	planningApi,
@@ -34,10 +40,12 @@ import {
 import { BrandMark, LocaleSwitch, UserAvatar } from "./ui";
 
 type EditorState =
+  | { kind: "brief-edit" }
 	| { kind: "collection-create" }
 	| { kind: "collection-edit"; resource: CollectionResource }
 	| { kind: "item-create" }
 	| { kind: "item-edit"; resource: ItemResource }
+  | { kind: "concept-edit" }
 	| { kind: "workspace-create" }
 	| { kind: "workspace-edit"; resource: WorkspaceSummary };
 
@@ -364,11 +372,16 @@ export function PlanningDashboard({
 	const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
 	const [collections, setCollections] = useState<CollectionResource[]>([]);
 	const [items, setItems] = useState<ItemResource[]>([]);
+  const [brief, setBrief] = useState<CollectionBriefResource | null>(null);
+  const [concept, setConcept] = useState<ConceptResource | null>(null);
+  const [canEditBrief, setCanEditBrief] = useState(false);
+  const [canEditConcept, setCanEditConcept] = useState(false);
 	const [workspacePhase, setWorkspacePhase] =
 		useState<LoadPhase>("loading");
 	const [collectionPhase, setCollectionPhase] =
 		useState<LoadPhase>("idle");
 	const [itemPhase, setItemPhase] = useState<LoadPhase>("idle");
+  const [directionPhase, setDirectionPhase] = useState<LoadPhase>("idle");
 	const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<null | string>(
 		() => selectionFromLocation("workspace"),
 	);
@@ -430,10 +443,15 @@ export function PlanningDashboard({
 		let current = true;
 		setCollections([]);
 		setItems([]);
+    setBrief(null);
+    setConcept(null);
+    setCanEditBrief(false);
+    setCanEditConcept(false);
 		setSelectedGroup("all");
 		if (!selectedWorkspaceId) {
 			setCollectionPhase("ready");
 			setItemPhase("ready");
+      setDirectionPhase("ready");
 			return () => {
 				current = false;
 			};
@@ -484,27 +502,42 @@ export function PlanningDashboard({
 	useEffect(() => {
 		let current = true;
 		setItems([]);
+    setBrief(null);
+    setConcept(null);
+    setCanEditBrief(false);
+    setCanEditConcept(false);
 		setSelectedGroup("all");
 		if (!selectedCollectionId) {
 			setItemPhase("ready");
+      setDirectionPhase("ready");
 			return () => {
 				current = false;
 			};
 		}
 
 		setItemPhase("loading");
+    setDirectionPhase("loading");
 		setLoadError(null);
-		void api
-			.listItems(selectedCollectionId)
-			.then((result) => {
+    void Promise.all([
+      api.listItems(selectedCollectionId),
+      api.readCollectionBrief(selectedCollectionId),
+      api.readConcept(selectedCollectionId),
+    ])
+      .then(([itemResult, briefResult, conceptResult]) => {
 				if (!current) return;
-				setItems(result);
+        setItems(itemResult);
+        setBrief(briefResult.resource);
+        setCanEditBrief(briefResult.canEdit);
+        setConcept(conceptResult.resource);
+        setCanEditConcept(conceptResult.canEdit);
 				setItemPhase("ready");
+        setDirectionPhase("ready");
 			})
 			.catch((error: unknown) => {
 				if (!current) return;
 				setLoadError(apiErrorCode(error));
 				setItemPhase("ready");
+        setDirectionPhase("ready");
 			});
 
 		return () => {
@@ -700,6 +733,43 @@ export function PlanningDashboard({
 			"toast.itemCreated",
 		);
 	}
+
+  async function saveBrief(value: CollectionBriefInput) {
+    if (!selectedCollectionId) return false;
+    return mutate(
+      () => api.saveCollectionBrief(selectedCollectionId, value),
+      (result) => {
+        setBrief(result.resource);
+        setCanEditBrief(result.canEdit);
+      },
+      "toast.briefSaved",
+    );
+  }
+
+  async function saveTextConcept(value: ConceptInput) {
+    if (!selectedCollectionId) return false;
+    return mutate(
+      () => api.saveConcept(selectedCollectionId, value),
+      (result) => {
+        setConcept(result.resource);
+        setCanEditConcept(result.canEdit);
+      },
+      "toast.conceptSaved",
+    );
+  }
+
+  async function removeTextConcept() {
+    if (!selectedCollectionId) return;
+    if (!window.confirm(t("concept.removeConfirm"))) return;
+    await mutate(
+      () => api.removeConcept(selectedCollectionId),
+      (result) => {
+        setConcept(result.resource);
+        setCanEditConcept(result.canEdit);
+      },
+      "toast.conceptRemoved",
+    );
+  }
 
 	async function updateItem(value: ItemCreateInput) {
 		if (!editor || editor.kind !== "item-edit") return false;
@@ -994,6 +1064,24 @@ export function PlanningDashboard({
 												</div>
 											</header>
 
+                      <CollectionDirection
+                        brief={brief}
+                        busy={busy}
+                        canEditBrief={
+                          canEditBrief && !selectedCollection.archivedAt
+                        }
+                        canEditConcept={
+                          canEditConcept && !selectedCollection.archivedAt
+                        }
+                        concept={concept}
+                        loading={directionPhase !== "ready"}
+                        onEditBrief={() => setEditor({ kind: "brief-edit" })}
+                        onEditConcept={() =>
+                          setEditor({ kind: "concept-edit" })
+                        }
+                        onRemoveConcept={() => void removeTextConcept()}
+                      />
+
 											{viewState === "loading-items" ? (
 												<StatusPanel
 													eyebrow={t("common.loading")}
@@ -1143,6 +1231,20 @@ export function PlanningDashboard({
 					onClose={() => setEditor(null)}
 					onSubmit={updateItem}
 				/>
+      ) : editor?.kind === "brief-edit" ? (
+        <CollectionBriefForm
+          busy={busy}
+          initial={brief}
+          onClose={() => setEditor(null)}
+          onSubmit={saveBrief}
+        />
+      ) : editor?.kind === "concept-edit" ? (
+        <ConceptForm
+          busy={busy}
+          initial={concept}
+          onClose={() => setEditor(null)}
+          onSubmit={saveTextConcept}
+        />
 			) : null}
 		</div>
 	);

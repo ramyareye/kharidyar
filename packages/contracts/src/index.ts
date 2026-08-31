@@ -1,4 +1,8 @@
-import { itemPriorities, itemStatuses } from "@kharidyar/domain";
+import {
+  inputHexColorPattern,
+  itemPriorities,
+  itemStatuses,
+} from "@kharidyar/domain";
 import { z } from "zod";
 
 const maximumSafeInteger = Number.MAX_SAFE_INTEGER;
@@ -35,6 +39,79 @@ export const moneyInputSchema = z
 		currency: currencySchema,
 	})
 	.strict();
+
+const eurBudgetSchema = z
+  .object({
+    minor: z.number().int().min(0).max(maximumSafeInteger),
+    currency: z.literal("EUR"),
+  })
+  .strict();
+
+const optionalBriefText = (maximumLength: number) =>
+  nullableTrimmedText(maximumLength);
+
+const briefList = (maximumEntries: number, maximumLength: number) =>
+  z.array(requiredTrimmedText(maximumLength)).max(maximumEntries);
+
+export const collectionBriefColorSchema = z
+  .object({
+    hex: z
+      .string()
+      .trim()
+      .regex(inputHexColorPattern)
+      .transform((value) => value.toUpperCase()),
+    label: nullableTrimmedText(60),
+    usageNote: nullableTrimmedText(120),
+  })
+  .strict();
+
+export const collectionColorPreferenceSchema = z
+  .object({
+    core: z.array(collectionBriefColorSchema).max(6),
+    supporting: z.array(collectionBriefColorSchema).max(6),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    const colors = [...value.core, ...value.supporting].map(({ hex }) => hex);
+    if (new Set(colors).size !== colors.length) {
+      context.addIssue({
+        code: "custom",
+        message: "A color may appear only once across both palette groups.",
+        path: ["core"],
+      });
+    }
+  });
+
+export const collectionBriefInputSchema = z
+  .object({
+    title: optionalBriefText(120),
+    description: optionalBriefText(4_000),
+    keywords: briefList(20, 80),
+    materials: briefList(20, 80),
+    preferredBrands: briefList(20, 120),
+    intendedUse: optionalBriefText(2_000),
+    requirements: optionalBriefText(4_000),
+    thingsToAvoid: optionalBriefText(4_000),
+    referenceUrls: z
+      .array(
+        z
+          .string()
+          .trim()
+          .max(2_048)
+          .pipe(z.url({ protocol: /^https$/u })),
+      )
+      .max(20),
+    budget: eurBudgetSchema.nullable(),
+    colorPreference: collectionColorPreferenceSchema,
+  })
+  .strict();
+
+export const conceptInputSchema = z
+  .object({
+    title: requiredTrimmedText(120),
+    narrative: requiredTrimmedText(2_000),
+  })
+  .strict();
 
 export const workspaceCreateInputSchema = z
 	.object({
@@ -157,6 +234,36 @@ export const itemResourceSchema = z
 	})
 	.strict();
 
+export const collectionBriefResourceSchema = collectionBriefInputSchema.extend({
+  id: z.string(),
+  collectionId: z.string(),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
+});
+
+export const conceptResourceSchema = conceptInputSchema.extend({
+  id: z.string(),
+  collectionId: z.string(),
+  createdAt: z.iso.datetime(),
+  updatedAt: z.iso.datetime(),
+});
+
+const editPermissionSchema = z.object({ canEdit: z.boolean() }).strict();
+
+export const collectionBriefResponseSchema = z
+  .object({
+    brief: collectionBriefResourceSchema.nullable(),
+    permissions: editPermissionSchema,
+  })
+  .strict();
+
+export const conceptResponseSchema = z
+  .object({
+    concept: conceptResourceSchema.nullable(),
+    permissions: editPermissionSchema,
+  })
+  .strict();
+
 export const workspaceResponseSchema = z
 	.object({ workspace: workspaceResourceSchema })
 	.strict();
@@ -212,6 +319,16 @@ export const apiErrorResponseSchema = z
 	.strict();
 
 export type MoneyInput = z.infer<typeof moneyInputSchema>;
+export type CollectionBriefColor = z.infer<typeof collectionBriefColorSchema>;
+export type CollectionColorPreference = z.infer<
+  typeof collectionColorPreferenceSchema
+>;
+export type CollectionBriefInput = z.infer<typeof collectionBriefInputSchema>;
+export type CollectionBriefResource = z.infer<
+  typeof collectionBriefResourceSchema
+>;
+export type ConceptInput = z.infer<typeof conceptInputSchema>;
+export type ConceptResource = z.infer<typeof conceptResourceSchema>;
 export type WorkspaceCreateInput = z.infer<typeof workspaceCreateInputSchema>;
 export type WorkspaceUpdateInput = z.infer<typeof workspaceUpdateInputSchema>;
 export type CollectionCreateInput = z.infer<typeof collectionCreateInputSchema>;

@@ -6,11 +6,13 @@ import {
 	canManageMembershipRole,
 	canRemoveWorkspaceOwner,
 	calculatePlannedCost,
+  colorPalette,
 	comparePlannedCostToBudget,
 	DomainValidationError,
 	groupLabel,
 	hasCapability,
 	money,
+  normalizeHexColor,
 	offerTerms,
 	plannedPurchaseQuantity,
 	quantityPlan,
@@ -18,6 +20,34 @@ import {
 	type MembershipGrant,
 	type MembershipRole,
 } from "../src";
+
+describe("Collection color preference", () => {
+  it("normalizes colors while preserving core and supporting order", () => {
+    expect(
+      colorPalette({
+        core: ["#d8c7ad", "#334455"],
+        supporting: ["#F4F0E8"],
+      }),
+    ).toEqual({
+      core: ["#D8C7AD", "#334455"],
+      supporting: ["#F4F0E8"],
+    });
+    expect(normalizeHexColor("  #aabbcc ")).toBe("#AABBCC");
+  });
+
+  it("rejects malformed, duplicate, and oversized palettes", () => {
+    expect(() => normalizeHexColor("#ABC")).toThrow(DomainValidationError);
+    expect(() =>
+      colorPalette({ core: ["#ABCDEF"], supporting: ["#abcdef"] }),
+    ).toThrow(DomainValidationError);
+    expect(() =>
+      colorPalette({
+        core: Array.from({ length: 7 }, (_, index) => `#00000${index}`),
+        supporting: [],
+      }),
+    ).toThrow(DomainValidationError);
+  });
+});
 
 const roleOrder: readonly MembershipRole[] = [
 	"viewer",

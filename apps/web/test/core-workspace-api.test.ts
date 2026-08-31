@@ -1,7 +1,9 @@
 import { env, exports } from "cloudflare:workers";
 import {
 	apiErrorResponseSchema,
+  collectionBriefResponseSchema,
 	collectionResponseSchema,
+  conceptResponseSchema,
 	itemListResponseSchema,
 	itemResponseSchema,
 	workspaceListResponseSchema,
@@ -414,9 +416,12 @@ describe("authorization and scope filtering", () => {
 		});
 		expect(otherWorkspace.status).toBe(404);
 
-		const otherCollection = await apiRequest(`/api/collections/${collectionB1}`, {
+    const otherCollection = await apiRequest(
+      `/api/collections/${collectionB1}`,
+      {
 			userId: users.owner,
-		});
+      },
+    );
 		expect(otherCollection.status).toBe(404);
 
 		const collectionOwnerSibling = await apiRequest(
@@ -435,9 +440,9 @@ describe("validation, filtering, and archive behavior", () => {
 			userId: users.newOwner,
 		});
 		expect(blankWorkspace.status).toBe(400);
-		expect(apiErrorResponseSchema.parse(await blankWorkspace.json()).error.code).toBe(
-			"BAD_REQUEST",
-		);
+    expect(
+      apiErrorResponseSchema.parse(await blankWorkspace.json()).error.code,
+    ).toBe("BAD_REQUEST");
 
 		const unknownField = await apiRequest("/api/workspaces", {
 			body: { name: "Valid", unexpected: true },
@@ -469,9 +474,9 @@ describe("validation, filtering, and archive behavior", () => {
 			userId: users.newOwner,
 		});
 		expect(malformed.status).toBe(400);
-		expect(apiErrorResponseSchema.parse(await malformed.json()).error.code).toBe(
-			"BAD_REQUEST",
-		);
+    expect(
+      apiErrorResponseSchema.parse(await malformed.json()).error.code,
+    ).toBe("BAD_REQUEST");
 	});
 
 	it("filters and paginates Item lists with typed output", async () => {
@@ -586,4 +591,221 @@ describe("validation, filtering, and archive behavior", () => {
 		);
 		expect(restoredWorkspace.status).toBe(200);
 	});
+});
+
+describe("Collection Brief and text Concept", () => {
+  it("persists a structured Brief and exposes editor permissions", async () => {
+    const saved = await apiRequest(`/api/collections/${collectionA1}/brief`, {
+      body: {
+        title: "  Quiet Japanese-modern home  ",
+        description: "  Natural materials and low visual noise.  ",
+        keywords: ["Japandi", "calm"],
+        materials: ["oak", "linen"],
+        preferredBrands: ["IKEA", "Loods 5"],
+        intendedUse: "  A coherent everyday home.  ",
+        requirements: "  Durable and easy to maintain.  ",
+        thingsToAvoid: "  Glossy finishes.  ",
+        referenceUrls: ["https://example.com/reference"],
+        budget: { minor: 215_000, currency: "EUR" },
+        colorPreference: {
+          core: [
+            {
+              hex: "#d8c7ad",
+              label: "Warm oak",
+              usageNote: "Main wood",
+            },
+            { hex: "#334455", label: null, usageNote: null },
+          ],
+          supporting: [
+            {
+              hex: "#f4f0e8",
+              label: "Paper",
+              usageNote: "Walls and lamps",
+            },
+          ],
+        },
+      },
+      method: "PUT",
+      userId: users.editor,
+    });
+    expect(saved.status).toBe(200);
+    const savedBody = collectionBriefResponseSchema.parse(await saved.json());
+    expect(savedBody.permissions.canEdit).toBe(true);
+    expect(savedBody.brief).toMatchObject({
+      title: "Quiet Japanese-modern home",
+      description: "Natural materials and low visual noise.",
+      budget: { minor: 215_000, currency: "EUR" },
+      colorPreference: {
+        core: [
+          { hex: "#D8C7AD", label: "Warm oak", usageNote: "Main wood" },
+          { hex: "#334455", label: null, usageNote: null },
+        ],
+        supporting: [
+          {
+            hex: "#F4F0E8",
+            label: "Paper",
+            usageNote: "Walls and lamps",
+          },
+        ],
+      },
+    });
+
+    const viewerRead = await apiRequest(
+      `/api/collections/${collectionA1}/brief`,
+      { userId: users.viewer },
+    );
+    expect(viewerRead.status).toBe(200);
+    const viewerBody = collectionBriefResponseSchema.parse(
+      await viewerRead.json(),
+    );
+    expect(viewerBody.permissions.canEdit).toBe(false);
+    expect(viewerBody.brief?.keywords).toEqual(["Japandi", "calm"]);
+  });
+
+  it("enforces palette, URL, currency, and role validation", async () => {
+    const base = {
+      title: null,
+      description: null,
+      keywords: [],
+      materials: [],
+      preferredBrands: [],
+      intendedUse: null,
+      requirements: null,
+      thingsToAvoid: null,
+      referenceUrls: [],
+      budget: null,
+      colorPreference: { core: [], supporting: [] },
+    };
+
+    const duplicate = await apiRequest(
+      `/api/collections/${collectionA1}/brief`,
+      {
+        body: {
+          ...base,
+          colorPreference: {
+            core: [{ hex: "#ABCDEF", label: null, usageNote: null }],
+            supporting: [{ hex: "#abcdef", label: null, usageNote: null }],
+          },
+        },
+        method: "PUT",
+        userId: users.editor,
+      },
+    );
+    expect(duplicate.status).toBe(400);
+
+    const seventh = await apiRequest(`/api/collections/${collectionA1}/brief`, {
+      body: {
+        ...base,
+        colorPreference: {
+          core: Array.from({ length: 7 }, (_, index) => ({
+            hex: `#00000${index}`,
+            label: null,
+            usageNote: null,
+          })),
+          supporting: [],
+        },
+      },
+      method: "PUT",
+      userId: users.editor,
+    });
+    expect(seventh.status).toBe(400);
+
+    const insecureReference = await apiRequest(
+      `/api/collections/${collectionA1}/brief`,
+      {
+        body: { ...base, referenceUrls: ["http://example.com/reference"] },
+        method: "PUT",
+        userId: users.editor,
+      },
+    );
+    expect(insecureReference.status).toBe(400);
+
+    const otherCurrency = await apiRequest(
+      `/api/collections/${collectionA1}/brief`,
+      {
+        body: { ...base, budget: { minor: 100, currency: "USD" } },
+        method: "PUT",
+        userId: users.editor,
+      },
+    );
+    expect(otherCurrency.status).toBe(400);
+
+    const contributor = await apiRequest(
+      `/api/collections/${collectionA1}/brief`,
+      {
+        body: base,
+        method: "PUT",
+        userId: users.contributor,
+      },
+    );
+    expect(contributor.status).toBe(403);
+  });
+
+  it("creates, updates, reads, and removes one active text Concept", async () => {
+    const created = await apiRequest(
+      `/api/collections/${collectionA1}/concept`,
+      {
+        body: {
+          title: "  Japanese-modern home  ",
+          narrative: "  Warm wood, paper light, and quiet lines.  ",
+        },
+        method: "PUT",
+        userId: users.editor,
+      },
+    );
+    expect(created.status).toBe(200);
+    const createdBody = conceptResponseSchema.parse(await created.json());
+    expect(createdBody.concept).toMatchObject({
+      title: "Japanese-modern home",
+      narrative: "Warm wood, paper light, and quiet lines.",
+    });
+
+    const viewerRead = await apiRequest(
+      `/api/collections/${collectionA1}/concept`,
+      { userId: users.viewer },
+    );
+    expect(viewerRead.status).toBe(200);
+    const viewerBody = conceptResponseSchema.parse(await viewerRead.json());
+    expect(viewerBody.permissions.canEdit).toBe(false);
+    expect(viewerBody.concept?.id).toBe(createdBody.concept?.id);
+
+    const updated = await apiRequest(
+      `/api/collections/${collectionA1}/concept`,
+      {
+        body: {
+          title: "Japanese-modern apartment",
+          narrative: "Low forms, warm oak, linen, and restrained contrast.",
+        },
+        method: "PUT",
+        userId: users.editor,
+      },
+    );
+    const updatedBody = conceptResponseSchema.parse(await updated.json());
+    expect(updatedBody.concept?.id).toBe(createdBody.concept?.id);
+
+    const denied = await apiRequest(
+      `/api/collections/${collectionA1}/concept`,
+      {
+        body: { title: "Denied", narrative: "Contributors cannot do this." },
+        method: "PUT",
+        userId: users.contributor,
+      },
+    );
+    expect(denied.status).toBe(403);
+
+    const removed = await apiRequest(
+      `/api/collections/${collectionA1}/concept`,
+      { method: "DELETE", userId: users.editor },
+    );
+    expect(removed.status).toBe(200);
+    expect(
+      conceptResponseSchema.parse(await removed.json()).concept,
+    ).toBeNull();
+
+    const absent = await apiRequest(
+      `/api/collections/${collectionA1}/concept`,
+      { userId: users.viewer },
+    );
+    expect(conceptResponseSchema.parse(await absent.json()).concept).toBeNull();
+  });
 });

@@ -275,6 +275,13 @@ export const collectionBriefs = sqliteTable(
 			.references(() => collections.id, { onDelete: "cascade" }),
 		title: text("title"),
 		description: text("description"),
+    keywordsJson: text("keywords_json").default("[]").notNull(),
+    materialsJson: text("materials_json").default("[]").notNull(),
+    preferredBrandsJson: text("preferred_brands_json").default("[]").notNull(),
+    intendedUse: text("intended_use"),
+    requirements: text("requirements"),
+    thingsToAvoid: text("things_to_avoid"),
+    referenceUrlsJson: text("reference_urls_json").default("[]").notNull(),
 		budgetMinor: integer("budget_minor"),
 		budgetCurrency: text("budget_currency"),
 		createdAt: createdAt(),
@@ -291,6 +298,44 @@ export const collectionBriefs = sqliteTable(
 			)`,
 		),
 	],
+);
+
+export const concepts = sqliteTable(
+  "concepts",
+  {
+    id: text("id").primaryKey(),
+    collectionId: text("collection_id")
+      .notNull()
+      .references(() => collections.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    narrative: text("narrative").notNull(),
+    createdByUserId: text("created_by_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    updatedByUserId: text("updated_by_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "restrict" }),
+    archivedAt: integer("archived_at", { mode: "timestamp_ms" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    check(
+      "concepts_title_length_check",
+      sql`length(trim(${table.title})) between 1 and 120`,
+    ),
+    check(
+      "concepts_narrative_length_check",
+      sql`length(trim(${table.narrative})) between 1 and 2000`,
+    ),
+    uniqueIndex("concepts_active_collection_uidx")
+      .on(table.collectionId)
+      .where(sql`${table.archivedAt} is null`),
+    index("concepts_collection_history_idx").on(
+      table.collectionId,
+      table.createdAt,
+    ),
+  ],
 );
 
 export const collectionBriefColors = sqliteTable(

@@ -1,15 +1,21 @@
 import {
 	apiErrorResponseSchema,
+  collectionBriefResponseSchema,
 	collectionListResponseSchema,
 	collectionResponseSchema,
+  conceptResponseSchema,
 	itemListResponseSchema,
 	itemResponseSchema,
 	workspaceListResponseSchema,
 	workspaceResponseSchema,
 	type ApiErrorCode,
 	type CollectionCreateInput,
+  type CollectionBriefInput,
+  type CollectionBriefResource,
 	type CollectionResource,
 	type CollectionUpdateInput,
+  type ConceptInput,
+  type ConceptResource,
 	type ItemCreateInput,
 	type ItemResource,
 	type ItemUpdateInput,
@@ -20,7 +26,7 @@ import {
 } from "@kharidyar/contracts";
 import { hc } from "hono/client";
 
-import type { CoreWorkspaceRoutes } from "../worker/core-workspace-routes";
+import type { AppType } from "../worker";
 
 interface RuntimeSchema<T> {
 	parse: (value: unknown) => T;
@@ -38,7 +44,7 @@ export class PlanningApiError extends Error {
 	}
 }
 
-const client = hc<CoreWorkspaceRoutes>("/api", {
+const client = hc<AppType>("/api", {
 	init: { credentials: "same-origin" },
 });
 
@@ -81,12 +87,29 @@ export interface PlanningApi {
 		value: ItemCreateInput,
 	) => Promise<ItemResource>;
 	createWorkspace: (value: WorkspaceCreateInput) => Promise<WorkspaceResource>;
+  readCollectionBrief: (
+    collectionId: string,
+  ) => Promise<EditableResource<CollectionBriefResource>>;
+  readConcept: (
+    collectionId: string,
+  ) => Promise<EditableResource<ConceptResource>>;
 	listCollections: (workspaceId: string) => Promise<CollectionResource[]>;
 	listItems: (collectionId: string) => Promise<ItemResource[]>;
 	listWorkspaces: () => Promise<WorkspaceSummary[]>;
 	restoreCollection: (collectionId: string) => Promise<CollectionResource>;
 	restoreItem: (itemId: string) => Promise<ItemResource>;
 	restoreWorkspace: (workspaceId: string) => Promise<WorkspaceResource>;
+  removeConcept: (
+    collectionId: string,
+  ) => Promise<EditableResource<ConceptResource>>;
+  saveCollectionBrief: (
+    collectionId: string,
+    value: CollectionBriefInput,
+  ) => Promise<EditableResource<CollectionBriefResource>>;
+  saveConcept: (
+    collectionId: string,
+    value: ConceptInput,
+  ) => Promise<EditableResource<ConceptResource>>;
 	updateCollection: (
 		collectionId: string,
 		value: CollectionUpdateInput,
@@ -99,6 +122,11 @@ export interface PlanningApi {
 		workspaceId: string,
 		value: WorkspaceUpdateInput,
 	) => Promise<WorkspaceResource>;
+}
+
+export interface EditableResource<T> {
+  canEdit: boolean;
+  resource: T | null;
 }
 
 export const planningApi: PlanningApi = {
@@ -173,6 +201,48 @@ export const planningApi: PlanningApi = {
 			param: { collectionId },
 		});
 		return (await parsedResponse(response, collectionResponseSchema)).collection;
+  },
+
+  async readCollectionBrief(collectionId) {
+    const response = await client.collections[":collectionId"].brief.$get({
+      param: { collectionId },
+    });
+    const body = await parsedResponse(response, collectionBriefResponseSchema);
+    return { canEdit: body.permissions.canEdit, resource: body.brief };
+  },
+
+  async saveCollectionBrief(collectionId, value) {
+    const response = await client.collections[":collectionId"].brief.$put({
+      json: value,
+      param: { collectionId },
+    });
+    const body = await parsedResponse(response, collectionBriefResponseSchema);
+    return { canEdit: body.permissions.canEdit, resource: body.brief };
+  },
+
+  async readConcept(collectionId) {
+    const response = await client.collections[":collectionId"].concept.$get({
+      param: { collectionId },
+    });
+    const body = await parsedResponse(response, conceptResponseSchema);
+    return { canEdit: body.permissions.canEdit, resource: body.concept };
+  },
+
+  async saveConcept(collectionId, value) {
+    const response = await client.collections[":collectionId"].concept.$put({
+      json: value,
+      param: { collectionId },
+    });
+    const body = await parsedResponse(response, conceptResponseSchema);
+    return { canEdit: body.permissions.canEdit, resource: body.concept };
+  },
+
+  async removeConcept(collectionId) {
+    const response = await client.collections[":collectionId"].concept.$delete({
+      param: { collectionId },
+    });
+    const body = await parsedResponse(response, conceptResponseSchema);
+    return { canEdit: body.permissions.canEdit, resource: body.concept };
 	},
 
 	async listItems(collectionId) {
