@@ -50,6 +50,7 @@
 			]
 		},
 		"production": {
+			"name": "kharidyar",
 			"secrets": {
 				"required": [
 					"AUTH_TRUSTED_ORIGINS",
@@ -63,6 +64,7 @@
 				{
 					"binding": "DB",
 					"database_name": "kharidyar-production",
+					"database_id": "85ccca6c-adde-4125-87de-a4de614b1091",
 					"migrations_dir": "migrations"
 				}
 			]
@@ -70,7 +72,10 @@
 	},
 	"assets": {
 		"directory": "./dist/client",
-		"not_found_handling": "single-page-application"
+		"not_found_handling": "single-page-application",
+		"run_worker_first": [
+			"/api/*"
+		]
 	}
 	/**
 	 * Smart Placement
