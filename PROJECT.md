@@ -1,7 +1,7 @@
 # Kharidyar Project Specification
 
 - Status: Approved by the product owner
-- Last updated: 2026-08-31
+- Last updated: 2026-09-01
 - Implementation status: Tasks 1 through 6B complete and validated; Task 7 is next
 
 ## Purpose of this document
@@ -1372,6 +1372,23 @@ This starts only after the future Concept media foundation and Task 10's access-
 
 This starts only after the web MVP and API contracts are stable. It adds native UI, deep links, secure session storage, Google and Apple sign-in, explicit provider linking, and mobile-specific end-to-end tests without replacing the Worker API or D1 data.
 
+### Future task: ChatGPT MCP integration
+
+This is the final roadmap task and starts only after Task 10's permission-filtered Context Builder, Task 11's production hardening, and the public API contracts are stable. It adds ChatGPT as another client without creating a second backend or bypassing Kharidyar's domain rules. It:
+
+- Exposes a versioned streamable-HTTP MCP endpoint, typically `/mcp`, as a thin adapter over the same application services and validated commands used by the web and future Expo clients; MCP tools never query or mutate D1 directly.
+- Authenticates each user through the then-current supported OAuth flow, maps that identity to one Kharidyar User, and performs capability checks for every tool call.
+- Starts with focused read tools for accessible Workspaces, Collections, Items, decision history, and permission-filtered context. A later reviewed tool set may create or update planning records, but invitation, membership, deletion, purchase, and other consequential commands are excluded from the first release.
+- Uses explicit input/output schemas, stable record identifiers, accurate read-only/destructive/open-world annotations, bounded result sizes, rate limits, and no secrets or unnecessary personal data in tool metadata or results.
+- Treats tool inputs and stored research text as untrusted, requires server-side validation and confirmation for any future write, records MCP-originated writes through the normal audit path, and adds no custom ChatGPT UI unless a proven workflow needs one.
+
+Completion criteria:
+
+- Cross-Workspace and cross-Collection leakage, revoked access, invalid input, rate-limit, and OAuth-account mapping tests pass.
+- Every tool delegates to an existing permission-checked query or command; direct database access from the MCP transport layer is absent.
+- Tool schemas, annotations, representative calls, edge cases, and out-of-scope requests pass local MCP inspection and ChatGPT developer-mode testing.
+- The integration can be disabled without affecting the web app, mobile app, API, or stored planning data.
+
 ## Risks and mitigations
 
 ### Authorization complexity
@@ -1530,6 +1547,7 @@ These links informed the architecture and must be rechecked before implementing 
 - [Better Auth Expo integration](https://better-auth.com/docs/integrations/expo)
 - [Better Auth Google authentication](https://better-auth.com/docs/authentication/google)
 - [Better Auth Apple authentication](https://better-auth.com/docs/authentication/apple)
+- [OpenAI ChatGPT plugin MCP server guide](https://developers.openai.com/plugins/build/mcp-server)
 - [Hono RPC guide](https://hono.dev/docs/guides/rpc)
 - [Hono validation guide](https://hono.dev/docs/guides/validation)
 - [Drizzle with Cloudflare D1](https://orm.drizzle.team/docs/sqlite/connect-cloudflare-d1)
@@ -1563,5 +1581,7 @@ The product owner resolved the Task 5B gates as EUR-only Collections for the web
 The product owner explicitly authorized Task 6A on 2026-08-31. Task 6A implements structured Collection Brief editing, an optional EUR budget, ordered core/supporting color preferences, validated HTTPS references, and one optional text Concept with scoped read/write permissions. It is complete and validated through the real English/Persian browser flow at desktop and 390-pixel widths, with no Concept media, R2 binding, upload endpoint, AI placeholder, console error, or horizontal overflow.
 
 The product owner explicitly authorized Task 6B on 2026-08-31. Task 6B implements complete Item planning fields, capability-derived Item actions, explicit human-only status commands, immutable Decision Events with atomic detail/status writes, reversal warnings, and localized detail/history UI. It is complete and validated through automated domain, contract, database, Worker, localization, and UI-state coverage plus one real desktop flow and one Persian 390-pixel responsive check.
+
+On 2026-09-01, the product owner added a future ChatGPT MCP integration as the final roadmap task. It remains deferred until the production API and permission-filtered Context Builder are stable, and it must reuse existing application services rather than introduce parallel domain or database behavior.
 
 The next ordered implementation task is Task 7: Products, Candidates, and Offers. Implementation starts only after the product owner explicitly requests continuation in a later session.
