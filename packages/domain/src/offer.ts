@@ -3,6 +3,9 @@ import { currencyCode, minorAmount } from "./money";
 import type { PlannedPurchaseQuantity } from "./quantity";
 import { checkedAdd, checkedMultiply, DomainValidationError } from "./validation";
 
+export const merchantSalesChannels = ["online", "in_person", "both"] as const;
+export type MerchantSalesChannel = (typeof merchantSalesChannels)[number];
+
 export const offerPriceKinds = ["exact", "starting_at", "unknown"] as const;
 export type OfferPriceKind = (typeof offerPriceKinds)[number];
 
@@ -15,6 +18,30 @@ export const availabilityStates = [
 	"unknown",
 ] as const;
 export type AvailabilityState = (typeof availabilityStates)[number];
+
+export const offerStaleAfterMilliseconds = 30 * 24 * 60 * 60 * 1_000;
+
+export function isOfferStale(
+	lastCheckedAt: number,
+	now = Date.now(),
+	staleAfter = offerStaleAfterMilliseconds,
+): boolean {
+	if (
+		!Number.isSafeInteger(lastCheckedAt) ||
+		lastCheckedAt < 0 ||
+		!Number.isSafeInteger(now) ||
+		now < 0 ||
+		!Number.isSafeInteger(staleAfter) ||
+		staleAfter <= 0
+	) {
+		throw new DomainValidationError(
+			"lastCheckedAt",
+			"Offer freshness requires non-negative timestamps and a positive threshold",
+		);
+	}
+
+	return now - lastCheckedAt > staleAfter;
+}
 
 export interface OfferTermsInput {
 	readonly priceKind: OfferPriceKind;
@@ -153,4 +180,75 @@ export function moneyFromCompleteCost(cost: PlannedCost): Money | null {
 	}
 
 	return { minor: cost.totalMinor, currency: cost.currency };
+}
+
+export interface PlannedCostAggregate {
+	readonly status: PlannedCostStatus;
+	readonly currency: CurrencyCode;
+	readonly merchandiseMinor: MinorAmount;
+	readonly shippingMinor: MinorAmount;
+	readonly totalMinor: MinorAmount;
+	readonly completeLineCount: number;
+	readonly incompleteLineCount: number;
+	readonly currencyMismatchLineCount: number;
+}
+
+export function aggregatePlannedCosts(
+	costs: readonly PlannedCost[],
+	targetCurrency: string,
+): PlannedCostAggregate {
+	const currency = currencyCode(targetCurrency);
+	let merchandiseMinor = minorAmount(0);
+	let shippingMinor = minorAmount(0);
+	let totalMinor = minorAmount(0);
+	let completeLineCount = 0;
+	let incompleteLineCount = 0;
+	let currencyMismatchLineCount = 0;
+	let hasLowerBound = false;
+
+	for (const cost of costs) {
+		if (cost.currency !== null && cost.currency !== currency) {
+			currencyMismatchLineCount += 1;
+			continue;
+		}
+		if (
+			cost.status === "incomplete" ||
+			cost.merchandiseMinor === null ||
+			cost.shippingMinor === null ||
+			cost.totalMinor === null
+		) {
+			incompleteLineCount += 1;
+			continue;
+		}
+
+		completeLineCount += 1;
+		hasLowerBound ||= cost.status === "lower_bound";
+		merchandiseMinor = minorAmount(
+			checkedAdd(merchandiseMinor, cost.merchandiseMinor, "merchandiseMinor"),
+		);
+		shippingMinor = minorAmount(
+			checkedAdd(shippingMinor, cost.shippingMinor, "shippingMinor"),
+		);
+		totalMinor = minorAmount(
+			checkedAdd(totalMinor, cost.totalMinor, "totalMinor"),
+		);
+	}
+
+	return {
+		status:
+			costs.length === 0 ||
+			incompleteLineCount > 0 ||
+			currencyMismatchLineCount > 0
+				? "incomplete"
+				: hasLowerBound
+					? "lower_bound"
+					: "exact",
+		currency,
+		merchandiseMinor,
+		shippingMinor,
+		totalMinor,
+		completeLineCount,
+		incompleteLineCount,
+		currencyMismatchLineCount,
+	};
 }

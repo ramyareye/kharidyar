@@ -2,7 +2,7 @@
 
 - Status: Approved by the product owner
 - Last updated: 2026-09-01
-- Implementation status: Tasks 1 through 6B complete and validated; Task 7 is next
+- Implementation status: Tasks 1 through 7 complete and validated; Task 8 is next
 
 ## Purpose of this document
 
@@ -370,6 +370,16 @@ Invariants:
 - Product identity is independent of seller and current price.
 - Duplicate products may exist during the MVP; merging is an explicit later operation.
 - External identifiers are evidence for matching, not a substitute for the internal Product ID.
+
+### Merchant
+
+The seller organization behind an Offer. A Merchant may sell online, in person, or through both channels. It is separate from the Product's brand so the same Product can be compared across IKEA, JYSK, a local showroom, or another seller without duplicating canonical Product facts.
+
+Invariants:
+
+- A Merchant belongs to one Workspace in the MVP.
+- Merchant identity stores the seller name and broad sales channel; a specific branch, delivery region, or variant-dependent claim remains an Offer availability qualifier.
+- Merchant identity does not imply that every Offer is available through every branch or channel.
 
 ### Offer
 
@@ -845,6 +855,7 @@ Required constraints include:
 - Items.
 - Item Candidates.
 - Products.
+- Merchants.
 - Offers.
 - Price Checks.
 - Comments.
@@ -942,6 +953,7 @@ These endpoints do not exist in the collaborative MVP. The future tasks add them
 
 - Add or remove a Product as an Item Candidate.
 - Create or update canonical Product information.
+- Create or reuse Workspace-private Merchant identities for online, in-person, or combined sellers.
 - Create, update, and mark Offers stale or unavailable.
 - Preserve exact/starting/unknown price kind, per-line/per-unit/unknown shipping basis, and qualified availability.
 - Choose or clear the planned Offer for a Candidate.
@@ -1246,6 +1258,8 @@ Completion criteria:
 
 ### Task 7: Products, Candidates, and Offers
 
+Status: completed and validated on 2026-09-01.
+
 Scope:
 
 - Implement canonical Products, Item Candidates, retailer Offers, Price Checks, and comparison UI.
@@ -1501,23 +1515,23 @@ Decisions 1, 2, 6, 7, and 13 are resolved. Decision 11 must be resolved before T
 ## Current repository state
 
 - Branch: `main`.
-- History: scaffold baseline followed by committed Task 1 monorepo, Task 2 domain/D1, Task 3 Google-authentication, Task 4 authorization/invitation, combined Tasks 5A/5B core-planning milestones, and Task 6A Collection Brief/text Concept. Local `main` is one commit ahead of `origin/main`; Task 6B is the current uncommitted implementation milestone.
-- Tasks 1 through 6B are complete and validated; Task 7 is next.
+- History: scaffold baseline followed by committed Task 1 monorepo, Task 2 domain/D1, Task 3 Google authentication, Task 4 authorization/invitations, Tasks 5A/5B core planning, Task 6A Collection Brief/text Concept, Task 6B Item workflow, and the branding/MCP roadmap note. `main` matches `origin/main` before the current uncommitted Task 7 implementation.
+- Tasks 1 through 7 are complete and validated; Task 8 is next.
 - The repository is a Bun `1.3.12` workspace with `apps/web`, `packages/domain`, `packages/contracts`, and `packages/i18n`. No mobile, API-client, or config package has been created.
 - `bun.lock` is the sole package-manager lockfile present, and Bun workspaces are declared in the root `package.json`.
 - The Vite/React frontend provides localized Google sign-in and a protected planning studio with Workspace, Collection, and Item create/edit/archive/restore flows, URL-restored selection, quantity-aware Item cards, lightweight group navigation, a Collection direction surface for the Brief, EUR budget, ordered color preference, references, and optional text Concept, plus a permission-aware Item detail/status/history workflow. English and Persian layouts are responsive at desktop and narrow widths.
-- Drizzle is the unified schema source. The first generated migration includes Better Auth's generated tables plus Workspace-private Products and the initial collaboration/planning tables; a second migration adds persistent Better Auth rate-limit storage; a third adds Invitations, selected-Collection targets, single-use acceptance provenance, and privacy-preserving collaboration rate limits; the fourth extends the structured Collection Brief and adds the one-active-Concept record; the fifth adds Item requirements and immutable Decision Events. Later feature tables remain owned by their roadmap tasks.
+- Drizzle is the unified schema source. The first generated migration includes Better Auth's generated tables plus Workspace-private Products and the initial collaboration/planning tables; a second migration adds persistent Better Auth rate-limit storage; a third adds Invitations, selected-Collection targets, single-use acceptance provenance, and privacy-preserving collaboration rate limits; the fourth extends the structured Collection Brief and adds the one-active-Concept record; the fifth adds Item requirements and immutable Decision Events; the sixth adds Merchant-backed Offers, qualified Price Checks, planned selection, and immutable purchase snapshots while preserving existing local data. Later feature tables remain owned by their roadmap tasks.
 - Local migration, migration-list, schema-check, seed, type-generation, and quality commands are available from the workspace root. The fixed development seed is idempotent.
-- Runtime-independent domain primitives preserve separate Item-needed and Candidate-planned purchase quantities, money/budget validation, group labels, honest Offer price/shipping semantics, normalized ordered core/supporting color rules, and deterministic Item status-transition classification.
+- Runtime-independent domain primitives preserve separate Item-needed and Candidate-planned purchase quantities, money/budget validation, group labels, honest Offer price/shipping semantics, freshness, exact/lower-bound/incomplete aggregation, normalized ordered core/supporting color rules, and deterministic Item status-transition classification.
 - The root `CONTEXT.md` defines the purchase-planning language and guards the Item/Candidate/Product/Offer boundaries.
 - The baseline Worker regression test preserves `GET /api/` returning `200` with `{ "name": "Cloudflare" }`.
 - Better Auth uses explicit origins, environment-bound secrets, database-backed sessions, secure production cookies, edge-controlled client-IP rate-limit keys, and disabled implicit account linking. Google is the only enabled provider.
 - Auth integration tests cover anonymous rejection, Google authorization URL construction, untrusted callback rejection, authenticated session loading, sign-out revocation, and separate internal User/provider Account records.
 - Capability resolution combines applicable Workspace and Collection grants. Workspace grants reach future Collections, Collection grants remain isolated, only Workspace-scoped Owners manage Owner access, and atomic membership mutations preserve at least one Workspace-scoped Owner.
 - Invitation APIs create Workspace or selected-Collection grants, default supplied email addresses to a verified-email restriction with explicit opt-out, return fragment-based bearer URLs once, store SHA-256 hashes only, provide a rate-limited metadata-only preview, revoke pending invitations, and accept through one rollback-safe D1 batch.
-- Shared Zod contracts and chained Hono RPC routes implement authenticated Workspace, Collection, Item, Collection Brief, text Concept, and Item workflow behavior. Brief replacement, including its ordered colors, is atomic; Item detail and status writes atomically append Decision Events through D1 batches; archived ancestors block ordinary mutations while authorized history reads remain available.
-- Domain, localization, UI-state, and Cloudflare-runtime database tests cover locale detection/direction/formatting, critical shell states, migration idempotency, all role allow/deny behavior, scope isolation, Owner boundaries, invitation expiry/revocation/email matching, rate limits, replay, competing acceptance, database uniqueness, forced rollback and retry, typed Workspace-to-Item creation, CRUD validation, archive/restore, Item filtering/pagination, positive independent quantities, Item detail snapshots, explicit status transitions, reversal classification, purchase-only Owner authorization, Decision Event immutability, planned Candidate/Offer ownership, price/budget constraints, palette bounds/normalization/order/uniqueness, structured Brief validation, and one-active-Concept behavior.
-- The core API, localized CRUD shell, Collection Brief/text Concept surface, and detailed Task 6B Item workflow are implemented. The collaboration UI, product comparison, and research behavior are not yet implemented.
+- Shared Zod contracts and chained Hono routes implement authenticated Workspace, Collection, Item, Collection Brief, text Concept, Item workflow, and commerce behavior. Brief replacement, including its ordered colors, is atomic; Item detail and status writes atomically append Decision Events; Offer refreshes append Price Checks; planned-choice and purchase commands append immutable snapshots; archived ancestors block ordinary mutations while authorized history reads remain available.
+- Domain, localization, UI-state, and Cloudflare-runtime database tests cover locale detection/direction/formatting, critical shell states, migration idempotency, all role allow/deny behavior, scope isolation, Owner boundaries, invitation expiry/revocation/email matching, rate limits, replay, competing acceptance, database uniqueness, forced rollback and retry, typed Workspace-to-Item creation, CRUD validation, archive/restore, Item filtering/pagination, positive independent quantities, Item detail snapshots, explicit status transitions, reversal classification, purchase-only Owner authorization, Decision Event and Price Check immutability, Merchant/Product/Offer scope, several Candidates and Offers, exact/starting/unknown prices, shipping bases, qualified availability, freshness, honest Collection/group rollups, partial purchase snapshots, palette bounds/normalization/order/uniqueness, structured Brief validation, and one-active-Concept behavior.
+- The localized web studio now includes the structured Brief/text Concept, Item decision history, Merchant-backed Product/Offer comparison, explicit planned choices, separate shipping and totals, freshness/availability details, partial purchase recording, and Collection/group planned-cost rollups. Member/invitation management UI, comments, votes, and research behavior are not yet implemented.
 
 ## Current reference basis
 
@@ -1582,6 +1596,8 @@ The product owner explicitly authorized Task 6A on 2026-08-31. Task 6A implement
 
 The product owner explicitly authorized Task 6B on 2026-08-31. Task 6B implements complete Item planning fields, capability-derived Item actions, explicit human-only status commands, immutable Decision Events with atomic detail/status writes, reversal warnings, and localized detail/history UI. It is complete and validated through automated domain, contract, database, Worker, localization, and UI-state coverage plus one real desktop flow and one Persian 390-pixel responsive check.
 
+The product owner explicitly authorized Task 7 on 2026-09-01. Task 7 implements Workspace-private Merchants, canonical Products, Item Candidates, several Offers per Product, append-only Price Checks, explicit planned Candidate/Offer selection, exact/starting/unknown and per-line/per-unit/unknown cost semantics, qualified availability and freshness, honest Collection/group rollups, and immutable partial-purchase snapshots without automatic Item completion. It is complete and validated through the full quality gate, focused Worker/D1 integration coverage, a real seeded comparison flow, a 390-pixel no-overflow check, and a zero-error browser console check.
+
 On 2026-09-01, the product owner added a future ChatGPT MCP integration as the final roadmap task. It remains deferred until the production API and permission-filtered Context Builder are stable, and it must reuse existing application services rather than introduce parallel domain or database behavior.
 
-The next ordered implementation task is Task 7: Products, Candidates, and Offers. Implementation starts only after the product owner explicitly requests continuation in a later session.
+The next ordered implementation task is Task 8: Collaboration experience. Implementation starts only after the product owner explicitly requests continuation in a later session.

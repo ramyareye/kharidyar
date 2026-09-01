@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	aggregatePlannedCosts,
 	capabilities,
 	capabilitiesForRole,
 	canManageMembershipRole,
@@ -11,9 +12,11 @@ import {
 	DomainValidationError,
 	groupLabel,
 	hasCapability,
+	isOfferStale,
 	itemStatusTransition,
 	money,
   normalizeHexColor,
+	offerStaleAfterMilliseconds,
 	offerTerms,
 	plannedPurchaseQuantity,
 	quantityPlan,
@@ -371,6 +374,89 @@ describe("Offer planned costs", () => {
 			totalMinor: null,
 			missing: ["unit_price"],
 		});
+	});
+
+	it("aggregates exact and lower-bound lines without hiding incomplete or mixed-currency lines", () => {
+		const exact = calculatePlannedCost(
+			offerTerms({
+				priceKind: "exact",
+				unitPriceMinor: 1_000,
+				currency: "EUR",
+				shippingMinor: 200,
+				shippingBasis: "per_line",
+				availability: "available",
+			}),
+			plannedPurchaseQuantity(2),
+		);
+		const lowerBound = calculatePlannedCost(
+			offerTerms({
+				priceKind: "starting_at",
+				unitPriceMinor: 500,
+				currency: "EUR",
+				shippingMinor: 0,
+				shippingBasis: "per_line",
+				availability: "available",
+			}),
+			plannedPurchaseQuantity(1),
+		);
+		const mixedCurrency = calculatePlannedCost(
+			offerTerms({
+				priceKind: "exact",
+				unitPriceMinor: 100,
+				currency: "USD",
+				shippingMinor: 0,
+				shippingBasis: "per_line",
+				availability: "available",
+			}),
+			plannedPurchaseQuantity(1),
+		);
+		const incomplete = calculatePlannedCost(
+			offerTerms({
+				priceKind: "unknown",
+				currency: null,
+				shippingMinor: null,
+				shippingBasis: "unknown",
+				availability: "unknown",
+			}),
+			plannedPurchaseQuantity(1),
+		);
+
+		expect(aggregatePlannedCosts([exact, lowerBound], "EUR")).toEqual({
+			status: "lower_bound",
+			currency: "EUR",
+			merchandiseMinor: 2_500,
+			shippingMinor: 200,
+			totalMinor: 2_700,
+			completeLineCount: 2,
+			incompleteLineCount: 0,
+			currencyMismatchLineCount: 0,
+		});
+		expect(
+			aggregatePlannedCosts(
+				[exact, lowerBound, incomplete, mixedCurrency],
+				"EUR",
+			),
+		).toMatchObject({
+			status: "incomplete",
+			totalMinor: 2_700,
+			completeLineCount: 2,
+			incompleteLineCount: 1,
+			currencyMismatchLineCount: 1,
+		});
+	});
+});
+
+describe("Offer freshness", () => {
+	it("becomes stale only after the freshness window", () => {
+		const now = Date.UTC(2026, 8, 1);
+		expect(isOfferStale(now - offerStaleAfterMilliseconds, now)).toBe(false);
+		expect(isOfferStale(now - offerStaleAfterMilliseconds - 1, now)).toBe(true);
+	});
+
+	it("rejects invalid timestamps and thresholds", () => {
+		expect(() => isOfferStale(-1, 0)).toThrow(DomainValidationError);
+		expect(() => isOfferStale(0, 0, 0)).toThrow(DomainValidationError);
+		expect(() => isOfferStale(Number.NaN, 0)).toThrow(DomainValidationError);
 	});
 });
 

@@ -70,6 +70,10 @@ _Avoid_: Winner, purchase, final Product
 
 ## Commerce facts
 
+**Merchant**:
+The seller that publishes an Offer, with an online, physical, or combined sales presence; it is distinct from the Product's brand.
+_Avoid_: Brand, Product, Offer, free-text seller
+
 **Product**:
 A merchant-independent identity for the thing being considered, private to one Workspace in the MVP.
 _Avoid_: Offer, listing, Candidate

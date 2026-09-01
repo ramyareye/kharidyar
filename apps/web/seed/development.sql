@@ -158,11 +158,30 @@ VALUES (
 	'dev-user'
 );
 
+INSERT OR IGNORE INTO merchants (
+	id,
+	workspace_id,
+	name,
+	sales_channel,
+	website_url,
+	notes,
+	created_by_user_id
+)
+VALUES (
+	'dev-merchant-ikea-netherlands',
+	'dev-workspace',
+	'IKEA Netherlands',
+	'both',
+	'https://www.ikea.com/nl/en/',
+	'Online ordering and store-dependent pickup or availability.',
+	'dev-user'
+);
+
 INSERT OR IGNORE INTO offers (
 	id,
 	workspace_id,
 	product_id,
-	seller_name,
+	merchant_id,
 	source_url,
 	price_kind,
 	unit_price_minor,
@@ -179,7 +198,11 @@ VALUES (
 	'dev-offer-lisabo-chair-ikea-nl',
 	'dev-workspace',
 	'dev-product-lisabo-chair',
-	'IKEA Netherlands',
+	(
+		SELECT id FROM merchants
+		WHERE workspace_id = 'dev-workspace' AND name = 'IKEA Netherlands'
+		LIMIT 1
+	),
 	'https://www.ikea.com/nl/en/p/lisabo-chair-ash-00457235/',
 	'exact',
 	5999,
@@ -225,7 +248,8 @@ INSERT OR IGNORE INTO price_checks (
 	shipping_minor,
 	shipping_basis,
 	availability_state,
-	availability_qualifier,
+	availability_channel,
+	availability_note,
 	observed_at,
 	observed_by_user_id
 )
@@ -238,6 +262,7 @@ VALUES (
 	NULL,
 	'unknown',
 	'unknown',
+	'online',
 	'Availability depends on the selected store.',
 	cast(unixepoch('subsecond') * 1000 as integer),
 	'dev-user'

@@ -3,6 +3,8 @@ import type { ItemStatus } from "./planning";
 export const decisionEventKinds = [
 	"item_details_updated",
 	"item_status_changed",
+	"planned_candidate_changed",
+	"purchase_recorded",
 ] as const;
 
 export type DecisionEventKind = (typeof decisionEventKinds)[number];

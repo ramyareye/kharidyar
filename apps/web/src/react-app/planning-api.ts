@@ -1,16 +1,21 @@
 import {
 	apiErrorResponseSchema,
+	collectionRollupResponseSchema,
   collectionBriefResponseSchema,
 	collectionListResponseSchema,
 	collectionResponseSchema,
 	conceptResponseSchema,
 	itemListResponseSchema,
+	itemComparisonResponseSchema,
 	itemResponseSchema,
 	itemStatusChangeResponseSchema,
 	itemWorkflowResponseSchema,
 	workspaceListResponseSchema,
 	workspaceResponseSchema,
 	type ApiErrorCode,
+	type CandidateCreateInput,
+	type CandidateUpdateInput,
+	type CollectionRollupResponse,
 	type CollectionCreateInput,
   type CollectionBriefInput,
   type CollectionBriefResource,
@@ -19,11 +24,18 @@ import {
   type ConceptInput,
   type ConceptResource,
 	type ItemCreateInput,
+	type ItemComparisonResponse,
 	type ItemPermissions,
 	type ItemResource,
 	type ItemStatusChangeInput,
 	type ItemStatusDecisionEvent,
 	type ItemUpdateInput,
+	type MerchantInput,
+	type OfferInput,
+	type PlannedSelectionInput,
+	type PriceCheckInput,
+	type ProductUpdateInput,
+	type PurchaseRecordInput,
 	type DecisionEventResource,
 	type WorkspaceCreateInput,
 	type WorkspaceResource,
@@ -80,6 +92,22 @@ async function parsedResponse<T>(
 	return schema.parse(body);
 }
 
+async function commerceRequest<T>(
+	path: string,
+	method: "GET" | "PATCH" | "POST" | "PUT",
+	schema: RuntimeSchema<T>,
+	value?: unknown,
+): Promise<T> {
+	const response = await fetch(`/api${path}`, {
+		body: value === undefined ? undefined : JSON.stringify(value),
+		credentials: "same-origin",
+		headers:
+			value === undefined ? undefined : { "content-type": "application/json" },
+		method,
+	});
+	return parsedResponse(response, schema);
+}
+
 export interface PlanningApi {
 	archiveCollection: (collectionId: string) => Promise<CollectionResource>;
 	archiveItem: (itemId: string) => Promise<ItemResource>;
@@ -93,6 +121,19 @@ export interface PlanningApi {
 		value: ItemCreateInput,
 	) => Promise<ItemResource>;
 	createWorkspace: (value: WorkspaceCreateInput) => Promise<WorkspaceResource>;
+	createCandidate: (
+		itemId: string,
+		value: CandidateCreateInput,
+	) => Promise<ItemComparisonResponse>;
+	createMerchant: (
+		itemId: string,
+		value: MerchantInput,
+	) => Promise<ItemComparisonResponse>;
+	createOffer: (
+		itemId: string,
+		candidateId: string,
+		value: OfferInput,
+	) => Promise<ItemComparisonResponse>;
   readCollectionBrief: (
     collectionId: string,
   ) => Promise<EditableResource<CollectionBriefResource>>;
@@ -106,6 +147,32 @@ export interface PlanningApi {
 	restoreItem: (itemId: string) => Promise<ItemResource>;
 	restoreWorkspace: (workspaceId: string) => Promise<WorkspaceResource>;
 	readItemWorkflow: (itemId: string) => Promise<ItemWorkflowResult>;
+	readItemComparison: (itemId: string) => Promise<ItemComparisonResponse>;
+	readCollectionRollup: (
+		collectionId: string,
+	) => Promise<CollectionRollupResponse>;
+	archiveCandidate: (
+		itemId: string,
+		candidateId: string,
+	) => Promise<ItemComparisonResponse>;
+	restoreCandidate: (
+		itemId: string,
+		candidateId: string,
+	) => Promise<ItemComparisonResponse>;
+	changePlannedSelection: (
+		itemId: string,
+		value: PlannedSelectionInput,
+	) => Promise<ItemComparisonResponse>;
+	recordPriceCheck: (
+		itemId: string,
+		candidateId: string,
+		offerId: string,
+		value: PriceCheckInput,
+	) => Promise<ItemComparisonResponse>;
+	recordPurchase: (
+		itemId: string,
+		value: PurchaseRecordInput,
+	) => Promise<ItemComparisonResponse>;
   removeConcept: (
     collectionId: string,
   ) => Promise<EditableResource<ConceptResource>>;
@@ -125,6 +192,22 @@ export interface PlanningApi {
 		itemId: string,
 		value: ItemUpdateInput,
 	) => Promise<ItemResource>;
+	updateCandidate: (
+		itemId: string,
+		candidateId: string,
+		value: CandidateUpdateInput,
+	) => Promise<ItemComparisonResponse>;
+	updateCandidateProduct: (
+		itemId: string,
+		candidateId: string,
+		value: ProductUpdateInput,
+	) => Promise<ItemComparisonResponse>;
+	updateOffer: (
+		itemId: string,
+		candidateId: string,
+		offerId: string,
+		value: OfferInput,
+	) => Promise<ItemComparisonResponse>;
 	changeItemStatus: (
 		itemId: string,
 		value: ItemStatusChangeInput,
@@ -152,6 +235,119 @@ export interface EditableResource<T> {
 }
 
 export const planningApi: PlanningApi = {
+	async readItemComparison(itemId) {
+		return commerceRequest(
+			`/items/${encodeURIComponent(itemId)}/comparison`,
+			"GET",
+			itemComparisonResponseSchema,
+		);
+	},
+
+	async readCollectionRollup(collectionId) {
+		return commerceRequest(
+			`/collections/${encodeURIComponent(collectionId)}/planned-cost`,
+			"GET",
+			collectionRollupResponseSchema,
+		);
+	},
+
+	async createCandidate(itemId, value) {
+		return commerceRequest(
+			`/items/${encodeURIComponent(itemId)}/candidates`,
+			"POST",
+			itemComparisonResponseSchema,
+			value,
+		);
+	},
+
+	async updateCandidate(itemId, candidateId, value) {
+		return commerceRequest(
+			`/items/${encodeURIComponent(itemId)}/candidates/${encodeURIComponent(candidateId)}`,
+			"PATCH",
+			itemComparisonResponseSchema,
+			value,
+		);
+	},
+
+	async archiveCandidate(itemId, candidateId) {
+		return commerceRequest(
+			`/items/${encodeURIComponent(itemId)}/candidates/${encodeURIComponent(candidateId)}/archive`,
+			"POST",
+			itemComparisonResponseSchema,
+		);
+	},
+
+	async restoreCandidate(itemId, candidateId) {
+		return commerceRequest(
+			`/items/${encodeURIComponent(itemId)}/candidates/${encodeURIComponent(candidateId)}/restore`,
+			"POST",
+			itemComparisonResponseSchema,
+		);
+	},
+
+	async updateCandidateProduct(itemId, candidateId, value) {
+		return commerceRequest(
+			`/items/${encodeURIComponent(itemId)}/candidates/${encodeURIComponent(candidateId)}/product`,
+			"PATCH",
+			itemComparisonResponseSchema,
+			value,
+		);
+	},
+
+	async createMerchant(itemId, value) {
+		return commerceRequest(
+			`/items/${encodeURIComponent(itemId)}/merchants`,
+			"POST",
+			itemComparisonResponseSchema,
+			value,
+		);
+	},
+
+	async createOffer(itemId, candidateId, value) {
+		return commerceRequest(
+			`/items/${encodeURIComponent(itemId)}/candidates/${encodeURIComponent(candidateId)}/offers`,
+			"POST",
+			itemComparisonResponseSchema,
+			value,
+		);
+	},
+
+	async updateOffer(itemId, candidateId, offerId, value) {
+		return commerceRequest(
+			`/items/${encodeURIComponent(itemId)}/candidates/${encodeURIComponent(candidateId)}/offers/${encodeURIComponent(offerId)}`,
+			"PUT",
+			itemComparisonResponseSchema,
+			value,
+		);
+	},
+
+	async recordPriceCheck(itemId, candidateId, offerId, value) {
+		return commerceRequest(
+			`/items/${encodeURIComponent(itemId)}/candidates/${encodeURIComponent(candidateId)}/offers/${encodeURIComponent(offerId)}/price-checks`,
+			"POST",
+			itemComparisonResponseSchema,
+			value,
+		);
+	},
+
+	async changePlannedSelection(itemId, value) {
+		return commerceRequest(
+			`/items/${encodeURIComponent(itemId)}/plan`,
+			"PUT",
+			itemComparisonResponseSchema,
+			value,
+		);
+	},
+
+	async recordPurchase(itemId, value) {
+		return commerceRequest(
+			`/items/${encodeURIComponent(itemId)}/purchases`,
+			"POST",
+			itemComparisonResponseSchema,
+			value,
+		);
+	},
+
 	async listWorkspaces() {
 		const response = await client.workspaces.$get({
 			query: { includeArchived: "true" },

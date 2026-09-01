@@ -1,5 +1,7 @@
 import {
 	itemPlanningSnapshotSchema,
+	plannedSelectionSnapshotSchema,
+	purchaseSnapshotSchema,
 	type DecisionEventResource,
 	type ItemPermissions,
 	type ItemResource,
@@ -39,6 +41,7 @@ interface DecisionEventRow {
 	to_status: ItemStatus | null;
 	transition_kind: ItemStatusTransitionKind | null;
 	note: string | null;
+	purchase_snapshot_json: string | null;
 	created_at: number;
 }
 
@@ -77,24 +80,62 @@ function decisionEventResource(row: DecisionEventRow): DecisionEventResource {
 		};
 	}
 
-	if (
-		row.kind !== "item_status_changed" ||
-		row.from_status === null ||
-		row.to_status === null ||
-		row.transition_kind === null
-	) {
-		throw new Error("Stored Item status decision is incomplete");
+	if (row.kind === "item_status_changed") {
+		if (
+			row.from_status === null ||
+			row.to_status === null ||
+			row.transition_kind === null
+		) {
+			throw new Error("Stored Item status decision is incomplete");
+		}
+
+		return {
+			...base,
+			kind: row.kind,
+			fromStatus: row.from_status,
+			toStatus: row.to_status,
+			transitionKind: row.transition_kind,
+			unusual: row.transition_kind === "reversal",
+			note: row.note,
+		};
 	}
 
-	return {
-		...base,
-		kind: row.kind,
-		fromStatus: row.from_status,
-		toStatus: row.to_status,
-		transitionKind: row.transition_kind,
-		unusual: row.transition_kind === "reversal",
-		note: row.note,
-	};
+	if (row.kind === "planned_candidate_changed") {
+		if (
+			row.before_snapshot_json === null &&
+			row.after_snapshot_json === null
+		) {
+			throw new Error("Stored planned Candidate decision is incomplete");
+		}
+		return {
+			...base,
+			kind: row.kind,
+			before:
+				row.before_snapshot_json === null
+					? null
+					: plannedSelectionSnapshotSchema.parse(
+							JSON.parse(row.before_snapshot_json),
+						),
+			after:
+				row.after_snapshot_json === null
+					? null
+					: plannedSelectionSnapshotSchema.parse(
+							JSON.parse(row.after_snapshot_json),
+						),
+		};
+	}
+
+	if (row.kind === "purchase_recorded" && row.purchase_snapshot_json !== null) {
+		return {
+			...base,
+			kind: row.kind,
+			purchase: purchaseSnapshotSchema.parse(
+				JSON.parse(row.purchase_snapshot_json),
+			),
+		};
+	}
+
+	throw new Error("Stored purchase decision is incomplete");
 }
 
 async function itemWorkflowRow(
@@ -150,6 +191,7 @@ async function decisionEvents(
 				e.to_status,
 				e.transition_kind,
 				e.note,
+				e.purchase_snapshot_json,
 				e.created_at
 			from decision_events e
 			join user u on u.id = e.actor_user_id
@@ -181,6 +223,7 @@ async function decisionEventById(
 				e.to_status,
 				e.transition_kind,
 				e.note,
+				e.purchase_snapshot_json,
 				e.created_at
 			from decision_events e
 			join user u on u.id = e.actor_user_id

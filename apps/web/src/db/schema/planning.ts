@@ -1,8 +1,12 @@
 import {
+	availabilityStates,
 	decisionEventKinds,
 	itemPriorities,
 	itemStatuses,
 	itemStatusTransitionKinds,
+	merchantSalesChannels,
+	offerPriceKinds,
+	shippingBases,
 } from "@kharidyar/domain";
 import { sql } from "drizzle-orm";
 import {
@@ -18,14 +22,6 @@ import {
 import { user } from "./auth";
 import { createdAt, updatedAt } from "./columns";
 import { collections, workspaces } from "./collaboration";
-
-export const offerPriceKinds = ["exact", "starting_at", "unknown"] as const;
-export const shippingBases = ["per_line", "per_unit", "unknown"] as const;
-export const availabilityStates = [
-	"available",
-	"unavailable",
-	"unknown",
-] as const;
 
 export const items = sqliteTable(
 	"items",
@@ -121,12 +117,17 @@ export const decisionEvents = sqliteTable(
 			enum: itemStatusTransitionKinds,
 		}),
 		note: text("note"),
+		candidateId: text("candidate_id"),
+		offerId: text("offer_id"),
+		priceCheckId: text("price_check_id"),
+		purchasedQuantity: integer("purchased_quantity"),
+		purchaseSnapshotJson: text("purchase_snapshot_json"),
 		createdAt: createdAt(),
 	},
 	(table) => [
 		check(
 			"decision_events_kind_check",
-			sql`${table.kind} in ('item_details_updated', 'item_status_changed')`,
+			sql`${table.kind} in ('item_details_updated', 'item_status_changed', 'planned_candidate_changed', 'purchase_recorded')`,
 		),
 		check(
 			"decision_events_payload_check",
@@ -137,7 +138,12 @@ export const decisionEvents = sqliteTable(
 					and ${table.fromStatus} is null
 					and ${table.toStatus} is null
 					and ${table.transitionKind} is null
-					and ${table.note} is null)
+					and ${table.note} is null
+					and ${table.candidateId} is null
+					and ${table.offerId} is null
+					and ${table.priceCheckId} is null
+					and ${table.purchasedQuantity} is null
+					and ${table.purchaseSnapshotJson} is null)
 				or
 				(${table.kind} = 'item_status_changed'
 					and ${table.beforeSnapshotJson} is null
@@ -145,7 +151,37 @@ export const decisionEvents = sqliteTable(
 					and ${table.fromStatus} is not null
 					and ${table.toStatus} is not null
 					and ${table.fromStatus} <> ${table.toStatus}
-					and ${table.transitionKind} is not null)
+					and ${table.transitionKind} is not null
+					and ${table.candidateId} is null
+					and ${table.offerId} is null
+					and ${table.priceCheckId} is null
+					and ${table.purchasedQuantity} is null
+					and ${table.purchaseSnapshotJson} is null)
+				or
+				(${table.kind} = 'planned_candidate_changed'
+					and (${table.beforeSnapshotJson} is not null or ${table.afterSnapshotJson} is not null)
+					and ${table.fromStatus} is null
+					and ${table.toStatus} is null
+					and ${table.transitionKind} is null
+					and ${table.note} is null
+					and ${table.candidateId} is null
+					and ${table.offerId} is null
+					and ${table.priceCheckId} is null
+					and ${table.purchasedQuantity} is null
+					and ${table.purchaseSnapshotJson} is null)
+				or
+				(${table.kind} = 'purchase_recorded'
+					and ${table.beforeSnapshotJson} is null
+					and ${table.afterSnapshotJson} is null
+					and ${table.fromStatus} is null
+					and ${table.toStatus} is null
+					and ${table.transitionKind} is null
+					and ${table.note} is null
+					and ${table.candidateId} is not null
+					and ${table.offerId} is not null
+					and ${table.priceCheckId} is not null
+					and ${table.purchasedQuantity} is not null
+					and ${table.purchaseSnapshotJson} is not null)
 			)`,
 		),
 		check(
@@ -164,12 +200,72 @@ export const decisionEvents = sqliteTable(
 			"decision_events_note_check",
 			sql`${table.note} is null or length(trim(${table.note})) between 1 and 1000`,
 		),
+		check(
+			"decision_events_purchase_quantity_check",
+			sql`${table.purchasedQuantity} is null or (typeof(${table.purchasedQuantity}) = 'integer' and ${table.purchasedQuantity} between 1 and 9007199254740991)`,
+		),
 		index("decision_events_item_time_idx").on(
 			table.itemId,
 			table.createdAt,
 			table.id,
 		),
 		index("decision_events_actor_idx").on(table.actorUserId),
+		index("decision_events_candidate_purchase_idx").on(
+			table.candidateId,
+			table.createdAt,
+		),
+		index("decision_events_offer_purchase_idx").on(
+			table.offerId,
+			table.createdAt,
+		),
+	],
+);
+
+export const merchants = sqliteTable(
+	"merchants",
+	{
+		id: text("id").primaryKey(),
+		workspaceId: text("workspace_id")
+			.notNull()
+			.references(() => workspaces.id, { onDelete: "cascade" }),
+		name: text("name").notNull(),
+		salesChannel: text("sales_channel", { enum: merchantSalesChannels })
+			.default("online")
+			.notNull(),
+		websiteUrl: text("website_url"),
+		notes: text("notes"),
+		createdByUserId: text("created_by_user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "restrict" }),
+		archivedAt: integer("archived_at", { mode: "timestamp_ms" }),
+		createdAt: createdAt(),
+		updatedAt: updatedAt(),
+	},
+	(table) => [
+		check(
+			"merchants_name_length_check",
+			sql`length(trim(${table.name})) between 1 and 160`,
+		),
+		check(
+			"merchants_sales_channel_check",
+			sql`${table.salesChannel} in ('online', 'in_person', 'both')`,
+		),
+		check(
+			"merchants_website_url_check",
+			sql`${table.websiteUrl} is null or (length(${table.websiteUrl}) between 8 and 2048 and lower(${table.websiteUrl}) glob 'https://*')`,
+		),
+		check(
+			"merchants_notes_length_check",
+			sql`${table.notes} is null or length(trim(${table.notes})) between 1 and 2000`,
+		),
+		uniqueIndex("merchants_id_workspace_uidx").on(
+			table.id,
+			table.workspaceId,
+		),
+		uniqueIndex("merchants_active_workspace_name_uidx")
+			.on(table.workspaceId, table.name)
+			.where(sql`${table.archivedAt} is null`),
+		index("merchants_workspace_name_idx").on(table.workspaceId, table.name),
 	],
 );
 
@@ -197,6 +293,22 @@ export const products = sqliteTable(
 			"products_title_length_check",
 			sql`length(trim(${table.title})) between 1 and 240`,
 		),
+		check(
+			"products_brand_length_check",
+			sql`${table.brand} is null or length(trim(${table.brand})) between 1 and 160`,
+		),
+		check(
+			"products_model_length_check",
+			sql`${table.model} is null or length(trim(${table.model})) between 1 and 160`,
+		),
+		check(
+			"products_category_length_check",
+			sql`${table.category} is null or length(trim(${table.category})) between 1 and 120`,
+		),
+		check(
+			"products_attributes_json_check",
+			sql`${table.attributesJson} is null or json_valid(${table.attributesJson})`,
+		),
 		uniqueIndex("products_id_workspace_uidx").on(
 			table.id,
 			table.workspaceId,
@@ -214,7 +326,7 @@ export const offers = sqliteTable(
 		id: text("id").primaryKey(),
 		workspaceId: text("workspace_id").notNull(),
 		productId: text("product_id").notNull(),
-		sellerName: text("seller_name").notNull(),
+		merchantId: text("merchant_id").notNull(),
 		sourceUrl: text("source_url").notNull(),
 		priceKind: text("price_kind", { enum: offerPriceKinds }).notNull(),
 		unitPriceMinor: integer("unit_price_minor"),
@@ -245,9 +357,14 @@ export const offers = sqliteTable(
 			columns: [table.productId, table.workspaceId],
 			foreignColumns: [products.id, products.workspaceId],
 		}).onDelete("cascade"),
+		foreignKey({
+			name: "offers_merchant_workspace_fk",
+			columns: [table.merchantId, table.workspaceId],
+			foreignColumns: [merchants.id, merchants.workspaceId],
+		}).onDelete("restrict"),
 		check(
-			"offers_seller_name_check",
-			sql`length(trim(${table.sellerName})) between 1 and 160`,
+			"offers_source_url_check",
+			sql`length(${table.sourceUrl}) between 8 and 2048 and lower(${table.sourceUrl}) glob 'https://*'`,
 		),
 		check(
 			"offers_price_check",
@@ -273,6 +390,15 @@ export const offers = sqliteTable(
 			"offers_availability_state_check",
 			sql`${table.availabilityState} in ('available', 'unavailable', 'unknown')`,
 		),
+		check(
+			"offers_availability_text_check",
+			sql`(
+				(${table.availabilityChannel} is null or length(trim(${table.availabilityChannel})) between 1 and 80)
+				and (${table.availabilityLocation} is null or length(trim(${table.availabilityLocation})) between 1 and 160)
+				and (${table.availabilityVariant} is null or length(trim(${table.availabilityVariant})) between 1 and 160)
+				and (${table.availabilityNote} is null or length(trim(${table.availabilityNote})) between 1 and 1000)
+			)`,
+		),
 		uniqueIndex("offers_id_product_workspace_uidx").on(
 			table.id,
 			table.productId,
@@ -280,6 +406,10 @@ export const offers = sqliteTable(
 		),
 		index("offers_product_freshness_idx").on(
 			table.productId,
+			table.lastCheckedAt,
+		),
+		index("offers_merchant_freshness_idx").on(
+			table.merchantId,
 			table.lastCheckedAt,
 		),
 	],
@@ -336,6 +466,14 @@ export const itemCandidates = sqliteTable(
 			"item_candidates_planned_offer_state_check",
 			sql`${table.isPlanned} = 1 or ${table.plannedOfferId} is null`,
 		),
+		check(
+			"item_candidates_notes_length_check",
+			sql`${table.notes} is null or length(trim(${table.notes})) between 1 and 4000`,
+		),
+		check(
+			"item_candidates_rank_check",
+			sql`${table.rank} is null or (typeof(${table.rank}) = 'integer' and ${table.rank} between 0 and 1000)`,
+		),
 		uniqueIndex("item_candidates_active_item_product_uidx")
 			.on(table.itemId, table.productId)
 			.where(sql`${table.archivedAt} is null`),
@@ -361,7 +499,10 @@ export const priceChecks = sqliteTable(
 		availabilityState: text("availability_state", {
 			enum: availabilityStates,
 		}).notNull(),
-		availabilityQualifier: text("availability_qualifier"),
+		availabilityChannel: text("availability_channel"),
+		availabilityLocation: text("availability_location"),
+		availabilityVariant: text("availability_variant"),
+		availabilityNote: text("availability_note"),
 		observedAt: integer("observed_at", { mode: "timestamp_ms" }).notNull(),
 		observedByUserId: text("observed_by_user_id")
 			.notNull()
@@ -392,6 +533,15 @@ export const priceChecks = sqliteTable(
 		check(
 			"price_checks_availability_state_check",
 			sql`${table.availabilityState} in ('available', 'unavailable', 'unknown')`,
+		),
+		check(
+			"price_checks_availability_text_check",
+			sql`(
+				(${table.availabilityChannel} is null or length(trim(${table.availabilityChannel})) between 1 and 80)
+				and (${table.availabilityLocation} is null or length(trim(${table.availabilityLocation})) between 1 and 160)
+				and (${table.availabilityVariant} is null or length(trim(${table.availabilityVariant})) between 1 and 160)
+				and (${table.availabilityNote} is null or length(trim(${table.availabilityNote})) between 1 and 1000)
+			)`,
 		),
 		index("price_checks_offer_observed_idx").on(
 			table.offerId,

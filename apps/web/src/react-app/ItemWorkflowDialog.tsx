@@ -88,6 +88,14 @@ function DecisionEventCard({
 }) {
 	const { locale, t } = useLocale();
 	const actorInitial = event.actor.name.trim().charAt(0).toUpperCase() || "?";
+	const title =
+		event.kind === "item_status_changed"
+			? t("workflow.statusChanged")
+			: event.kind === "item_details_updated"
+				? t("workflow.detailsUpdated")
+				: event.kind === "planned_candidate_changed"
+					? t("workflow.planChanged")
+					: t("workflow.purchaseRecorded");
 
 	return (
 		<article className="decision-event">
@@ -96,11 +104,7 @@ function DecisionEventCard({
 					{actorInitial}
 				</span>
 				<div>
-					<strong>
-						{event.kind === "item_status_changed"
-							? t("workflow.statusChanged")
-							: t("workflow.detailsUpdated")}
-					</strong>
+					<strong>{title}</strong>
 					<span>
 						{t("workflow.byline", {
 							date: formatDateTime(locale, event.createdAt),
@@ -121,7 +125,7 @@ function DecisionEventCard({
 					<span aria-hidden="true">→</span>
 					<strong dir="auto">{t(statusMessage[event.toStatus])}</strong>
 				</div>
-			) : (
+			) : event.kind === "item_details_updated" ? (
 				<ul className="decision-event__changes">
 					{changedItemSnapshotFields(event.before, event.after).map(
 						(field) => (
@@ -140,11 +144,49 @@ function DecisionEventCard({
 						),
 					)}
 				</ul>
+			) : event.kind === "planned_candidate_changed" ? (
+				<div className="decision-event__status" dir="auto">
+					<span>{event.before?.productTitle ?? t("workflow.none")}</span>
+					<span aria-hidden="true">→</span>
+					<strong>{event.after?.productTitle ?? t("workflow.none")}</strong>
+				</div>
+			) : (
+				<dl className="decision-event__purchase">
+					<div>
+						<dt>{t("workflow.purchaseProduct")}</dt>
+						<dd dir="auto">{event.purchase.productTitle}</dd>
+					</div>
+					<div>
+						<dt>{t("workflow.purchaseMerchant")}</dt>
+						<dd dir="auto">{event.purchase.merchantName}</dd>
+					</div>
+					<div>
+						<dt>{t("workflow.purchaseQuantity")}</dt>
+						<dd>{formatNumber(locale, event.purchase.purchasedQuantity)}</dd>
+					</div>
+					<div>
+						<dt>{t("workflow.purchaseTotal")}</dt>
+						<dd>
+							{event.purchase.totalMinor === null
+								? t("workflow.none")
+								: formatMoney(
+										locale,
+										event.purchase.totalMinor,
+										event.purchase.currency,
+									)}
+						</dd>
+					</div>
+				</dl>
 			)}
 
 			{event.kind === "item_status_changed" && event.note ? (
 				<p className="decision-event__note" dir="auto">
 					{event.note}
+				</p>
+			) : null}
+			{event.kind === "purchase_recorded" && event.purchase.note ? (
+				<p className="decision-event__note" dir="auto">
+					{event.purchase.note}
 				</p>
 			) : null}
 		</article>

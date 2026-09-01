@@ -7,6 +7,13 @@ import {
 } from "@kharidyar/domain";
 import { z } from "zod";
 
+import {
+	plannedSelectionSnapshotSchema,
+	purchaseSnapshotSchema,
+} from "./commerce";
+
+export * from "./commerce";
+
 const maximumSafeInteger = Number.MAX_SAFE_INTEGER;
 
 function requiredTrimmedText(maximumLength: number) {
@@ -295,9 +302,28 @@ export const itemStatusDecisionEventSchema = z
 	})
 	.strict();
 
+export const plannedCandidateDecisionEventSchema = z
+	.object({
+		...decisionEventBase,
+		kind: z.literal(decisionEventKinds[2]),
+		before: plannedSelectionSnapshotSchema.nullable(),
+		after: plannedSelectionSnapshotSchema.nullable(),
+	})
+	.strict();
+
+export const purchaseDecisionEventSchema = z
+	.object({
+		...decisionEventBase,
+		kind: z.literal(decisionEventKinds[3]),
+		purchase: purchaseSnapshotSchema,
+	})
+	.strict();
+
 export const decisionEventResourceSchema = z.discriminatedUnion("kind", [
 	itemDetailsDecisionEventSchema,
 	itemStatusDecisionEventSchema,
+	plannedCandidateDecisionEventSchema,
+	purchaseDecisionEventSchema,
 ]);
 
 export const itemPermissionsSchema = z
@@ -444,6 +470,12 @@ export type DecisionEventResource = z.infer<
 >;
 export type ItemStatusDecisionEvent = z.infer<
 	typeof itemStatusDecisionEventSchema
+>;
+export type PlannedCandidateDecisionEvent = z.infer<
+	typeof plannedCandidateDecisionEventSchema
+>;
+export type PurchaseDecisionEvent = z.infer<
+	typeof purchaseDecisionEventSchema
 >;
 export type ItemPermissions = z.infer<typeof itemPermissionsSchema>;
 export type ApiErrorCode = (typeof apiErrorCodes)[number];

@@ -10,6 +10,8 @@ const firstProductId = "test-product-a";
 const secondProductId = "test-product-b";
 const firstOfferId = "test-offer-a";
 const secondOfferId = "test-offer-b";
+const firstMerchantId = "test-merchant-a";
+const secondMerchantId = "test-merchant-b";
 
 async function insertPlanningFixture(): Promise<void> {
 	const now = Date.now();
@@ -36,12 +38,18 @@ async function insertPlanningFixture(): Promise<void> {
 			"insert into products (id, workspace_id, title, created_by_user_id) values (?, ?, ?, ?)",
 		).bind(secondProductId, workspaceId, "Chair B", userId),
 		env.DB.prepare(
-			"insert into offers (id, workspace_id, product_id, seller_name, source_url, price_kind, unit_price_minor, currency, shipping_minor, shipping_basis, availability_state, last_checked_at, created_by_user_id) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			"insert into merchants (id, workspace_id, name, sales_channel, created_by_user_id) values (?, ?, ?, ?, ?)",
+		).bind(firstMerchantId, workspaceId, "Seller A", "online", userId),
+		env.DB.prepare(
+			"insert into merchants (id, workspace_id, name, sales_channel, created_by_user_id) values (?, ?, ?, ?, ?)",
+		).bind(secondMerchantId, workspaceId, "Seller B", "both", userId),
+		env.DB.prepare(
+			"insert into offers (id, workspace_id, product_id, merchant_id, source_url, price_kind, unit_price_minor, currency, shipping_minor, shipping_basis, availability_state, last_checked_at, created_by_user_id) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		).bind(
 			firstOfferId,
 			workspaceId,
 			firstProductId,
-			"Seller A",
+			firstMerchantId,
 			"https://example.com/a",
 			"exact",
 			5_999,
@@ -53,12 +61,12 @@ async function insertPlanningFixture(): Promise<void> {
 			userId,
 		),
 		env.DB.prepare(
-			"insert into offers (id, workspace_id, product_id, seller_name, source_url, price_kind, unit_price_minor, currency, shipping_minor, shipping_basis, availability_state, last_checked_at, created_by_user_id) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			"insert into offers (id, workspace_id, product_id, merchant_id, source_url, price_kind, unit_price_minor, currency, shipping_minor, shipping_basis, availability_state, last_checked_at, created_by_user_id) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		).bind(
 			secondOfferId,
 			workspaceId,
 			secondProductId,
-			"Seller B",
+			secondMerchantId,
 			"https://example.com/b",
 			"starting_at",
 			4_999,
@@ -285,13 +293,13 @@ describe("planning schema constraints", () => {
 	it("rejects inconsistent Offer price semantics", async () => {
 		await expect(
 			env.DB.prepare(
-				"insert into offers (id, workspace_id, product_id, seller_name, source_url, price_kind, shipping_basis, availability_state, last_checked_at, created_by_user_id) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+				"insert into offers (id, workspace_id, product_id, merchant_id, source_url, price_kind, shipping_basis, availability_state, last_checked_at, created_by_user_id) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 			)
 				.bind(
 					"offer-without-price",
 					workspaceId,
 					firstProductId,
-					"Seller",
+					firstMerchantId,
 					"https://example.com/missing-price",
 					"exact",
 					"unknown",

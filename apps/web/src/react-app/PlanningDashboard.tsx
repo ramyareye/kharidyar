@@ -1,11 +1,13 @@
 import type {
 	ApiErrorCode,
+  CollectionRollupResponse,
   CollectionBriefInput,
   CollectionBriefResource,
 	CollectionCreateInput,
 	CollectionResource,
 	DecisionEventResource,
 	ItemCreateInput,
+	ItemComparisonResponse,
 	ItemPermissions,
 	ItemResource,
 	ItemStatusChangeInput,
@@ -26,6 +28,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLocale } from "./locale-context";
 import { CollectionDirection } from "./CollectionDirection";
 import { ItemWorkflowDialog } from "./ItemWorkflowDialog";
+import { ItemComparisonDialog } from "./ItemComparisonDialog";
 import { CollectionBriefForm, ConceptForm } from "./collection-direction-forms";
 import {
 	PlanningApiError,
@@ -48,6 +51,7 @@ type EditorState =
 	| { kind: "collection-create" }
 	| { kind: "collection-edit"; resource: CollectionResource }
 	| { kind: "item-create" }
+	| { kind: "item-comparison"; resource: ItemResource }
 	| { kind: "item-edit"; resource: ItemResource }
 	| { kind: "item-workflow"; resource: ItemResource }
   | { kind: "concept-edit" }
@@ -220,6 +224,7 @@ function ResourceActions({
 	canArchive = true,
 	canEdit = true,
 	onArchive,
+	onCompare,
 	onEdit,
 	onOpen,
 	onRestore,
@@ -230,6 +235,7 @@ function ResourceActions({
 	canArchive?: boolean;
 	canEdit?: boolean;
 	onArchive: () => void;
+	onCompare?: () => void;
 	onEdit: () => void;
 	onOpen?: () => void;
 	onRestore: () => void;
@@ -239,6 +245,17 @@ function ResourceActions({
 
 	return (
 		<div className="resource-actions">
+		{onCompare ? (
+			<button
+				type="button"
+				className="text-action"
+				onClick={onCompare}
+				disabled={busy}
+				aria-label={t("commerce.open") + `: ${resourceName}`}
+			>
+				{t("commerce.open")}
+			</button>
+		) : null}
 			{onOpen ? (
 				<button
 					type="button"
@@ -292,10 +309,123 @@ function ResourceActions({
 	);
 }
 
+function CollectionCostSummary({
+	rollup,
+}: {
+	rollup: CollectionRollupResponse;
+}) {
+	const { locale, t } = useLocale();
+	const statusLabel =
+		rollup.summary.status === "exact"
+			? t("rollup.exact")
+			: rollup.summary.status === "lower_bound"
+				? t("rollup.lowerBound")
+				: t("rollup.incomplete");
+	const budgetMessage =
+		rollup.budgetComparison?.differenceMinor === null ||
+		rollup.budgetComparison === null
+			? rollup.budgetComparison?.status === "incomplete"
+				? t("rollup.budgetIncomplete")
+				: null
+			: rollup.budgetComparison.status === "over_budget"
+				? t("rollup.overBudget", {
+						amount: formatMoney(
+							locale,
+							rollup.budgetComparison.differenceMinor,
+							rollup.summary.currency,
+						),
+					})
+				: t("rollup.withinBudget", {
+						amount: formatMoney(
+							locale,
+							rollup.budgetComparison.differenceMinor,
+							rollup.summary.currency,
+						),
+					});
+	const attentionLines = rollup.lines.filter((line) => line.state !== "planned");
+
+	return (
+		<section className={`cost-rollup cost-rollup--${rollup.summary.status}`}>
+			<header className="cost-rollup__header">
+				<div>
+					<p className="eyebrow">{t("rollup.eyebrow")}</p>
+					<h3>{t("rollup.title")}</h3>
+				</div>
+				<div className="cost-rollup__total">
+					<span>{statusLabel}</span>
+					<strong>
+						{formatMoney(
+							locale,
+							rollup.summary.totalMinor,
+							rollup.summary.currency,
+						)}
+					</strong>
+				</div>
+			</header>
+			<div className="cost-rollup__meta">
+				<span>
+					{t("rollup.lines", {
+						complete: formatNumber(locale, rollup.summary.completeLineCount),
+						incomplete: formatNumber(
+							locale,
+							rollup.summary.incompleteLineCount,
+						),
+					})}
+				</span>
+				{rollup.summary.unplannedLineCount > 0 ? (
+					<span>
+						{t("rollup.unplanned", {
+							count: formatNumber(locale, rollup.summary.unplannedLineCount),
+						})}
+					</span>
+				) : null}
+				{rollup.summary.currencyMismatchLineCount > 0 ? (
+					<span>
+						{t("rollup.currencyMismatch", {
+							count: formatNumber(
+								locale,
+								rollup.summary.currencyMismatchLineCount,
+							),
+						})}
+					</span>
+				) : null}
+				{budgetMessage ? <strong>{budgetMessage}</strong> : null}
+			</div>
+			{rollup.groups.length > 1 ? (
+				<div className="cost-rollup__groups">
+					{rollup.groups.map((group) => (
+						<div key={group.groupLabel ?? "ungrouped"}>
+							<span dir="auto">{group.groupLabel ?? t("item.noGroup")}</span>
+							<strong>
+								{formatMoney(
+									locale,
+									group.summary.totalMinor,
+									group.summary.currency,
+								)}
+							</strong>
+						</div>
+					))}
+				</div>
+			) : null}
+			{attentionLines.length > 0 ? (
+				<ul className="cost-rollup__attention">
+					{attentionLines.map((line) => (
+						<li key={line.itemId}>
+							<span dir="auto">{line.itemTitle}</span>
+							<strong>{t(`rollup.state.${line.state}`)}</strong>
+						</li>
+					))}
+				</ul>
+			) : null}
+		</section>
+	);
+}
+
 function ItemLedger({
 	busy,
 	items,
 	onArchive,
+	onCompare,
 	onEdit,
 	onOpen,
 	onRestore,
@@ -304,6 +434,7 @@ function ItemLedger({
 	busy: boolean;
 	items: ItemResource[];
 	onArchive: (item: ItemResource) => void;
+	onCompare: (item: ItemResource) => void;
 	onEdit: (item: ItemResource) => void;
 	onOpen: (item: ItemResource) => void;
 	onRestore: (item: ItemResource) => void;
@@ -394,7 +525,8 @@ function ItemLedger({
 					busy={busy}
 					canArchive={permissions.canArchive}
 					canEdit={permissions.canEdit}
-					onArchive={() => onArchive(item)}
+										onArchive={() => onArchive(item)}
+										onCompare={() => onCompare(item)}
 					onEdit={() => onEdit(item)}
 					onOpen={() => onOpen(item)}
 									onRestore={() => onRestore(item)}
@@ -430,6 +562,13 @@ export function PlanningDashboard({
 		useState<ItemPermissions>(noItemPermissions);
 	const [workflowLoading, setWorkflowLoading] = useState(false);
 	const [workflowError, setWorkflowError] = useState<ApiErrorCode | null>(null);
+	const [comparison, setComparison] =
+		useState<ItemComparisonResponse | null>(null);
+	const [comparisonLoading, setComparisonLoading] = useState(false);
+	const [comparisonError, setComparisonError] =
+		useState<ApiErrorCode | null>(null);
+	const [collectionRollup, setCollectionRollup] =
+		useState<CollectionRollupResponse | null>(null);
   const [brief, setBrief] = useState<CollectionBriefResource | null>(null);
   const [concept, setConcept] = useState<ConceptResource | null>(null);
   const [canEditBrief, setCanEditBrief] = useState(false);
@@ -456,6 +595,8 @@ export function PlanningDashboard({
 	const [retryNonce, setRetryNonce] = useState(0);
 	const workflowItemId =
 		editor?.kind === "item-workflow" ? editor.resource.id : null;
+	const comparisonItemId =
+		editor?.kind === "item-comparison" ? editor.resource.id : null;
 
 	useEffect(() => {
 		let current = true;
@@ -504,6 +645,7 @@ export function PlanningDashboard({
 		setCollections([]);
 		setItems([]);
 		setItemPermissions(noItemPermissions);
+		setCollectionRollup(null);
     setBrief(null);
     setConcept(null);
     setCanEditBrief(false);
@@ -564,6 +706,7 @@ export function PlanningDashboard({
 		let current = true;
 		setItems([]);
 		setItemPermissions(noItemPermissions);
+		setCollectionRollup(null);
     setBrief(null);
     setConcept(null);
     setCanEditBrief(false);
@@ -584,8 +727,9 @@ export function PlanningDashboard({
       api.listItems(selectedCollectionId),
       api.readCollectionBrief(selectedCollectionId),
       api.readConcept(selectedCollectionId),
+			api.readCollectionRollup(selectedCollectionId),
     ])
-			.then(([itemResult, briefResult, conceptResult]) => {
+			.then(([itemResult, briefResult, conceptResult, rollupResult]) => {
 				if (!current) return;
 				setItems(itemResult.items);
 				setItemPermissions(itemResult.permissions);
@@ -593,6 +737,7 @@ export function PlanningDashboard({
         setCanEditBrief(briefResult.canEdit);
         setConcept(conceptResult.resource);
         setCanEditConcept(conceptResult.canEdit);
+				setCollectionRollup(rollupResult);
 				setItemPhase("ready");
         setDirectionPhase("ready");
 			})
@@ -651,6 +796,38 @@ export function PlanningDashboard({
 			current = false;
 		};
 	}, [api, workflowItemId]);
+
+	useEffect(() => {
+		let current = true;
+		if (!comparisonItemId) {
+			setComparison(null);
+			setComparisonLoading(false);
+			setComparisonError(null);
+			return () => {
+				current = false;
+			};
+		}
+
+		setComparison(null);
+		setComparisonLoading(true);
+		setComparisonError(null);
+		void api
+			.readItemComparison(comparisonItemId)
+			.then((result) => {
+				if (!current) return;
+				setComparison(result);
+				setComparisonLoading(false);
+			})
+			.catch((error: unknown) => {
+				if (!current) return;
+				setComparisonError(apiErrorCode(error));
+				setComparisonLoading(false);
+			});
+
+		return () => {
+			current = false;
+		};
+	}, [api, comparisonItemId]);
 
 	useEffect(() => {
 		if (!toast) return;
@@ -893,6 +1070,27 @@ export function PlanningDashboard({
 		setWorkflowError(null);
 		setWorkflowLoading(true);
 		setEditor({ kind: "item-workflow", resource: item });
+	}
+
+	function openItemComparison(item: ItemResource) {
+		setComparison(null);
+		setComparisonError(null);
+		setComparisonLoading(true);
+		setEditor({ kind: "item-comparison", resource: item });
+	}
+
+	function comparisonChanged(
+		value: ItemComparisonResponse,
+		toastMessage: string,
+	) {
+		setComparison(value);
+		setToast(toastMessage);
+		if (selectedCollectionId) {
+			void api
+				.readCollectionRollup(selectedCollectionId)
+				.then(setCollectionRollup)
+				.catch((error: unknown) => setActionError(errorMessage(error)));
+		}
 	}
 
 	async function changeItemStatus(value: ItemStatusChangeInput) {
@@ -1212,6 +1410,10 @@ export function PlanningDashboard({
                         onRemoveConcept={() => void removeTextConcept()}
                       />
 
+											{collectionRollup && activeItems.length > 0 ? (
+												<CollectionCostSummary rollup={collectionRollup} />
+											) : null}
+
 											{viewState === "loading-items" ? (
 												<StatusPanel
 													eyebrow={t("common.loading")}
@@ -1288,8 +1490,9 @@ export function PlanningDashboard({
 												<ItemLedger
 													busy={busy}
 													items={filteredItems}
-													onArchive={(item) => void archiveItem(item)}
-													onEdit={(item) =>
+												onArchive={(item) => void archiveItem(item)}
+												onCompare={openItemComparison}
+												onEdit={(item) =>
 														setEditor({ kind: "item-edit", resource: item })
 													}
 													onOpen={openItemWorkflow}
@@ -1380,6 +1583,20 @@ export function PlanningDashboard({
 						setEditor({ kind: "item-edit", resource: editor.resource })
 					}
 					permissions={workflowPermissions}
+				/>
+			) : editor?.kind === "item-comparison" ? (
+				<ItemComparisonDialog
+					api={api}
+					comparison={comparison}
+					error={
+						comparisonError
+							? errorMessageForCode(comparisonError)
+							: null
+					}
+					item={editor.resource}
+					loading={comparisonLoading}
+					onChange={comparisonChanged}
+					onClose={() => setEditor(null)}
 				/>
 			) : editor?.kind === "item-edit" ? (
 				<ItemForm
