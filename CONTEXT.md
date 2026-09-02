@@ -54,6 +54,20 @@ _Avoid_: Offer review, free-floating note, hard-deleted thread position
 A collaborator's current positive signal for one Candidate, represented by at most one active record per User and Candidate.
 _Avoid_: Final decision, rank, score, up/down vote
 
+## Research import
+
+**Import Draft**:
+A staged, reviewable interpretation of pasted research that cannot affect planning records before an authorized person explicitly applies it.
+_Avoid_: Research Result, completed import, unsaved form
+
+**Import Proposal**:
+The editable structured Items, Products, Candidates, Offers, source facts, and warnings inside an Import Draft.
+_Avoid_: Trusted source data, applied planning records
+
+**Import Application**:
+The durable provenance mapping from one applied Import Proposal to the planning records it created or reused.
+_Avoid_: Import Draft, automatic synchronization, Research Run
+
 ## Planning
 
 **Item**:

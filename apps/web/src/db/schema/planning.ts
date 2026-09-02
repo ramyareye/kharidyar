@@ -644,3 +644,147 @@ export const priceChecks = sqliteTable(
 		),
 	],
 );
+
+export const importDrafts = sqliteTable(
+	"import_drafts",
+	{
+		id: text("id").primaryKey(),
+		workspaceId: text("workspace_id").notNull(),
+		collectionId: text("collection_id").notNull(),
+		format: text("format", { enum: ["markdown", "json"] }).notNull(),
+		parserVersion: text("parser_version").notNull(),
+		proposalJson: text("proposal_json").notNull(),
+		warningsJson: text("warnings_json").notNull(),
+		status: text("status", {
+			enum: ["draft", "applied", "discarded"],
+		})
+			.default("draft")
+			.notNull(),
+		rawInput: text("raw_input"),
+		createdByUserId: text("created_by_user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "restrict" }),
+		appliedByUserId: text("applied_by_user_id").references(() => user.id, {
+			onDelete: "restrict",
+		}),
+		appliedAt: integer("applied_at", { mode: "timestamp_ms" }),
+		discardedByUserId: text("discarded_by_user_id").references(() => user.id, {
+			onDelete: "restrict",
+		}),
+		discardedAt: integer("discarded_at", { mode: "timestamp_ms" }),
+		createdAt: createdAt(),
+		updatedAt: updatedAt(),
+	},
+	(table) => [
+		foreignKey({
+			name: "import_drafts_collection_workspace_fk",
+			columns: [table.collectionId, table.workspaceId],
+			foreignColumns: [collections.id, collections.workspaceId],
+		}).onDelete("cascade"),
+		check(
+			"import_drafts_format_check",
+			sql`${table.format} in ('markdown', 'json')`,
+		),
+		check(
+			"import_drafts_parser_version_check",
+			sql`length(trim(${table.parserVersion})) between 1 and 40`,
+		),
+		check(
+			"import_drafts_payload_check",
+			sql`json_valid(${table.proposalJson}) and json_valid(${table.warningsJson})`,
+		),
+		check(
+			"import_drafts_raw_input_check",
+			sql`${table.rawInput} is null or length(${table.rawInput}) between 1 and 100000`,
+		),
+		check(
+			"import_drafts_lifecycle_check",
+			sql`(
+				(${table.status} = 'draft'
+					and ${table.rawInput} is not null
+					and ${table.appliedByUserId} is null
+					and ${table.appliedAt} is null
+					and ${table.discardedByUserId} is null
+					and ${table.discardedAt} is null)
+				or
+				(${table.status} = 'applied'
+					and ${table.rawInput} is null
+					and ${table.appliedByUserId} is not null
+					and ${table.appliedAt} is not null
+					and ${table.discardedByUserId} is null
+					and ${table.discardedAt} is null)
+				or
+				(${table.status} = 'discarded'
+					and ${table.rawInput} is null
+					and ${table.appliedByUserId} is null
+					and ${table.appliedAt} is null
+					and ${table.discardedByUserId} is not null
+					and ${table.discardedAt} is not null)
+			)`,
+		),
+		uniqueIndex("import_drafts_id_collection_workspace_uidx").on(
+			table.id,
+			table.collectionId,
+			table.workspaceId,
+		),
+		index("import_drafts_collection_time_idx").on(
+			table.collectionId,
+			table.createdAt,
+			table.id,
+		),
+	],
+);
+
+export const importDraftApplications = sqliteTable(
+	"import_draft_applications",
+	{
+		draftId: text("draft_id").notNull(),
+		workspaceId: text("workspace_id").notNull(),
+		collectionId: text("collection_id").notNull(),
+		proposalKey: text("proposal_key").notNull(),
+		recordType: text("record_type", {
+			enum: [
+				"item",
+				"product",
+				"candidate",
+				"merchant",
+				"offer",
+				"price_check",
+			],
+		}).notNull(),
+		recordId: text("record_id").notNull(),
+		action: text("action", { enum: ["created", "reused"] }).notNull(),
+		createdAt: createdAt(),
+	},
+	(table) => [
+		primaryKey({
+			columns: [table.draftId, table.proposalKey, table.recordType],
+			name: "import_draft_applications_pk",
+		}),
+		foreignKey({
+			name: "import_draft_applications_draft_scope_fk",
+			columns: [table.draftId, table.collectionId, table.workspaceId],
+			foreignColumns: [
+				importDrafts.id,
+				importDrafts.collectionId,
+				importDrafts.workspaceId,
+			],
+		}).onDelete("cascade"),
+		check(
+			"import_draft_applications_record_type_check",
+			sql`${table.recordType} in ('item', 'product', 'candidate', 'merchant', 'offer', 'price_check')`,
+		),
+		check(
+			"import_draft_applications_action_check",
+			sql`${table.action} in ('created', 'reused')`,
+		),
+		check(
+			"import_draft_applications_identifier_check",
+			sql`length(trim(${table.proposalKey})) between 1 and 80 and length(trim(${table.recordId})) between 1 and 200`,
+		),
+		index("import_draft_applications_record_idx").on(
+			table.recordType,
+			table.recordId,
+		),
+	],
+);

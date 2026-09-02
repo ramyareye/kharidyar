@@ -322,3 +322,33 @@ VALUES (
 	'dev-candidate-lisabo-chair',
 	'dev-collaborator'
 );
+
+-- A staged example for Task 9A. It deliberately has not mutated planning records.
+INSERT OR IGNORE INTO import_drafts (
+	id,
+	workspace_id,
+	collection_id,
+	format,
+	parser_version,
+	proposal_json,
+	warnings_json,
+	status,
+	raw_input,
+	created_by_user_id
+)
+VALUES (
+	'dev-import-draft-bedroom',
+	'dev-workspace',
+	'dev-collection',
+	'markdown',
+	'deterministic-v1',
+	'{"schemaVersion":"1","lines":[{"key":"line-001","groupLabel":"Bedroom","item":{"title":"BJÖRKSNÄS bed frame","description":null,"requirements":"Allow 180 × 214 cm of floor space.","quantityNeeded":1,"quantityOrigin":"inferred"},"futureQuantity":null,"product":{"title":"BJÖRKSNÄS bed frame","brand":"IKEA","model":"BJÖRKSNÄS","category":"Bed","attributes":[]},"candidate":{"plannedPurchaseQuantity":1,"quantityOrigin":"inferred","notes":"Main piece; external dimensions 180 × 214 cm."},"source":{"url":"https://www.ikea.com/nl/en/p/bjorksnas-bed-frame-birch-leirsund-s79501693/","title":"BJÖRKSNÄS bed frame","kind":"product"},"offer":{"merchant":{"name":"IKEA Netherlands","salesChannel":"both","websiteUrl":"https://www.ikea.com","notes":null},"sourceUrl":"https://www.ikea.com/nl/en/p/bjorksnas-bed-frame-birch-leirsund-s79501693/","locale":"nl-NL","facts":{"priceKind":"exact","unitPriceMinor":52900,"currency":"EUR","shippingMinor":null,"shippingBasis":"unknown","availabilityState":"unknown","availabilityChannel":null,"availabilityLocation":null,"availabilityVariant":null,"availabilityNote":null},"observedAt":null},"suppliedLineTotal":null,"exclusions":[],"unmappedFacts":[]},{"key":"line-002","groupLabel":"Bedroom","item":{"title":"Natural fibre rug","description":null,"requirements":null,"quantityNeeded":1,"quantityOrigin":"inferred"},"futureQuantity":null,"product":{"title":"Natural fibre rug","brand":"IKEA","model":null,"category":"Rug","attributes":[]},"candidate":{"plannedPurchaseQuantity":1,"quantityOrigin":"inferred","notes":"Category reference; choose the final size after measuring."},"source":{"url":"https://www.ikea.com/nl/en/cat/rugs-10653/","title":"Natural fibre rugs","kind":"category"},"offer":null,"suppliedLineTotal":{"minor":2999,"currency":"EUR"},"exclusions":[],"unmappedFacts":[]}],"summaryTotals":[],"exclusions":["Delivery is not included."],"unmappedFacts":[]}',
+	'[{"code":"inferred_quantity","severity":"info","lineKey":"line-001","detail":null},{"code":"unknown_shipping","severity":"info","lineKey":"line-001","detail":null},{"code":"inferred_quantity","severity":"info","lineKey":"line-002","detail":null},{"code":"non_product_source","severity":"warning","lineKey":"line-002","detail":"https://www.ikea.com/nl/en/cat/rugs-10653/"}]',
+	'draft',
+	'### Bedroom
+| Product | Price | Notes |
+| --- | --- | --- |
+| BJÖRKSNÄS bed frame | €529 | Main piece; 180 × 214 cm |
+| Natural fibre rug category | from €29.99 | Measure before choosing size |',
+	'dev-user'
+);

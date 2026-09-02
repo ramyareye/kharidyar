@@ -9,6 +9,7 @@ import { collectionDirectionRoutes } from "./collection-direction-routes";
 import { commerceRoutes } from "./commerce-routes";
 import { coreWorkspaceRoutes } from "./core-workspace-routes";
 import { itemWorkflowRoutes } from "./item-workflow-routes";
+import { importDraftRoutes } from "./import-draft-routes";
 import { requireSession, type WorkerAppEnv } from "./session-middleware";
 
 const app = new Hono<WorkerAppEnv>();
@@ -42,7 +43,8 @@ const apiRoutes = new Hono<WorkerAppEnv>()
 	.route("/", coreWorkspaceRoutes)
 	.route("/", itemWorkflowRoutes)
 	.route("/", collectionDirectionRoutes)
-	.route("/", commerceRoutes);
+	.route("/", commerceRoutes)
+	.route("/", importDraftRoutes);
 
 app.route("/api", apiRoutes);
 

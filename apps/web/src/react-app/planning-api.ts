@@ -9,6 +9,8 @@ import {
 	commentInputSchema,
 	commentResolutionInputSchema,
 	invitationCreatedResponseSchema,
+	importDraftListResponseSchema,
+	importDraftResponseSchema,
 	itemDiscussionResponseSchema,
 	itemListResponseSchema,
 	itemComparisonResponseSchema,
@@ -34,6 +36,9 @@ import {
 	type CommentResolutionInput,
 	type InvitationCreateInput,
 	type InvitationCreatedResponse,
+	type ImportDraftCreateInput,
+	type ImportDraftResource,
+	type ImportProposal,
 	type ItemCreateInput,
 	type ItemComparisonResponse,
 	type ItemPermissions,
@@ -122,6 +127,10 @@ async function commerceRequest<T>(
 }
 
 export interface PlanningApi {
+	applyImportDraft: (
+		collectionId: string,
+		draftId: string,
+	) => Promise<ImportDraftResource>;
 	createComment: (
 		itemId: string,
 		value: CommentInput,
@@ -131,6 +140,19 @@ export interface PlanningApi {
 		workspaceId: string,
 		value: InvitationCreateInput,
 	) => Promise<InvitationCreatedResponse>;
+	createImportDraft: (
+		collectionId: string,
+		value: ImportDraftCreateInput,
+	) => Promise<ImportDraftResource>;
+	correctImportDraft: (
+		collectionId: string,
+		draftId: string,
+		proposal: ImportProposal,
+	) => Promise<ImportDraftResource>;
+	discardImportDraft: (
+		collectionId: string,
+		draftId: string,
+	) => Promise<ImportDraftResource>;
 	archiveCollection: (collectionId: string) => Promise<CollectionResource>;
 	archiveItem: (itemId: string) => Promise<ItemResource>;
 	archiveWorkspace: (workspaceId: string) => Promise<WorkspaceResource>;
@@ -163,6 +185,7 @@ export interface PlanningApi {
     collectionId: string,
   ) => Promise<EditableResource<ConceptResource>>;
 	listCollections: (workspaceId: string) => Promise<CollectionResource[]>;
+	listImportDrafts: (collectionId: string) => Promise<ImportDraftResource[]>;
 	listItems: (collectionId: string) => Promise<ItemListResult>;
 	listWorkspaces: () => Promise<WorkspaceSummary[]>;
 	readItemDiscussion: (itemId: string) => Promise<ItemDiscussionResponse>;
@@ -294,6 +317,58 @@ export interface EditableResource<T> {
 }
 
 export const planningApi: PlanningApi = {
+	async listImportDrafts(collectionId) {
+		return (
+			await commerceRequest(
+				`/collections/${encodeURIComponent(collectionId)}/import-drafts`,
+				"GET",
+				importDraftListResponseSchema,
+			)
+		).drafts;
+	},
+
+	async createImportDraft(collectionId, value) {
+		return (
+			await commerceRequest(
+				`/collections/${encodeURIComponent(collectionId)}/import-drafts`,
+				"POST",
+				importDraftResponseSchema,
+				value,
+			)
+		).draft;
+	},
+
+	async correctImportDraft(collectionId, draftId, proposal) {
+		return (
+			await commerceRequest(
+				`/collections/${encodeURIComponent(collectionId)}/import-drafts/${encodeURIComponent(draftId)}`,
+				"PUT",
+				importDraftResponseSchema,
+				{ proposal },
+			)
+		).draft;
+	},
+
+	async applyImportDraft(collectionId, draftId) {
+		return (
+			await commerceRequest(
+				`/collections/${encodeURIComponent(collectionId)}/import-drafts/${encodeURIComponent(draftId)}/apply`,
+				"POST",
+				importDraftResponseSchema,
+			)
+		).draft;
+	},
+
+	async discardImportDraft(collectionId, draftId) {
+		return (
+			await commerceRequest(
+				`/collections/${encodeURIComponent(collectionId)}/import-drafts/${encodeURIComponent(draftId)}/discard`,
+				"POST",
+				importDraftResponseSchema,
+			)
+		).draft;
+	},
+
 	async readWorkspaceCollaboration(workspaceId) {
 		return commerceRequest(
 			`/workspaces/${encodeURIComponent(workspaceId)}/collaboration`,

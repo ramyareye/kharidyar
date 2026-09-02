@@ -50,6 +50,13 @@
       "when": 1788298706271,
       "tag": "0006_lucky_reaper",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1788355197285,
+      "tag": "0007_material_wildside",
+      "breakpoints": true
     }
   ]
 }
