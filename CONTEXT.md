@@ -46,6 +46,14 @@ _Avoid_: Membership, emailed identity, reusable share link
 The authenticated, transactional conversion of one valid Invitation into Membership grants and one immutable consumption record.
 _Avoid_: Sign-in, invitation preview, client-only state
 
+**Comment**:
+A member-authored discussion entry attached to exactly one Item or one Candidate. Removal clears its text but keeps a tombstone in the thread.
+_Avoid_: Offer review, free-floating note, hard-deleted thread position
+
+**Preference**:
+A collaborator's current positive signal for one Candidate, represented by at most one active record per User and Candidate.
+_Avoid_: Final decision, rank, score, up/down vote
+
 ## Planning
 
 **Item**:

@@ -3,6 +3,9 @@
 INSERT OR IGNORE INTO user (id, name, email, email_verified)
 VALUES ('dev-user', 'Development Owner', 'dev@kharidyar.local', 1);
 
+INSERT OR IGNORE INTO user (id, name, email, email_verified)
+VALUES ('dev-collaborator', 'Mina Collaborator', 'mina@kharidyar.local', 1);
+
 INSERT OR IGNORE INTO workspaces (id, name, created_by_user_id)
 VALUES ('dev-workspace', 'My Home', 'dev-user');
 
@@ -31,6 +34,19 @@ INSERT OR IGNORE INTO collection_memberships (
 	role
 )
 VALUES ('dev-collection-owner', 'dev-collection', 'dev-user', 'owner');
+
+INSERT OR IGNORE INTO collection_memberships (
+	id,
+	collection_id,
+	user_id,
+	role
+)
+VALUES (
+	'dev-collection-commenter',
+	'dev-collection',
+	'dev-collaborator',
+	'commenter'
+);
 
 INSERT OR IGNORE INTO collection_briefs (
 	id,
@@ -266,4 +282,43 @@ VALUES (
 	'Availability depends on the selected store.',
 	cast(unixepoch('subsecond') * 1000 as integer),
 	'dev-user'
+);
+
+INSERT OR IGNORE INTO comments (
+	id,
+	workspace_id,
+	item_id,
+	candidate_id,
+	body,
+	author_user_id
+)
+VALUES
+	(
+		'dev-comment-item-chairs',
+		'dev-workspace',
+		'dev-item-chairs',
+		NULL,
+		'Should all four chairs match, or can the later pair be a supporting wood tone?',
+		'dev-collaborator'
+	),
+	(
+		'dev-comment-lisabo-chair',
+		'dev-workspace',
+		'dev-item-chairs',
+		'dev-candidate-lisabo-chair',
+		'I prefer this shape, but I would still test the seat in person.',
+		'dev-collaborator'
+	);
+
+INSERT OR IGNORE INTO candidate_votes (
+	workspace_id,
+	item_id,
+	candidate_id,
+	user_id
+)
+VALUES (
+	'dev-workspace',
+	'dev-item-chairs',
+	'dev-candidate-lisabo-chair',
+	'dev-collaborator'
 );

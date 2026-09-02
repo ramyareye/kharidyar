@@ -125,7 +125,7 @@ bun run db:seed:local
 
 `bun run db:generate` first regenerates Better Auth's Drizzle tables and then creates a reviewable SQL migration for all schema changes. Do not edit `apps/web/src/db/schema/auth.ts` or generated migration metadata by hand. Review the generated SQL before applying or committing it.
 
-`bun run db:migrate:local` is safe to rerun; already-applied migrations are a no-op. `bun run db:seed:local` loads fixed, idempotent development data into the local database only. It includes an Item that needs four chairs, representative requirements and human decision history, a LISABO Candidate plan that buys two, an IKEA Netherlands Merchant, an Offer, and its Price Check, preserving the distinction between need units and Offer units.
+`bun run db:migrate:local` is safe to rerun; already-applied migrations are a no-op. `bun run db:seed:local` loads fixed, idempotent development data into the local database only. It includes an Item that needs four chairs, representative requirements and human decision history, a LISABO Candidate plan that buys two, an IKEA Netherlands Merchant, an Offer and Price Check, plus a scoped collaborator with Item/Candidate comments and one Candidate preference. This preserves the distinction between need units, Offer units, discussion, and final decisions.
 
 Preview and production use distinct D1 resources. Configure the Cloudflare account/resources for those environments before the first remote migration or deployment; the commands above never mutate a remote database. After changing any binding, regenerate Worker types with `bun run cf-typegen`.
 

@@ -14,6 +14,7 @@ import {
 	foreignKey,
 	index,
 	integer,
+	primaryKey,
 	sqliteTable,
 	text,
 	uniqueIndex,
@@ -87,10 +88,7 @@ export const items = sqliteTable(
 			)`,
 		),
 		uniqueIndex("items_id_workspace_uidx").on(table.id, table.workspaceId),
-		index("items_collection_status_idx").on(
-			table.collectionId,
-			table.status,
-		),
+		index("items_collection_status_idx").on(table.collectionId, table.status),
 		index("items_collection_group_idx").on(
 			table.collectionId,
 			table.groupLabel,
@@ -258,10 +256,7 @@ export const merchants = sqliteTable(
 			"merchants_notes_length_check",
 			sql`${table.notes} is null or length(trim(${table.notes})) between 1 and 2000`,
 		),
-		uniqueIndex("merchants_id_workspace_uidx").on(
-			table.id,
-			table.workspaceId,
-		),
+		uniqueIndex("merchants_id_workspace_uidx").on(table.id, table.workspaceId),
 		uniqueIndex("merchants_active_workspace_name_uidx")
 			.on(table.workspaceId, table.name)
 			.where(sql`${table.archivedAt} is null`),
@@ -309,10 +304,7 @@ export const products = sqliteTable(
 			"products_attributes_json_check",
 			sql`${table.attributesJson} is null or json_valid(${table.attributesJson})`,
 		),
-		uniqueIndex("products_id_workspace_uidx").on(
-			table.id,
-			table.workspaceId,
-		),
+		uniqueIndex("products_id_workspace_uidx").on(table.id, table.workspaceId),
 		index("products_workspace_category_idx").on(
 			table.workspaceId,
 			table.category,
@@ -480,7 +472,110 @@ export const itemCandidates = sqliteTable(
 		uniqueIndex("item_candidates_one_planned_per_item_uidx")
 			.on(table.itemId)
 			.where(sql`${table.isPlanned} = 1 and ${table.archivedAt} is null`),
+		uniqueIndex("item_candidates_id_item_workspace_uidx").on(
+			table.id,
+			table.itemId,
+			table.workspaceId,
+		),
 		index("item_candidates_product_idx").on(table.productId),
+	],
+);
+
+export const comments = sqliteTable(
+	"comments",
+	{
+		id: text("id").primaryKey(),
+		workspaceId: text("workspace_id").notNull(),
+		itemId: text("item_id").notNull(),
+		candidateId: text("candidate_id"),
+		body: text("body"),
+		authorUserId: text("author_user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "restrict" }),
+		resolvedAt: integer("resolved_at", { mode: "timestamp_ms" }),
+		resolvedByUserId: text("resolved_by_user_id").references(() => user.id, {
+			onDelete: "restrict",
+		}),
+		removedAt: integer("removed_at", { mode: "timestamp_ms" }),
+		removedByUserId: text("removed_by_user_id").references(() => user.id, {
+			onDelete: "restrict",
+		}),
+		createdAt: createdAt(),
+		updatedAt: updatedAt(),
+	},
+	(table) => [
+		foreignKey({
+			name: "comments_item_workspace_fk",
+			columns: [table.itemId, table.workspaceId],
+			foreignColumns: [items.id, items.workspaceId],
+		}).onDelete("cascade"),
+		foreignKey({
+			name: "comments_candidate_item_workspace_fk",
+			columns: [table.candidateId, table.itemId, table.workspaceId],
+			foreignColumns: [
+				itemCandidates.id,
+				itemCandidates.itemId,
+				itemCandidates.workspaceId,
+			],
+		}).onDelete("cascade"),
+		check(
+			"comments_target_check",
+			sql`${table.candidateId} is null or length(${table.candidateId}) > 0`,
+		),
+		check(
+			"comments_body_state_check",
+			sql`(
+				(${table.removedAt} is null and ${table.removedByUserId} is null and ${table.body} is not null and length(trim(${table.body})) between 1 and 2000)
+				or
+				(${table.removedAt} is not null and ${table.removedByUserId} is not null and ${table.body} is null)
+			)`,
+		),
+		check(
+			"comments_resolution_pair_check",
+			sql`(
+				(${table.resolvedAt} is null and ${table.resolvedByUserId} is null)
+				or
+				(${table.resolvedAt} is not null and ${table.resolvedByUserId} is not null)
+			)`,
+		),
+		index("comments_item_time_idx").on(table.itemId, table.createdAt, table.id),
+		index("comments_candidate_time_idx").on(
+			table.candidateId,
+			table.createdAt,
+			table.id,
+		),
+		index("comments_author_idx").on(table.authorUserId),
+	],
+);
+
+export const candidateVotes = sqliteTable(
+	"candidate_votes",
+	{
+		workspaceId: text("workspace_id").notNull(),
+		itemId: text("item_id").notNull(),
+		candidateId: text("candidate_id").notNull(),
+		userId: text("user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		createdAt: createdAt(),
+		updatedAt: updatedAt(),
+	},
+	(table) => [
+		primaryKey({
+			columns: [table.candidateId, table.userId],
+			name: "candidate_votes_pk",
+		}),
+		foreignKey({
+			name: "candidate_votes_candidate_item_workspace_fk",
+			columns: [table.candidateId, table.itemId, table.workspaceId],
+			foreignColumns: [
+				itemCandidates.id,
+				itemCandidates.itemId,
+				itemCandidates.workspaceId,
+			],
+		}).onDelete("cascade"),
+		index("candidate_votes_item_idx").on(table.itemId, table.candidateId),
+		index("candidate_votes_user_idx").on(table.userId),
 	],
 );
 

@@ -26,7 +26,9 @@ import {
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { useLocale } from "./locale-context";
+import { CollaborationAdminDialog } from "./CollaborationAdminDialog";
 import { CollectionDirection } from "./CollectionDirection";
+import { ItemDiscussionDialog } from "./ItemDiscussionDialog";
 import { ItemWorkflowDialog } from "./ItemWorkflowDialog";
 import { ItemComparisonDialog } from "./ItemComparisonDialog";
 import { CollectionBriefForm, ConceptForm } from "./collection-direction-forms";
@@ -35,11 +37,7 @@ import {
 	planningApi,
 	type PlanningApi,
 } from "./planning-api";
-import {
-	CollectionForm,
-	ItemForm,
-	WorkspaceForm,
-} from "./planning-forms";
+import { CollectionForm, ItemForm, WorkspaceForm } from "./planning-forms";
 import {
 	resolvePlanningViewState,
 	type LoadPhase,
@@ -52,10 +50,12 @@ type EditorState =
 	| { kind: "collection-edit"; resource: CollectionResource }
 	| { kind: "item-create" }
 	| { kind: "item-comparison"; resource: ItemResource }
+	| { kind: "item-discussion"; resource: ItemResource }
 	| { kind: "item-edit"; resource: ItemResource }
 	| { kind: "item-workflow"; resource: ItemResource }
-  | { kind: "concept-edit" }
+	| { kind: "concept-edit" }
 	| { kind: "workspace-create" }
+	| { kind: "workspace-collaboration"; resource: WorkspaceSummary }
 	| { kind: "workspace-edit"; resource: WorkspaceSummary };
 
 interface PlanningDashboardProps {
@@ -209,7 +209,11 @@ function StatusPanel({
 				<h2>{title}</h2>
 				<p>{body}</p>
 				{onRetry && retryLabel ? (
-					<button type="button" className="button button--secondary" onClick={onRetry}>
+					<button
+						type="button"
+						className="button button--secondary"
+						onClick={onRetry}
+					>
 						{retryLabel}
 					</button>
 				) : null}
@@ -225,6 +229,7 @@ function ResourceActions({
 	canEdit = true,
 	onArchive,
 	onCompare,
+	onDiscuss,
 	onEdit,
 	onOpen,
 	onRestore,
@@ -236,6 +241,7 @@ function ResourceActions({
 	canEdit?: boolean;
 	onArchive: () => void;
 	onCompare?: () => void;
+	onDiscuss?: () => void;
 	onEdit: () => void;
 	onOpen?: () => void;
 	onRestore: () => void;
@@ -245,9 +251,20 @@ function ResourceActions({
 
 	return (
 		<div className="resource-actions">
-		{onCompare ? (
-			<button
-				type="button"
+			{onDiscuss ? (
+				<button
+					type="button"
+					className="text-action"
+					onClick={onDiscuss}
+					disabled={busy}
+					aria-label={t("discussion.open") + `: ${resourceName}`}
+				>
+					{t("discussion.open")}
+				</button>
+			) : null}
+			{onCompare ? (
+				<button
+					type="button"
 				className="text-action"
 				onClick={onCompare}
 				disabled={busy}
@@ -342,7 +359,9 @@ function CollectionCostSummary({
 							rollup.summary.currency,
 						),
 					});
-	const attentionLines = rollup.lines.filter((line) => line.state !== "planned");
+	const attentionLines = rollup.lines.filter(
+		(line) => line.state !== "planned",
+	);
 
 	return (
 		<section className={`cost-rollup cost-rollup--${rollup.summary.status}`}>
@@ -426,6 +445,7 @@ function ItemLedger({
 	items,
 	onArchive,
 	onCompare,
+	onDiscuss,
 	onEdit,
 	onOpen,
 	onRestore,
@@ -435,6 +455,7 @@ function ItemLedger({
 	items: ItemResource[];
 	onArchive: (item: ItemResource) => void;
 	onCompare: (item: ItemResource) => void;
+	onDiscuss: (item: ItemResource) => void;
 	onEdit: (item: ItemResource) => void;
 	onOpen: (item: ItemResource) => void;
 	onRestore: (item: ItemResource) => void;
@@ -488,7 +509,9 @@ function ItemLedger({
 										) : null}
 									</div>
 									<h4 dir="auto">{item.title}</h4>
-									{item.description ? <p dir="auto">{item.description}</p> : null}
+									{item.description ? (
+										<p dir="auto">{item.description}</p>
+									) : null}
 									<div className="item-row__facts">
 										<span>
 											{t("item.quantityShort", {
@@ -524,11 +547,12 @@ function ItemLedger({
 					archived={Boolean(item.archivedAt)}
 					busy={busy}
 					canArchive={permissions.canArchive}
-					canEdit={permissions.canEdit}
-										onArchive={() => onArchive(item)}
-										onCompare={() => onCompare(item)}
-					onEdit={() => onEdit(item)}
-					onOpen={() => onOpen(item)}
+									canEdit={permissions.canEdit}
+									onArchive={() => onArchive(item)}
+									onCompare={() => onCompare(item)}
+									onDiscuss={() => onDiscuss(item)}
+									onEdit={() => onEdit(item)}
+									onOpen={() => onOpen(item)}
 									onRestore={() => onRestore(item)}
 									resourceName={item.title}
 								/>
@@ -562,29 +586,29 @@ export function PlanningDashboard({
 		useState<ItemPermissions>(noItemPermissions);
 	const [workflowLoading, setWorkflowLoading] = useState(false);
 	const [workflowError, setWorkflowError] = useState<ApiErrorCode | null>(null);
-	const [comparison, setComparison] =
-		useState<ItemComparisonResponse | null>(null);
+	const [comparison, setComparison] = useState<ItemComparisonResponse | null>(
+		null,
+	);
 	const [comparisonLoading, setComparisonLoading] = useState(false);
-	const [comparisonError, setComparisonError] =
-		useState<ApiErrorCode | null>(null);
+	const [comparisonError, setComparisonError] = useState<ApiErrorCode | null>(
+		null,
+	);
 	const [collectionRollup, setCollectionRollup] =
 		useState<CollectionRollupResponse | null>(null);
-  const [brief, setBrief] = useState<CollectionBriefResource | null>(null);
-  const [concept, setConcept] = useState<ConceptResource | null>(null);
-  const [canEditBrief, setCanEditBrief] = useState(false);
-  const [canEditConcept, setCanEditConcept] = useState(false);
-	const [workspacePhase, setWorkspacePhase] =
-		useState<LoadPhase>("loading");
-	const [collectionPhase, setCollectionPhase] =
-		useState<LoadPhase>("idle");
+	const [brief, setBrief] = useState<CollectionBriefResource | null>(null);
+	const [concept, setConcept] = useState<ConceptResource | null>(null);
+	const [canEditBrief, setCanEditBrief] = useState(false);
+	const [canEditConcept, setCanEditConcept] = useState(false);
+	const [workspacePhase, setWorkspacePhase] = useState<LoadPhase>("loading");
+	const [collectionPhase, setCollectionPhase] = useState<LoadPhase>("idle");
 	const [itemPhase, setItemPhase] = useState<LoadPhase>("idle");
-  const [directionPhase, setDirectionPhase] = useState<LoadPhase>("idle");
+	const [directionPhase, setDirectionPhase] = useState<LoadPhase>("idle");
 	const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<null | string>(
 		() => selectionFromLocation("workspace"),
 	);
-	const [selectedCollectionId, setSelectedCollectionId] = useState<null | string>(
-		() => selectionFromLocation("collection"),
-	);
+	const [selectedCollectionId, setSelectedCollectionId] = useState<
+		null | string
+	>(() => selectionFromLocation("collection"));
 	const [showArchived, setShowArchived] = useState(false);
 	const [selectedGroup, setSelectedGroup] = useState<string>("all");
 	const [loadError, setLoadError] = useState<ApiErrorCode | null>(null);
@@ -631,7 +655,9 @@ export function PlanningDashboard({
 		if (workspacePhase !== "ready") return;
 		if (
 			selectedWorkspaceId &&
-			visibleWorkspaces.some((workspace) => workspace.id === selectedWorkspaceId)
+			visibleWorkspaces.some(
+				(workspace) => workspace.id === selectedWorkspaceId,
+			)
 		) {
 			return;
 		}
@@ -994,8 +1020,7 @@ export function PlanningDashboard({
 		if (!window.confirm(t("collection.archiveConfirm"))) return;
 		await mutate(
 			() => api.archiveCollection(collection.id),
-			(result) =>
-				setCollections((current) => replaceResource(current, result)),
+			(result) => setCollections((current) => replaceResource(current, result)),
 			"toast.collectionArchived",
 		);
 	}
@@ -1003,8 +1028,7 @@ export function PlanningDashboard({
 	async function restoreCollection(collection: CollectionResource) {
 		await mutate(
 			() => api.restoreCollection(collection.id),
-			(result) =>
-				setCollections((current) => replaceResource(current, result)),
+			(result) => setCollections((current) => replaceResource(current, result)),
 			"toast.collectionRestored",
 		);
 	}
@@ -1077,6 +1101,10 @@ export function PlanningDashboard({
 		setComparisonError(null);
 		setComparisonLoading(true);
 		setEditor({ kind: "item-comparison", resource: item });
+	}
+
+	function openItemDiscussion(item: ItemResource) {
+		setEditor({ kind: "item-discussion", resource: item });
 	}
 
 	function comparisonChanged(
@@ -1271,6 +1299,21 @@ export function PlanningDashboard({
 									<h2 dir="auto">{selectedWorkspace.name}</h2>
 								</div>
 								<div className="workspace-folio__controls">
+									{!selectedWorkspace.archivedAt ? (
+										<button
+											type="button"
+											className="button button--quiet"
+											onClick={() =>
+												setEditor({
+													kind: "workspace-collaboration",
+													resource: selectedWorkspace,
+												})
+											}
+										>
+											<InlineIcon>◎</InlineIcon>
+											{t("collaboration.open")}
+										</button>
+									) : null}
 									{selectedWorkspace.accessScope === "workspace" ? (
 										<ResourceActions
 											archived={Boolean(selectedWorkspace.archivedAt)}
@@ -1440,15 +1483,21 @@ export function PlanningDashboard({
 												<>
 													<div className="collection-metrics">
 														<div>
-															<strong>{formatNumber(locale, activeItems.length)}</strong>
+															<strong>
+																{formatNumber(locale, activeItems.length)}
+															</strong>
 															<span>{t("metric.items")}</span>
 														</div>
 														<div>
-															<strong>{formatNumber(locale, groupLabels.length)}</strong>
+															<strong>
+																{formatNumber(locale, groupLabels.length)}
+															</strong>
 															<span>{t("metric.groups")}</span>
 														</div>
 														<div>
-															<strong>{formatNumber(locale, activeUnits)}</strong>
+															<strong>
+																{formatNumber(locale, activeUnits)}
+															</strong>
 															<span>{t("metric.units")}</span>
 														</div>
 													</div>
@@ -1489,12 +1538,13 @@ export function PlanningDashboard({
 
 												<ItemLedger
 													busy={busy}
-													items={filteredItems}
-												onArchive={(item) => void archiveItem(item)}
-												onCompare={openItemComparison}
-												onEdit={(item) =>
-														setEditor({ kind: "item-edit", resource: item })
-													}
+														items={filteredItems}
+														onArchive={(item) => void archiveItem(item)}
+														onCompare={openItemComparison}
+														onDiscuss={openItemDiscussion}
+														onEdit={(item) =>
+															setEditor({ kind: "item-edit", resource: item })
+														}
 													onOpen={openItemWorkflow}
 													onRestore={(item) => void restoreItem(item)}
 													permissions={itemPermissions}
@@ -1511,9 +1561,7 @@ export function PlanningDashboard({
 					{actionError || signOutError ? (
 						<div className="action-notice action-notice--error" role="alert">
 							<span aria-hidden="true">!</span>
-							<p>
-								{actionError ?? t("account.signOutError")}
-							</p>
+							<p>{actionError ?? t("account.signOutError")}</p>
 							<button
 								type="button"
 								onClick={() => {
@@ -1548,6 +1596,12 @@ export function PlanningDashboard({
 					onClose={() => setEditor(null)}
 					onSubmit={updateWorkspace}
 				/>
+			) : editor?.kind === "workspace-collaboration" ? (
+				<CollaborationAdminDialog
+					api={api}
+					onClose={() => setEditor(null)}
+					workspace={editor.resource}
+				/>
 			) : editor?.kind === "collection-create" ? (
 				<CollectionForm
 					busy={busy}
@@ -1571,9 +1625,7 @@ export function PlanningDashboard({
 				<ItemWorkflowDialog
 					busy={busy}
 					key={editor.resource.id}
-					error={
-						workflowError ? errorMessageForCode(workflowError) : null
-					}
+					error={workflowError ? errorMessageForCode(workflowError) : null}
 					events={workflowEvents}
 					item={editor.resource}
 					loading={workflowLoading}
@@ -1588,14 +1640,16 @@ export function PlanningDashboard({
 				<ItemComparisonDialog
 					api={api}
 					comparison={comparison}
-					error={
-						comparisonError
-							? errorMessageForCode(comparisonError)
-							: null
-					}
+					error={comparisonError ? errorMessageForCode(comparisonError) : null}
 					item={editor.resource}
 					loading={comparisonLoading}
 					onChange={comparisonChanged}
+					onClose={() => setEditor(null)}
+				/>
+			) : editor?.kind === "item-discussion" ? (
+				<ItemDiscussionDialog
+					api={api}
+					item={editor.resource}
 					onClose={() => setEditor(null)}
 				/>
 			) : editor?.kind === "item-edit" ? (

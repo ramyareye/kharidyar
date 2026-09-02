@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 
 import { createAuth } from "../auth/server";
 import { ApiError } from "./api-errors";
+import { collaborationExperienceRoutes } from "./collaboration-experience-routes";
 import { collaborationRoutes } from "./collaboration-routes";
 import { collectionDirectionRoutes } from "./collection-direction-routes";
 import { commerceRoutes } from "./commerce-routes";
@@ -36,6 +37,7 @@ app.get("/api/session", requireSession, (context) => {
 });
 
 const apiRoutes = new Hono<WorkerAppEnv>()
+	.route("/", collaborationExperienceRoutes)
 	.route("/", collaborationRoutes)
 	.route("/", coreWorkspaceRoutes)
 	.route("/", itemWorkflowRoutes)

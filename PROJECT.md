@@ -1,8 +1,8 @@
 # Kharidyar Project Specification
 
 - Status: Approved by the product owner
-- Last updated: 2026-09-01
-- Implementation status: Tasks 1 through 7 complete and validated; Task 8 is next
+- Last updated: 2026-09-02
+- Implementation status: Tasks 1 through 8 complete and validated; Task 9A is next after its retention decision
 
 ## Purpose of this document
 
@@ -77,6 +77,8 @@ Pay particular attention to:
 - An optional free-text Item group label provides lightweight sections such as “Bedroom” and “Living room” without adding hierarchy, permissions, or nested Collections.
 - Planned-cost rollups use an explicitly chosen Candidate and Offer. Starting prices, unknown shipping, and mixed currencies remain visibly non-exact rather than being silently treated as precise totals.
 - Pasted research content creates a reviewable Import Draft. It never writes Products, Offers, or Items until an authorized human confirms the normalized records.
+- Collaborative-MVP comments attach only to Items or Candidates. Offer and Research Result comments remain deferred until a concrete workflow requires them.
+- Collaborative-MVP voting is one current positive preference per user and Candidate. It is advisory, not ranked, negative, or a final decision.
 
 ## Executive summary
 
@@ -407,11 +409,11 @@ An observed Offer state at a specific time. It preserves unit price, price kind,
 
 ### Comment
 
-A member-authored discussion entry attached to a supported target such as an Item or Candidate. The MVP should avoid a single unconstrained polymorphic table unless referential integrity remains enforceable.
+A member-authored discussion entry attached to exactly one Item or Candidate in the collaborative MVP. Candidate targets retain a database-enforced Item/Candidate relationship. Removing a comment clears its text while retaining a visible tombstone, author, remover, and timestamps so the surrounding thread remains understandable.
 
 ### Vote
 
-A member's current preference for a Candidate. The MVP permits one active vote per user per Candidate. Historical vote changes may be represented in the audit stream rather than as active duplicates.
+A member's current positive preference for a Candidate. The collaborative MVP permits one active preference per user per Candidate; it has no negative, ranked, or weighted value and never replaces an explicit planned choice or decision. Historical preference changes may be represented in a later audit stream rather than as active duplicates.
 
 ### Decision Event
 
@@ -870,6 +872,8 @@ Required constraints include:
 - At most one planned Candidate per Item and one planned Offer per Candidate; the Offer belongs to the Candidate Product.
 - Unique active Item/Product Candidate association.
 - Unique active user vote per Candidate.
+- Comments reference a real Item and, when Candidate-targeted, a Candidate belonging to that same Item and Workspace.
+- Removed comments retain a thread tombstone while their body becomes null.
 - Indexed Items by Collection and status.
 - Indexed Offers by Product and freshness.
 - Indexed decision history by Item and time.
@@ -1487,40 +1491,43 @@ Mitigation: runtime-independent domain/contracts/i18n packages and a fetch/sessi
 
 ### Resolved for Task 4
 
-1. Only Workspace-scoped Owners may grant or remove Owner access in the MVP. Collection-scoped Owners may administer non-Owner Collection members. This policy may be broadened later without adding a special original-creator role.
-2. Verified-email restriction is optional. The invitation UI enables it by default when an email is supplied, and an authorized inviter may explicitly turn it off.
-13. Only Owners receive `record_purchase` in the MVP. The capability may be added to another role bundle later without a schema migration.
+- **Decision 1:** Only Workspace-scoped Owners may grant or remove Owner access in the MVP. Collection-scoped Owners may administer non-Owner Collection members. This policy may be broadened later without adding a special original-creator role.
+- **Decision 2:** Verified-email restriction is optional. The invitation UI enables it by default when an email is supplied, and an authorized inviter may explicitly turn it off.
+- **Decision 13:** Only Owners receive `record_purchase` in the MVP. The capability may be added to another role bundle later without a schema migration.
 
 ### Resolved for Task 5B
 
-6. Each Collection uses EUR in the web MVP. Multi-currency Collections and IRR/toman semantics are deferred; the UI performs no implicit conversion.
-7. English is the fallback when browser preferences include neither Persian nor English. Explicit user selection is persisted and takes precedence.
+- **Decision 6:** Each Collection uses EUR in the web MVP. Multi-currency Collections and IRR/toman semantics are deferred; the UI performs no implicit conversion.
+- **Decision 7:** English is the fallback when browser preferences include neither Persian nor English. Explicit user selection is persisted and takes precedence.
+
+### Resolved for Task 8
+
+- **Decision 3:** Collaborative-MVP comments target Items and Candidates only. Offer and Research Result comments are deferred.
+- **Decision 4:** Collaborative-MVP voting is a simple positive Candidate preference with at most one active preference per user and Candidate. There are no downvotes, ranks, or scores.
 
 ### Open decisions for later tasks
 
-3. Should comments support Item and Candidate targets only in the MVP, or also Offers and Research Results?
-4. Is voting a simple preference, an up/down vote, or a ranked score?
-5. Should one Item support more than one selected/final Product, for bundles or recurring purchases?
-9. Which search provider should power the first Research adapter?
-10. Which retailers or domains are approved for initial Browser Run extraction?
-11. What retention period applies to research snapshots, raw Import Draft input, comments, and audit history?
-12. Is hard deletion required for privacy requests, and which historical records should instead be anonymized?
-14. Should scheduled price monitoring be a post-MVP paid feature, a general feature, or remain undecided?
-15. What retention and deletion policy applies to original base photos, reference images, edited variants, provider inputs, and backups?
-16. Should the first AI Concept visualizer support both `space` and `person`, or launch with one subject kind first?
-17. Which image-edit provider is approved, in which processing region, and with what retention and training terms?
+- **Decision 5:** Should one Item support more than one selected/final Product, for bundles or recurring purchases?
+- **Decision 9:** Which search provider should power the first Research adapter?
+- **Decision 10:** Which retailers or domains are approved for initial Browser Run extraction?
+- **Decision 11:** What retention period applies to research snapshots, raw Import Draft input, comments, and audit history?
+- **Decision 12:** Is hard deletion required for privacy requests, and which historical records should instead be anonymized?
+- **Decision 14:** Should scheduled price monitoring be a post-MVP paid feature, a general feature, or remain undecided?
+- **Decision 15:** What retention and deletion policy applies to original base photos, reference images, edited variants, provider inputs, and backups?
+- **Decision 16:** Should the first AI Concept visualizer support both `space` and `person`, or launch with one subject kind first?
+- **Decision 17:** Which image-edit provider is approved, in which processing region, and with what retention and training terms?
 
-Decisions 1, 2, 6, 7, and 13 are resolved. Decision 11 must be resolved before Task 9A; Decision 15 before the future Concept media foundation; Decisions 16 and 17 before the future AI Concept visualization task; all other decisions affecting schema, permissions, or external providers must be resolved before their corresponding implementation task begins.
+Decisions 1, 2, 3, 4, 6, 7, and 13 are resolved. Decision 11 must be resolved before Task 9A; Decision 15 before the future Concept media foundation; Decisions 16 and 17 before the future AI Concept visualization task; all other decisions affecting schema, permissions, or external providers must be resolved before their corresponding implementation task begins.
 
 ## Current repository state
 
 - Branch: `main`.
-- History: scaffold baseline followed by committed Task 1 monorepo, Task 2 domain/D1, Task 3 Google authentication, Task 4 authorization/invitations, Tasks 5A/5B core planning, Task 6A Collection Brief/text Concept, Task 6B Item workflow, and the branding/MCP roadmap note. `main` matches `origin/main` before the current uncommitted Task 7 implementation.
-- Tasks 1 through 7 are complete and validated; Task 8 is next.
+- History: scaffold baseline followed by committed Task 1 monorepo, Task 2 domain/D1, Task 3 Google authentication, Task 4 authorization/invitations, Tasks 5A/5B core planning, Task 6A Collection Brief/text Concept, Task 6B Item workflow, the branding/MCP roadmap note, and Task 7 Product/Offer comparison. `main` matches `origin/main` before the current uncommitted Task 8 implementation.
+- Tasks 1 through 8 are complete and validated; Task 9A is next after Decision 11 is resolved.
 - The repository is a Bun `1.3.12` workspace with `apps/web`, `packages/domain`, `packages/contracts`, and `packages/i18n`. No mobile, API-client, or config package has been created.
 - `bun.lock` is the sole package-manager lockfile present, and Bun workspaces are declared in the root `package.json`.
 - The Vite/React frontend provides localized Google sign-in and a protected planning studio with Workspace, Collection, and Item create/edit/archive/restore flows, URL-restored selection, quantity-aware Item cards, lightweight group navigation, a Collection direction surface for the Brief, EUR budget, ordered color preference, references, and optional text Concept, plus a permission-aware Item detail/status/history workflow. English and Persian layouts are responsive at desktop and narrow widths.
-- Drizzle is the unified schema source. The first generated migration includes Better Auth's generated tables plus Workspace-private Products and the initial collaboration/planning tables; a second migration adds persistent Better Auth rate-limit storage; a third adds Invitations, selected-Collection targets, single-use acceptance provenance, and privacy-preserving collaboration rate limits; the fourth extends the structured Collection Brief and adds the one-active-Concept record; the fifth adds Item requirements and immutable Decision Events; the sixth adds Merchant-backed Offers, qualified Price Checks, planned selection, and immutable purchase snapshots while preserving existing local data. Later feature tables remain owned by their roadmap tasks.
+- Drizzle is the unified schema source. The first generated migration includes Better Auth's generated tables plus Workspace-private Products and the initial collaboration/planning tables; a second migration adds persistent Better Auth rate-limit storage; a third adds Invitations, selected-Collection targets, single-use acceptance provenance, and privacy-preserving collaboration rate limits; the fourth extends the structured Collection Brief and adds the one-active-Concept record; the fifth adds Item requirements and immutable Decision Events; the sixth adds Merchant-backed Offers, qualified Price Checks, planned selection, and immutable purchase snapshots; the seventh adds Item/Candidate comments and Candidate preferences while preserving existing local data. Later feature tables remain owned by their roadmap tasks.
 - Local migration, migration-list, schema-check, seed, type-generation, and quality commands are available from the workspace root. The fixed development seed is idempotent.
 - Runtime-independent domain primitives preserve separate Item-needed and Candidate-planned purchase quantities, money/budget validation, group labels, honest Offer price/shipping semantics, freshness, exact/lower-bound/incomplete aggregation, normalized ordered core/supporting color rules, and deterministic Item status-transition classification.
 - The root `CONTEXT.md` defines the purchase-planning language and guards the Item/Candidate/Product/Offer boundaries.
@@ -1529,9 +1536,9 @@ Decisions 1, 2, 6, 7, and 13 are resolved. Decision 11 must be resolved before T
 - Auth integration tests cover anonymous rejection, Google authorization URL construction, untrusted callback rejection, authenticated session loading, sign-out revocation, and separate internal User/provider Account records.
 - Capability resolution combines applicable Workspace and Collection grants. Workspace grants reach future Collections, Collection grants remain isolated, only Workspace-scoped Owners manage Owner access, and atomic membership mutations preserve at least one Workspace-scoped Owner.
 - Invitation APIs create Workspace or selected-Collection grants, default supplied email addresses to a verified-email restriction with explicit opt-out, return fragment-based bearer URLs once, store SHA-256 hashes only, provide a rate-limited metadata-only preview, revoke pending invitations, and accept through one rollback-safe D1 batch.
-- Shared Zod contracts and chained Hono routes implement authenticated Workspace, Collection, Item, Collection Brief, text Concept, Item workflow, and commerce behavior. Brief replacement, including its ordered colors, is atomic; Item detail and status writes atomically append Decision Events; Offer refreshes append Price Checks; planned-choice and purchase commands append immutable snapshots; archived ancestors block ordinary mutations while authorized history reads remain available.
-- Domain, localization, UI-state, and Cloudflare-runtime database tests cover locale detection/direction/formatting, critical shell states, migration idempotency, all role allow/deny behavior, scope isolation, Owner boundaries, invitation expiry/revocation/email matching, rate limits, replay, competing acceptance, database uniqueness, forced rollback and retry, typed Workspace-to-Item creation, CRUD validation, archive/restore, Item filtering/pagination, positive independent quantities, Item detail snapshots, explicit status transitions, reversal classification, purchase-only Owner authorization, Decision Event and Price Check immutability, Merchant/Product/Offer scope, several Candidates and Offers, exact/starting/unknown prices, shipping bases, qualified availability, freshness, honest Collection/group rollups, partial purchase snapshots, palette bounds/normalization/order/uniqueness, structured Brief validation, and one-active-Concept behavior.
-- The localized web studio now includes the structured Brief/text Concept, Item decision history, Merchant-backed Product/Offer comparison, explicit planned choices, separate shipping and totals, freshness/availability details, partial purchase recording, and Collection/group planned-cost rollups. Member/invitation management UI, comments, votes, and research behavior are not yet implemented.
+- Shared Zod contracts and chained Hono routes implement authenticated Workspace, Collection, Item, Collection Brief, text Concept, Item workflow, commerce, owner-filtered collaboration administration, Item/Candidate discussion, and Candidate-preference behavior. Brief replacement, including its ordered colors, is atomic; Item detail and status writes atomically append Decision Events; Offer refreshes append Price Checks; planned-choice and purchase commands append immutable snapshots; archived ancestors block ordinary mutations while authorized history reads remain available.
+- Domain, localization, UI-state, and Cloudflare-runtime database tests cover locale detection/direction/formatting, critical shell states, migration idempotency, all role allow/deny behavior, scope isolation, Owner boundaries, invitation expiry/revocation/email matching, rate limits, replay, competing acceptance, database uniqueness, forced rollback and retry, typed Workspace-to-Item creation, CRUD validation, archive/restore, Item filtering/pagination, positive independent quantities, Item detail snapshots, explicit status transitions, reversal classification, purchase-only Owner authorization, Decision Event and Price Check immutability, Merchant/Product/Offer scope, several Candidates and Offers, exact/starting/unknown prices, shipping bases, qualified availability, freshness, honest Collection/group rollups, partial purchase snapshots, palette bounds/normalization/order/uniqueness, structured Brief validation, one-active-Concept behavior, owner-filtered collaboration ledgers, comment capability boundaries, cross-Item target rejection, idempotent preferences, and immediate membership revocation.
+- The localized web studio now includes the structured Brief/text Concept, Item decision history, Merchant-backed Product/Offer comparison, explicit planned choices, separate shipping and totals, freshness/availability details, partial purchase recording, Collection/group planned-cost rollups, owner-only member/invitation administration, one-time manual invitation-link delivery, Item/Candidate discussion, resolved/tombstoned comments, and Candidate preference aggregates. Research behavior is not yet implemented.
 
 ## Current reference basis
 
@@ -1598,6 +1605,8 @@ The product owner explicitly authorized Task 6B on 2026-08-31. Task 6B implement
 
 The product owner explicitly authorized Task 7 on 2026-09-01. Task 7 implements Workspace-private Merchants, canonical Products, Item Candidates, several Offers per Product, append-only Price Checks, explicit planned Candidate/Offer selection, exact/starting/unknown and per-line/per-unit/unknown cost semantics, qualified availability and freshness, honest Collection/group rollups, and immutable partial-purchase snapshots without automatic Item completion. It is complete and validated through the full quality gate, focused Worker/D1 integration coverage, a real seeded comparison flow, a 390-pixel no-overflow check, and a zero-error browser console check.
 
+The product owner explicitly authorized Task 8 on 2026-09-01. Task 8 implements owner-filtered member and invitation administration, one-time copy/share invitation delivery, Item/Candidate comments with retained removal tombstones and resolution state, and positive Candidate preferences with aggregate/voter visibility. It is complete and validated through the full quality gate, repeatable local seed, focused Cloudflare-runtime authorization/revocation coverage, and one real owner access-management browser flow.
+
 On 2026-09-01, the product owner added a future ChatGPT MCP integration as the final roadmap task. It remains deferred until the production API and permission-filtered Context Builder are stable, and it must reuse existing application services rather than introduce parallel domain or database behavior.
 
-The next ordered implementation task is Task 8: Collaboration experience. Implementation starts only after the product owner explicitly requests continuation in a later session.
+The next ordered implementation task is Task 9A: Research Import Draft. Decision 11 must be resolved first, and implementation starts only after the product owner explicitly requests continuation in a later session.

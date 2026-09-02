@@ -1,10 +1,15 @@
 import {
 	apiErrorResponseSchema,
+	candidateVoteInputSchema,
 	collectionRollupResponseSchema,
-  collectionBriefResponseSchema,
+	collectionBriefResponseSchema,
 	collectionListResponseSchema,
 	collectionResponseSchema,
 	conceptResponseSchema,
+	commentInputSchema,
+	commentResolutionInputSchema,
+	invitationCreatedResponseSchema,
+	itemDiscussionResponseSchema,
 	itemListResponseSchema,
 	itemComparisonResponseSchema,
 	itemResponseSchema,
@@ -12,7 +17,9 @@ import {
 	itemWorkflowResponseSchema,
 	workspaceListResponseSchema,
 	workspaceResponseSchema,
+	workspaceCollaborationResponseSchema,
 	type ApiErrorCode,
+	type CandidateVoteInput,
 	type CandidateCreateInput,
 	type CandidateUpdateInput,
 	type CollectionRollupResponse,
@@ -21,12 +28,17 @@ import {
   type CollectionBriefResource,
 	type CollectionResource,
 	type CollectionUpdateInput,
-  type ConceptInput,
-  type ConceptResource,
+	type ConceptInput,
+	type ConceptResource,
+	type CommentInput,
+	type CommentResolutionInput,
+	type InvitationCreateInput,
+	type InvitationCreatedResponse,
 	type ItemCreateInput,
 	type ItemComparisonResponse,
 	type ItemPermissions,
 	type ItemResource,
+	type ItemDiscussionResponse,
 	type ItemStatusChangeInput,
 	type ItemStatusDecisionEvent,
 	type ItemUpdateInput,
@@ -40,6 +52,7 @@ import {
 	type WorkspaceCreateInput,
 	type WorkspaceResource,
 	type WorkspaceSummary,
+	type WorkspaceCollaborationResponse,
 	type WorkspaceUpdateInput,
 } from "@kharidyar/contracts";
 import { hc } from "hono/client";
@@ -94,7 +107,7 @@ async function parsedResponse<T>(
 
 async function commerceRequest<T>(
 	path: string,
-	method: "GET" | "PATCH" | "POST" | "PUT",
+	method: "DELETE" | "GET" | "PATCH" | "POST" | "PUT",
 	schema: RuntimeSchema<T>,
 	value?: unknown,
 ): Promise<T> {
@@ -109,6 +122,15 @@ async function commerceRequest<T>(
 }
 
 export interface PlanningApi {
+	createComment: (
+		itemId: string,
+		value: CommentInput,
+		candidateId?: string,
+	) => Promise<ItemDiscussionResponse>;
+	createInvitation: (
+		workspaceId: string,
+		value: InvitationCreateInput,
+	) => Promise<InvitationCreatedResponse>;
 	archiveCollection: (collectionId: string) => Promise<CollectionResource>;
 	archiveItem: (itemId: string) => Promise<ItemResource>;
 	archiveWorkspace: (workspaceId: string) => Promise<WorkspaceResource>;
@@ -143,6 +165,29 @@ export interface PlanningApi {
 	listCollections: (workspaceId: string) => Promise<CollectionResource[]>;
 	listItems: (collectionId: string) => Promise<ItemListResult>;
 	listWorkspaces: () => Promise<WorkspaceSummary[]>;
+	readItemDiscussion: (itemId: string) => Promise<ItemDiscussionResponse>;
+	readWorkspaceCollaboration: (
+		workspaceId: string,
+	) => Promise<WorkspaceCollaborationResponse>;
+	removeComment: (
+		itemId: string,
+		commentId: string,
+	) => Promise<ItemDiscussionResponse>;
+	removeMembership: (
+		scope:
+			| { type: "workspace"; id: string }
+			| { type: "collection"; id: string },
+		userId: string,
+	) => Promise<void>;
+	resolveComment: (
+		itemId: string,
+		commentId: string,
+		value: CommentResolutionInput,
+	) => Promise<ItemDiscussionResponse>;
+	revokeInvitation: (
+		workspaceId: string,
+		invitationId: string,
+	) => Promise<void>;
 	restoreCollection: (collectionId: string) => Promise<CollectionResource>;
 	restoreItem: (itemId: string) => Promise<ItemResource>;
 	restoreWorkspace: (workspaceId: string) => Promise<WorkspaceResource>;
@@ -188,10 +233,19 @@ export interface PlanningApi {
 		collectionId: string,
 		value: CollectionUpdateInput,
 	) => Promise<CollectionResource>;
-	updateItem: (
+	updateComment: (
 		itemId: string,
-		value: ItemUpdateInput,
-	) => Promise<ItemResource>;
+		commentId: string,
+		value: CommentInput,
+	) => Promise<ItemDiscussionResponse>;
+	updateMembership: (
+		scope:
+			| { type: "workspace"; id: string }
+			| { type: "collection"; id: string },
+		userId: string,
+		role: WorkspaceCollaborationResponse["members"][number]["role"],
+	) => Promise<void>;
+	updateItem: (itemId: string, value: ItemUpdateInput) => Promise<ItemResource>;
 	updateCandidate: (
 		itemId: string,
 		candidateId: string,
@@ -216,6 +270,11 @@ export interface PlanningApi {
 		workspaceId: string,
 		value: WorkspaceUpdateInput,
 	) => Promise<WorkspaceResource>;
+	setCandidateVote: (
+		itemId: string,
+		candidateId: string,
+		value: CandidateVoteInput,
+	) => Promise<ItemDiscussionResponse>;
 }
 
 export interface ItemListResult {
@@ -235,6 +294,117 @@ export interface EditableResource<T> {
 }
 
 export const planningApi: PlanningApi = {
+	async readWorkspaceCollaboration(workspaceId) {
+		return commerceRequest(
+			`/workspaces/${encodeURIComponent(workspaceId)}/collaboration`,
+			"GET",
+			workspaceCollaborationResponseSchema,
+		);
+	},
+
+	async createInvitation(workspaceId, value) {
+		return commerceRequest(
+			`/workspaces/${encodeURIComponent(workspaceId)}/invitations`,
+			"POST",
+			invitationCreatedResponseSchema,
+			value,
+		);
+	},
+
+	async revokeInvitation(workspaceId, invitationId) {
+		await commerceRequest(
+			`/workspaces/${encodeURIComponent(workspaceId)}/invitations/${encodeURIComponent(invitationId)}/revoke`,
+			"POST",
+			{
+				parse(value: unknown) {
+					return value;
+				},
+			},
+		);
+	},
+
+	async updateMembership(scope, userId, role) {
+		const segment = scope.type === "workspace" ? "workspaces" : "collections";
+		await commerceRequest(
+			`/${segment}/${encodeURIComponent(scope.id)}/members/${encodeURIComponent(userId)}`,
+			"PATCH",
+			{
+				parse(value: unknown) {
+					return value;
+				},
+			},
+			{ role },
+		);
+	},
+
+	async removeMembership(scope, userId) {
+		const segment = scope.type === "workspace" ? "workspaces" : "collections";
+		await commerceRequest(
+			`/${segment}/${encodeURIComponent(scope.id)}/members/${encodeURIComponent(userId)}`,
+			"DELETE",
+			{
+				parse(value: unknown) {
+					return value;
+				},
+			},
+		);
+	},
+
+	async readItemDiscussion(itemId) {
+		return commerceRequest(
+			`/items/${encodeURIComponent(itemId)}/discussion`,
+			"GET",
+			itemDiscussionResponseSchema,
+		);
+	},
+
+	async createComment(itemId, value, candidateId) {
+		const candidatePath = candidateId
+			? `/candidates/${encodeURIComponent(candidateId)}`
+			: "";
+		return commerceRequest(
+			`/items/${encodeURIComponent(itemId)}${candidatePath}/comments`,
+			"POST",
+			itemDiscussionResponseSchema,
+			commentInputSchema.parse(value),
+		);
+	},
+
+	async updateComment(itemId, commentId, value) {
+		return commerceRequest(
+			`/items/${encodeURIComponent(itemId)}/comments/${encodeURIComponent(commentId)}`,
+			"PATCH",
+			itemDiscussionResponseSchema,
+			commentInputSchema.parse(value),
+		);
+	},
+
+	async removeComment(itemId, commentId) {
+		return commerceRequest(
+			`/items/${encodeURIComponent(itemId)}/comments/${encodeURIComponent(commentId)}`,
+			"DELETE",
+			itemDiscussionResponseSchema,
+		);
+	},
+
+	async resolveComment(itemId, commentId, value) {
+		return commerceRequest(
+			`/items/${encodeURIComponent(itemId)}/comments/${encodeURIComponent(commentId)}/resolve`,
+			"POST",
+			itemDiscussionResponseSchema,
+			commentResolutionInputSchema.parse(value),
+		);
+	},
+
+	async setCandidateVote(itemId, candidateId, value) {
+		return commerceRequest(
+			`/items/${encodeURIComponent(itemId)}/candidates/${encodeURIComponent(candidateId)}/vote`,
+			"PUT",
+			itemDiscussionResponseSchema,
+			candidateVoteInputSchema.parse(value),
+		);
+	},
+
 	async readItemComparison(itemId) {
 		return commerceRequest(
 			`/items/${encodeURIComponent(itemId)}/comparison`,
@@ -352,7 +522,8 @@ export const planningApi: PlanningApi = {
 		const response = await client.workspaces.$get({
 			query: { includeArchived: "true" },
 		});
-		return (await parsedResponse(response, workspaceListResponseSchema)).workspaces;
+		return (await parsedResponse(response, workspaceListResponseSchema))
+			.workspaces;
 	},
 
 	async createWorkspace(value) {
@@ -396,7 +567,8 @@ export const planningApi: PlanningApi = {
 			json: value,
 			param: { workspaceId },
 		});
-		return (await parsedResponse(response, collectionResponseSchema)).collection;
+		return (await parsedResponse(response, collectionResponseSchema))
+			.collection;
 	},
 
 	async updateCollection(collectionId, value) {
@@ -404,24 +576,27 @@ export const planningApi: PlanningApi = {
 			json: value,
 			param: { collectionId },
 		});
-		return (await parsedResponse(response, collectionResponseSchema)).collection;
+		return (await parsedResponse(response, collectionResponseSchema))
+			.collection;
 	},
 
 	async archiveCollection(collectionId) {
 		const response = await client.collections[":collectionId"].archive.$post({
 			param: { collectionId },
 		});
-		return (await parsedResponse(response, collectionResponseSchema)).collection;
+		return (await parsedResponse(response, collectionResponseSchema))
+			.collection;
 	},
 
 	async restoreCollection(collectionId) {
 		const response = await client.collections[":collectionId"].restore.$post({
 			param: { collectionId },
 		});
-		return (await parsedResponse(response, collectionResponseSchema)).collection;
-  },
+		return (await parsedResponse(response, collectionResponseSchema))
+			.collection;
+	},
 
-  async readCollectionBrief(collectionId) {
+	async readCollectionBrief(collectionId) {
     const response = await client.collections[":collectionId"].brief.$get({
       param: { collectionId },
     });

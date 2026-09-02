@@ -13,6 +13,7 @@ import {
 } from "./commerce";
 
 export * from "./commerce";
+export * from "./collaboration";
 
 const maximumSafeInteger = Number.MAX_SAFE_INTEGER;
 
@@ -149,12 +150,7 @@ export const itemCreateInputSchema = z
 		description: nullableTrimmedText(4_000).optional(),
 		requirements: nullableTrimmedText(4_000).optional(),
 		priority: z.enum(itemPriorities).optional(),
-		quantityNeeded: z
-			.number()
-			.int()
-			.min(1)
-			.max(maximumSafeInteger)
-			.optional(),
+		quantityNeeded: z.number().int().min(1).max(maximumSafeInteger).optional(),
 		groupLabel: nullableTrimmedText(80).optional(),
 		budget: eurBudgetSchema.nullable().optional(),
 		deadlineAt: dateTimeInputSchema.nullable().optional(),
@@ -453,29 +449,21 @@ export type CollectionCreateInput = z.infer<typeof collectionCreateInputSchema>;
 export type CollectionUpdateInput = z.infer<typeof collectionUpdateInputSchema>;
 export type ItemCreateInput = z.infer<typeof itemCreateInputSchema>;
 export type ItemUpdateInput = z.infer<typeof itemUpdateInputSchema>;
-export type ItemStatusChangeInput = z.infer<
-	typeof itemStatusChangeInputSchema
->;
+export type ItemStatusChangeInput = z.infer<typeof itemStatusChangeInputSchema>;
 export type ArchiveListQuery = z.infer<typeof archiveListQuerySchema>;
 export type ItemListQuery = z.infer<typeof itemListQuerySchema>;
 export type WorkspaceResource = z.infer<typeof workspaceResourceSchema>;
 export type WorkspaceSummary = z.infer<typeof workspaceSummarySchema>;
 export type CollectionResource = z.infer<typeof collectionResourceSchema>;
 export type ItemResource = z.infer<typeof itemResourceSchema>;
-export type ItemPlanningSnapshot = z.infer<
-	typeof itemPlanningSnapshotSchema
->;
-export type DecisionEventResource = z.infer<
-	typeof decisionEventResourceSchema
->;
+export type ItemPlanningSnapshot = z.infer<typeof itemPlanningSnapshotSchema>;
+export type DecisionEventResource = z.infer<typeof decisionEventResourceSchema>;
 export type ItemStatusDecisionEvent = z.infer<
 	typeof itemStatusDecisionEventSchema
 >;
 export type PlannedCandidateDecisionEvent = z.infer<
 	typeof plannedCandidateDecisionEventSchema
 >;
-export type PurchaseDecisionEvent = z.infer<
-	typeof purchaseDecisionEventSchema
->;
+export type PurchaseDecisionEvent = z.infer<typeof purchaseDecisionEventSchema>;
 export type ItemPermissions = z.infer<typeof itemPermissionsSchema>;
 export type ApiErrorCode = (typeof apiErrorCodes)[number];
