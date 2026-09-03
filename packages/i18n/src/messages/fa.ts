@@ -286,6 +286,7 @@ export const faMessages = {
 	"commerce.channel.both": "آنلاین و حضوری",
 	"commerce.website": "وب‌سایت فروشنده",
 	"commerce.sourceUrl": "لینک مستقیم پیشنهاد",
+	"commerce.openOfferSource": "بازکردن پیشنهاد {merchant} در زبانهٔ جدید",
 	"commerce.locale": "زبان و منطقهٔ آگهی",
 	"commerce.priceKind": "نوع قیمت",
 	"commerce.priceKind.exact": "دقیق",

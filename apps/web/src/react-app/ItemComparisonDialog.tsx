@@ -789,7 +789,19 @@ export function ItemComparisonDialog({
 												{candidate.offers.length === 0 ? <p>{t("commerce.noOffers")}</p> : candidate.offers.map((offer) => (
 													<article className={offer.id === candidate.plannedOfferId ? "offer-card offer-card--planned" : "offer-card"} key={offer.id}>
 														<header>
-															<div><strong dir="auto">{offer.merchant.name}</strong><a href={offer.sourceUrl} target="_blank" rel="noreferrer">↗</a></div>
+															<div>
+																<strong dir="auto">{offer.merchant.name}</strong>
+																<a
+																	href={offer.sourceUrl}
+																	target="_blank"
+																	rel="noreferrer"
+																	aria-label={t("commerce.openOfferSource", {
+																		merchant: offer.merchant.name,
+																	})}
+																>
+																	<span aria-hidden="true">↗</span>
+																</a>
+															</div>
 															<span className={`commerce-badge commerce-badge--${offer.freshness}`}>{t(`commerce.${offer.freshness}`)}</span>
 														</header>
 												<div className="offer-card__facts">

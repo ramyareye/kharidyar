@@ -9,6 +9,7 @@ import type {
 import {
 	useEffect,
 	useId,
+	useRef,
 	useState,
 	type FormEvent,
 	type ReactNode,
@@ -24,55 +25,133 @@ import {
 	deadlineIsoValue,
 } from "./item-workflow-state";
 
+const dialogFocusableSelector = [
+	"a[href]",
+	"button:not([disabled])",
+	"input:not([disabled]):not([type='hidden'])",
+	"select:not([disabled])",
+	"textarea:not([disabled])",
+	"[tabindex]:not([tabindex='-1'])",
+].join(",");
+
+function dialogFocusableElements(dialog: HTMLElement): HTMLElement[] {
+	return Array.from(
+		dialog.querySelectorAll<HTMLElement>(dialogFocusableSelector),
+	).filter(
+		(element) =>
+			element.getAttribute("aria-hidden") !== "true" &&
+			element.getClientRects().length > 0,
+	);
+}
+
 export function EditorDialog({
 	busy,
 	children,
 	description,
 	onClose,
-  size = "default",
+	size = "default",
 	title,
 }: {
 	busy: boolean;
 	children: ReactNode;
 	description: string;
 	onClose: () => void;
-  size?: "default" | "wide";
+	size?: "default" | "wide";
 	title: string;
 }) {
+	const dialogRef = useRef<HTMLElement>(null);
+	const returnFocusRef = useRef<HTMLElement | null>(
+		typeof document !== "undefined" &&
+			document.activeElement instanceof HTMLElement
+			? document.activeElement
+			: null,
+	);
 	const titleId = useId();
 	const descriptionId = useId();
-	const { t } = useLocale();
 
 	useEffect(() => {
-		function closeOnEscape(event: KeyboardEvent) {
+		const returnFocus = returnFocusRef.current;
+		const previousOverflow = document.body.style.overflow;
+		document.body.style.overflow = "hidden";
+
+		const focusFrame = window.requestAnimationFrame(() => {
+			const dialog = dialogRef.current;
+			if (!dialog || dialog.contains(document.activeElement)) return;
+
+			(dialogFocusableElements(dialog)[0] ?? dialog).focus();
+		});
+
+		return () => {
+			window.cancelAnimationFrame(focusFrame);
+			document.body.style.overflow = previousOverflow;
+			if (returnFocus?.isConnected) returnFocus.focus();
+		};
+	}, []);
+
+	useEffect(() => {
+		function manageDialogKeyboard(event: KeyboardEvent) {
 			if (event.key === "Escape" && !busy) {
+				event.preventDefault();
 				onClose();
+				return;
+			}
+
+			if (event.key !== "Tab") return;
+
+			const dialog = dialogRef.current;
+			if (!dialog) return;
+
+			const focusableElements = dialogFocusableElements(dialog);
+			if (focusableElements.length === 0) {
+				event.preventDefault();
+				dialog.focus();
+				return;
+			}
+
+			const first = focusableElements[0];
+			const last = focusableElements.at(-1);
+			const activeElement = document.activeElement;
+
+			if (
+				event.shiftKey &&
+				(activeElement === first || !dialog.contains(activeElement))
+			) {
+				event.preventDefault();
+				last?.focus();
+			} else if (
+				!event.shiftKey &&
+				(activeElement === last || !dialog.contains(activeElement))
+			) {
+				event.preventDefault();
+				first.focus();
 			}
 		}
 
-		document.addEventListener("keydown", closeOnEscape);
-		return () => document.removeEventListener("keydown", closeOnEscape);
+		document.addEventListener("keydown", manageDialogKeyboard);
+		return () =>
+			document.removeEventListener("keydown", manageDialogKeyboard);
 	}, [busy, onClose]);
 
 	return (
-		<div className="dialog-layer">
-			<button
-				type="button"
-				className="dialog-layer__dismiss"
-				onClick={onClose}
-				disabled={busy}
-				aria-label={t("common.close")}
-			/>
+		<div
+			className="dialog-layer"
+			onClick={(event) => {
+				if (event.target === event.currentTarget && !busy) onClose();
+			}}
+		>
 			<section
-        className={
-          size === "wide"
-            ? "editor-dialog editor-dialog--wide"
-            : "editor-dialog"
-        }
+				className={
+					size === "wide"
+						? "editor-dialog editor-dialog--wide"
+						: "editor-dialog"
+				}
+				ref={dialogRef}
 				role="dialog"
 				aria-modal="true"
 				aria-labelledby={titleId}
 				aria-describedby={descriptionId}
+				aria-busy={busy || undefined}
+				tabIndex={-1}
 			>
 				<div className="editor-dialog__index" aria-hidden="true">
 					<span>FORM</span>

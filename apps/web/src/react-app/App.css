@@ -151,6 +151,9 @@
 
 .text-button,
 .text-action {
+	display: inline-flex;
+	align-items: center;
+	min-block-size: 1.5rem;
 	padding: 0;
 	border: 0;
 	border-block-end: 1px solid currentColor;
@@ -652,6 +655,7 @@
 	display: flex;
 	align-items: center;
 	gap: 0.55rem;
+	min-block-size: 1.5rem;
 	padding: 0;
 	border: 0;
 	text-align: start;
@@ -678,6 +682,10 @@
 	min-inline-size: 0;
 	padding-block: clamp(3rem, 6vw, 6rem);
 	padding-inline: clamp(1.35rem, 5vw, 5.5rem);
+}
+
+.studio-main:focus {
+	outline: none;
 }
 
 .studio-intro {
@@ -1238,15 +1246,20 @@
 }
 
 .field--dark .field__label small {
-	color: rgba(252, 250, 244, 0.5);
+	color: rgba(252, 250, 244, 0.62);
 }
 
 .field--dark input,
 .field--dark select,
 .field--dark textarea {
-	border-color: rgba(252, 250, 244, 0.25);
+	border-color: rgba(252, 250, 244, 0.4);
 	color: var(--paper-white);
 	background: rgba(252, 250, 244, 0.06);
+}
+
+.field--dark input::placeholder,
+.field--dark textarea::placeholder {
+	color: rgba(252, 250, 244, 0.7);
 }
 
 .field--dark select option {
@@ -1941,17 +1954,6 @@
 	backdrop-filter: blur(5px);
 }
 
-.dialog-layer__dismiss {
-	position: fixed;
-	inset: 0;
-	inline-size: 100%;
-	block-size: 100%;
-	padding: 0;
-	border: 0;
-	background: transparent;
-	cursor: default;
-}
-
 .editor-dialog {
 	position: relative;
 	z-index: 1;
@@ -1959,6 +1961,7 @@
 	grid-template-columns: 5rem minmax(0, 1fr);
 	inline-size: min(100%, 42rem);
 	max-block-size: calc(100vh - 4rem);
+	max-block-size: calc(100dvh - 4rem);
 	overflow-y: auto;
 	padding-block: clamp(1.5rem, 4vw, 3rem);
 	padding-inline: clamp(1.25rem, 4vw, 3rem);
@@ -2105,7 +2108,7 @@
   display: grid;
   place-items: center;
   padding-inline: 0.75rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--control-line);
   border-inline-end: 0;
   color: var(--ink-muted);
   background: var(--paper-deep);
@@ -2177,6 +2180,7 @@
   position: relative;
   align-self: stretch;
   min-block-size: 3.5rem;
+  border: 1px solid var(--control-line);
 }
 
 .palette-color-editor__swatch input {
@@ -2294,7 +2298,7 @@
 	inline-size: 100%;
 	padding-block: 0.8rem;
 	padding-inline: 0.85rem;
-	border: 1px solid var(--line);
+	border: 1px solid var(--control-line);
 	border-radius: 0;
 	color: var(--ink);
 	background: rgba(255, 255, 255, 0.58);
@@ -2398,6 +2402,10 @@
 }
 
 .action-notice button {
+	display: grid;
+	place-items: center;
+	min-inline-size: 1.5rem;
+	min-block-size: 1.5rem;
 	padding: 0.25rem;
 	border: 0;
 	color: currentColor;
@@ -2613,9 +2621,14 @@
 .commerce-form--purchase input,
 .commerce-form--purchase select,
 .commerce-form--purchase textarea {
-	border-color: rgba(252, 250, 244, 0.28);
+	border-color: rgba(252, 250, 244, 0.4);
 	color: var(--paper-white);
 	background: rgba(252, 250, 244, 0.08);
+}
+
+.commerce-form--purchase input::placeholder,
+.commerce-form--purchase textarea::placeholder {
+	color: rgba(252, 250, 244, 0.7);
 }
 
 .commerce-form--purchase option {
@@ -2814,6 +2827,10 @@
 }
 
 .offer-card a {
+	display: inline-grid;
+	place-items: center;
+	min-inline-size: 1.5rem;
+	min-block-size: 1.5rem;
 	color: var(--clay-dark);
 	text-decoration: none;
 }
@@ -2883,7 +2900,7 @@
 	inline-size: 5rem;
 	min-block-size: 2.4rem;
 	padding-inline: 0.5rem;
-	border: 1px solid var(--line);
+	border: 1px solid var(--control-line);
 }
 
 .plan-control .button {
@@ -3231,6 +3248,7 @@
 	.editor-dialog {
 		grid-template-columns: 2.5rem minmax(0, 1fr);
 		max-block-size: calc(100vh - 2rem);
+		max-block-size: calc(100dvh - 2rem);
 		padding-inline: 1rem;
 	}
 
@@ -3545,7 +3563,7 @@
 	max-inline-size: 8.5rem;
 	min-block-size: 2.2rem;
 	padding-inline: 0.5rem;
-	border: 1px solid var(--line);
+	border: 1px solid var(--control-line);
 	background: var(--paper-white);
 	font-size: 0.65rem;
 }
@@ -3745,7 +3763,7 @@
 	min-block-size: 5rem;
 	resize: vertical;
 	padding: 0.75rem;
-	border: 1px solid var(--line);
+	border: 1px solid var(--control-line);
 	border-radius: 0;
 	color: var(--ink);
 	background: var(--paper-white);

@@ -288,6 +288,7 @@ export const enMessages = {
 	"commerce.channel.both": "Online and in person",
 	"commerce.website": "Merchant website",
 	"commerce.sourceUrl": "Direct Offer URL",
+	"commerce.openOfferSource": "Open Offer from {merchant} in a new tab",
 	"commerce.locale": "Listing locale",
 	"commerce.priceKind": "Price kind",
 	"commerce.priceKind.exact": "Exact",

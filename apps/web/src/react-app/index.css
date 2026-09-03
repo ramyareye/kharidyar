@@ -16,9 +16,10 @@
 	--paper-white: #fcfaf4;
 	--ink: #20241f;
 	--ink-soft: #3d423a;
-	--ink-muted: #6a6d64;
+	--ink-muted: #5c5f56;
 	--line: #c7c1b3;
 	--line-soft: #d9d4c8;
+	--control-line: #7e8077;
 	--moss: #59634f;
 	--moss-dark: #313a2e;
 	--moss-wash: #dfe3d7;
@@ -62,13 +63,21 @@ button {
 	color: inherit;
 }
 
+input::placeholder,
+textarea::placeholder {
+	color: var(--ink-muted);
+	opacity: 1;
+}
+
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-	outline: 3px solid var(--clay);
+	outline: 3px solid var(--clay-dark);
 	outline-offset: 3px;
+	box-shadow: 0 0 0 3px var(--paper-white);
+	scroll-margin-block: 6rem 2rem;
 }
 
 ::selection {

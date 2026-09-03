@@ -10,8 +10,8 @@ export function BrandMark({ compact = false }: { compact?: boolean }) {
 			<svg
 				className="brand__mark"
 				viewBox="0 0 40 40"
-				role="img"
-				aria-label={t("app.name")}
+				aria-hidden="true"
+				focusable="false"
 			>
 				<path d="M6 6h12v12H6zM22 6h12v12H22zM6 22h12v12H6z" />
 				<path className="brand__mark-accent" d="M22 22h12v12H22z" />

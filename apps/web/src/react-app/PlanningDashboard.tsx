@@ -1257,7 +1257,7 @@ export function PlanningDashboard({
 					</div>
 				</aside>
 
-				<main className="studio-main" id="main-content">
+				<main className="studio-main" id="main-content" tabIndex={-1}>
 					<section className="studio-intro">
 						<div>
 							<p className="eyebrow">{t("dashboard.privateWorkspace")}</p>
@@ -1565,6 +1565,7 @@ export function PlanningDashboard({
 																		: "group-chip"
 																}
 																onClick={() => setSelectedGroup("all")}
+																aria-pressed={selectedGroup === "all"}
 															>
 																{t("item.groupAll")}
 															</button>
@@ -1577,6 +1578,7 @@ export function PlanningDashboard({
 																			: "group-chip"
 																	}
 																	onClick={() => setSelectedGroup(group)}
+																	aria-pressed={selectedGroup === group}
 																	key={group}
 																	dir="auto"
 																>
