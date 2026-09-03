@@ -710,7 +710,11 @@ export function ItemComparisonDialog({
 			onChange(value, t(message));
 			return true;
 		} catch (caught) {
-			setMutationError(t(errorKey(caught)));
+			setMutationError(
+				caught instanceof PlanningApiError && caught.code === "BAD_REQUEST"
+					? caught.message
+					: t(errorKey(caught)),
+			);
 			return false;
 		} finally {
 			setBusy(false);
@@ -804,7 +808,8 @@ export function ItemComparisonDialog({
 													</dl>
 												) : null}
 												<p>{t("commerce.lastChecked", { date: formatDateTime(locale, offer.lastCheckedAt) })} · {t("commerce.priceChecks", { count: formatNumber(locale, offer.priceChecks.length) })}</p>
-														{comparison.permissions.canManageCandidates && !candidate.archivedAt && !offer.archivedAt ? <PlanControl busy={busy} candidate={candidate} offerId={offer.id} onSubmit={(value) => mutate(() => api.changePlannedSelection(item.id, value), "commerce.toast.plan")} /> : null}
+												{comparison.permissions.canRefreshOffers && !candidate.archivedAt && !offer.archivedAt ? <button type="button" className="button button--quiet" disabled={busy} onClick={() => void mutate(() => api.refreshOffer(item.id, candidate.id, offer.id), "commerce.toast.refresh")}>{t("commerce.refreshOffer")}</button> : null}
+												{comparison.permissions.canManageCandidates && !candidate.archivedAt && !offer.archivedAt ? <PlanControl busy={busy} candidate={candidate} offerId={offer.id} onSubmit={(value) => mutate(() => api.changePlannedSelection(item.id, value), "commerce.toast.plan")} /> : null}
 														{comparison.permissions.canManageOffers && !candidate.archivedAt && !offer.archivedAt ? <details className="commerce-disclosure commerce-disclosure--nested"><summary>{t("commerce.editOffer")}</summary><OfferForm busy={busy} initial={offer} merchants={comparison.merchants} onSubmit={(value) => mutate(() => api.updateOffer(item.id, candidate.id, offer.id, value), "commerce.toast.offer")} /></details> : null}
 													</article>
 												))}

@@ -629,9 +629,10 @@ describe("Task 7 commerce workflow", () => {
 		).toEqual({
 			canManageCandidates: false,
 			canArchiveCandidates: false,
-			canManageProducts: false,
-			canManageOffers: false,
-			canRecordPurchase: false,
+				canManageProducts: false,
+				canManageOffers: false,
+				canRefreshOffers: false,
+				canRecordPurchase: false,
 			canViewWorkspaceCatalog: true,
 		});
 

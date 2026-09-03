@@ -352,3 +352,107 @@ VALUES (
 | Natural fibre rug category | from €29.99 | Measure before choosing size |',
 	'dev-user'
 );
+
+-- A completed provider-research example for Task 9B. It remains advisory until
+-- the user explicitly promotes it, and no retailer-page extraction is implied.
+INSERT OR IGNORE INTO research_requests (
+	id,
+	workspace_id,
+	collection_id,
+	item_id,
+	query,
+	constraints_json,
+	created_by_user_id
+)
+VALUES (
+	'dev-research-request-chair',
+	'dev-workspace',
+	'dev-collection',
+	'dev-item-chairs',
+	'Natural wood dining chair for a Japanese-modern home',
+	'{"maxUnitPriceMinor":12000,"currency":"EUR","preferredDomains":["jysk.nl"],"requiredTerms":["natural wood"],"excludedTerms":["plastic"]}',
+	'dev-user'
+);
+
+INSERT OR IGNORE INTO research_runs (
+	id,
+	request_id,
+	workspace_id,
+	collection_id,
+	status,
+	provider,
+	provider_query,
+	workflow_instance_id,
+	requested_by_user_id,
+	started_at,
+	finished_at
+)
+VALUES (
+	'dev-research-run-chair',
+	'dev-research-request-chair',
+	'dev-workspace',
+	'dev-collection',
+	'completed',
+	'tavily-basic-v1',
+	'Natural wood dining chair for a Japanese-modern home "natural wood" -plastic under €120.00',
+	'dev-research-workflow-chair',
+	'dev-user',
+	cast(unixepoch('subsecond') * 1000 as integer) - 3600000,
+	cast(unixepoch('subsecond') * 1000 as integer) - 3590000
+);
+
+INSERT OR IGNORE INTO research_sources (
+	id,
+	run_id,
+	request_id,
+	workspace_id,
+	collection_id,
+	url,
+	title,
+	provider,
+	retrieved_at,
+	extraction_status,
+	extraction_method,
+	extraction_metadata_json,
+	snapshot_json,
+	snapshot_expires_at
+)
+VALUES (
+	'dev-research-source-chair',
+	'dev-research-run-chair',
+	'dev-research-request-chair',
+	'dev-workspace',
+	'dev-collection',
+	'https://jysk.nl/eetkamer/eetkamerstoelen',
+	'Natural wood dining chairs',
+	'tavily-basic-v1',
+	cast(unixepoch('subsecond') * 1000 as integer) - 3590000,
+	'not_allowed',
+	'search',
+	'{"providerRequestId":"development-fixture","rank":1}',
+	'{"search":{"title":"Natural wood dining chairs","url":"https://jysk.nl/eetkamer/eetkamerstoelen","content":"A search result saved for local UI development.","score":0.82}}',
+	cast(unixepoch('subsecond') * 1000 as integer) + 2588410000
+);
+
+INSERT OR IGNORE INTO research_results (
+	id,
+	run_id,
+	source_id,
+	title,
+	summary,
+	score,
+	status,
+	suggestion_json,
+	snapshot_expires_at
+)
+VALUES (
+	'dev-research-result-chair',
+	'dev-research-run-chair',
+	'dev-research-source-chair',
+	'Natural wood dining chairs',
+	'A search result saved for local UI development.',
+	0.82,
+	'active',
+	'{"product":{"title":"Natural wood dining chair","brand":"JYSK","model":null,"category":"Dining chair","attributes":[]},"merchant":{"name":"JYSK Netherlands","salesChannel":"online","websiteUrl":"https://jysk.nl","notes":"Merchant inferred from the Research Source."},"offer":{"facts":{"priceKind":"unknown","unitPriceMinor":null,"currency":null,"shippingMinor":null,"shippingBasis":"unknown","availabilityState":"unknown","availabilityChannel":null,"availabilityLocation":null,"availabilityVariant":null,"availabilityNote":null},"locale":"nl-NL"}}',
+	cast(unixepoch('subsecond') * 1000 as integer) + 2588410000
+);

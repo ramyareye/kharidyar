@@ -10,6 +10,8 @@ import { commerceRoutes } from "./commerce-routes";
 import { coreWorkspaceRoutes } from "./core-workspace-routes";
 import { itemWorkflowRoutes } from "./item-workflow-routes";
 import { importDraftRoutes } from "./import-draft-routes";
+import { researchFixtureRoutes } from "./research-fixture-routes";
+import { researchRoutes } from "./research-routes";
 import { requireSession, type WorkerAppEnv } from "./session-middleware";
 
 const app = new Hono<WorkerAppEnv>();
@@ -44,7 +46,9 @@ const apiRoutes = new Hono<WorkerAppEnv>()
 	.route("/", itemWorkflowRoutes)
 	.route("/", collectionDirectionRoutes)
 	.route("/", commerceRoutes)
-	.route("/", importDraftRoutes);
+	.route("/", importDraftRoutes)
+	.route("/", researchFixtureRoutes)
+	.route("/", researchRoutes);
 
 app.route("/api", apiRoutes);
 
@@ -107,4 +111,5 @@ app.onError((error, context) => {
 });
 
 export type AppType = typeof apiRoutes;
+export { ResearchWorkflow } from "./research-workflow";
 export default app;

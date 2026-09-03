@@ -1,8 +1,8 @@
 # Kharidyar Project Specification
 
 - Status: Approved by the product owner
-- Last updated: 2026-09-02
-- Implementation status: Tasks 1 through 9A complete and validated; Task 9B is next after its provider decisions
+- Last updated: 2026-09-03
+- Implementation status: Tasks 1 through 9B complete and validated; Task 10 is next
 
 ## Purpose of this document
 
@@ -1281,6 +1281,8 @@ Completion criteria:
 
 ### Task 8: Collaboration experience
 
+Status: completed and validated on 2026-09-01.
+
 Scope:
 
 - Implement member and invitation management UI.
@@ -1297,6 +1299,8 @@ This is the collaborative web MVP boundary.
 
 ### Task 9A: Research Import Draft
 
+Status: completed and validated on 2026-09-02.
+
 Scope:
 
 - Define a versioned JSON import schema and a constrained Markdown-table importer for pasted research lists.
@@ -1312,6 +1316,8 @@ Completion criteria:
 - Malformed, adversarial, partially valid, and unauthorized imports fail safely while preserving actionable warnings.
 
 ### Task 9B: Provider research MVP
+
+Status: completed and validated on 2026-09-03.
 
 Scope:
 
@@ -1509,29 +1515,32 @@ Mitigation: runtime-independent domain/contracts/i18n packages and a fetch/sessi
 
 - **Decision 11:** Raw pasted Import Draft text is erased immediately after apply or discard. Structured import provenance and application mappings remain until Workspace deletion. Future provider research snapshots are retained for 30 days. Comments and audit history remain until Workspace deletion, while removed comment bodies stay erased.
 
+### Resolved for Task 9B
+
+- **Decision 9:** Tavily Basic Search is the first Research adapter. Each run requests at most five general web results with safe search enabled for the Netherlands and disables generated answers, images, raw page content, and automatic parameter expansion. Only the user's explicit query and structured constraints are sent; the Collection Brief and other private context are not sent. This provider remains replaceable behind the adapter.
+- **Decision 10:** No third-party retailer is approved for Browser Run extraction in the initial release. The allowlist contains only the exact first-party application origin and controlled `/api/research-fixtures/products/<slug>` path. IKEA and other retailer URLs remain attributed Research Sources and manually editable Offers unless written permission or compatible terms are documented later. Changing the allowlist does not require a schema migration.
+
 ### Open decisions for later tasks
 
 - **Decision 5:** Should one Item support more than one selected/final Product, for bundles or recurring purchases?
-- **Decision 9:** Which search provider should power the first Research adapter?
-- **Decision 10:** Which retailers or domains are approved for initial Browser Run extraction?
 - **Decision 12:** Is hard deletion required for privacy requests, and which historical records should instead be anonymized?
 - **Decision 14:** Should scheduled price monitoring be a post-MVP paid feature, a general feature, or remain undecided?
 - **Decision 15:** What retention and deletion policy applies to original base photos, reference images, edited variants, provider inputs, and backups?
 - **Decision 16:** Should the first AI Concept visualizer support both `space` and `person`, or launch with one subject kind first?
 - **Decision 17:** Which image-edit provider is approved, in which processing region, and with what retention and training terms?
 
-Decisions 1, 2, 3, 4, 6, 7, 11, and 13 are resolved. Decision 15 must be resolved before the future Concept media foundation; Decisions 16 and 17 before the future AI Concept visualization task; all other decisions affecting schema, permissions, or external providers must be resolved before their corresponding implementation task begins.
+Decisions 1, 2, 3, 4, 6, 7, 9, 10, 11, and 13 are resolved. Decision 15 must be resolved before the future Concept media foundation; Decisions 16 and 17 before the future AI Concept visualization task; all other decisions affecting schema, permissions, or external providers must be resolved before their corresponding implementation task begins.
 
 ## Current repository state
 
 - Branch: `main`.
-- History: scaffold baseline followed by committed Task 1 monorepo, Task 2 domain/D1, Task 3 Google authentication, Task 4 authorization/invitations, Tasks 5A/5B core planning, Task 6A Collection Brief/text Concept, Task 6B Item workflow, the branding/MCP roadmap note, Task 7 Product/Offer comparison, and Task 8 collaboration. `main` matches `origin/main` before the current uncommitted Task 9A implementation.
-- Tasks 1 through 9A are complete and validated; Task 9B is next after Decisions 9 and 10 are resolved.
+- History: scaffold baseline followed by committed Task 1 monorepo, Task 2 domain/D1, Task 3 Google authentication, Task 4 authorization/invitations, Tasks 5A/5B core planning, Task 6A Collection Brief/text Concept, Task 6B Item workflow, the branding/MCP roadmap note, Task 7 Product/Offer comparison, Task 8 collaboration, and Task 9A deterministic Research Import Drafts. Task 9B is the current completed but uncommitted implementation.
+- Tasks 1 through 9B are complete and validated; Task 10 is next.
 - The repository is a Bun `1.3.12` workspace with `apps/web`, `packages/domain`, `packages/contracts`, and `packages/i18n`. No mobile, API-client, or config package has been created.
 - `bun.lock` is the sole package-manager lockfile present, and Bun workspaces are declared in the root `package.json`.
 - The Vite/React frontend provides localized Google sign-in and a protected planning studio with Workspace, Collection, and Item create/edit/archive/restore flows, URL-restored selection, quantity-aware Item cards, lightweight group navigation, a Collection direction surface for the Brief, EUR budget, ordered color preference, references, and optional text Concept, plus a permission-aware Item detail/status/history workflow. English and Persian layouts are responsive at desktop and narrow widths.
-- Drizzle is the unified schema source. The first generated migration includes Better Auth's generated tables plus Workspace-private Products and the initial collaboration/planning tables; a second migration adds persistent Better Auth rate-limit storage; a third adds Invitations, selected-Collection targets, single-use acceptance provenance, and privacy-preserving collaboration rate limits; the fourth extends the structured Collection Brief and adds the one-active-Concept record; the fifth adds Item requirements and immutable Decision Events; the sixth adds Merchant-backed Offers, qualified Price Checks, planned selection, and immutable purchase snapshots; the seventh adds Item/Candidate comments and Candidate preferences; the eighth adds Import Draft lifecycle and durable application-provenance mappings while preserving existing local data. Later feature tables remain owned by their roadmap tasks.
-- Local migration, migration-list, schema-check, seed, type-generation, and quality commands are available from the workspace root. The fixed development seed is idempotent and includes one unapplied Import Draft proving that preview data does not mutate planning records.
+- Drizzle is the unified schema source. The first generated migration includes Better Auth's generated tables plus Workspace-private Products and the initial collaboration/planning tables; a second migration adds persistent Better Auth rate-limit storage; a third adds Invitations, selected-Collection targets, single-use acceptance provenance, and privacy-preserving collaboration rate limits; the fourth extends the structured Collection Brief and adds the one-active-Concept record; the fifth adds Item requirements and immutable Decision Events; the sixth adds Merchant-backed Offers, qualified Price Checks, planned selection, and immutable purchase snapshots; the seventh adds Item/Candidate comments and Candidate preferences; the eighth adds Import Draft lifecycle and durable application-provenance mappings; and the ninth adds Research Requests, Runs, Sources, Results, and idempotent promotion provenance. Later feature tables remain owned by their roadmap tasks.
+- Local migration, migration-list, schema-check, seed, type-generation, and quality commands are available from the workspace root. The fixed development seed is idempotent and includes one unapplied Import Draft plus one completed advisory Research Run.
 - Runtime-independent domain primitives preserve separate Item-needed and Candidate-planned purchase quantities, money/budget validation, group labels, honest Offer price/shipping semantics, freshness, exact/lower-bound/incomplete aggregation, normalized ordered core/supporting color rules, and deterministic Item status-transition classification.
 - The root `CONTEXT.md` defines the purchase-planning language and guards the Item/Candidate/Product/Offer boundaries.
 - The baseline Worker regression test preserves `GET /api/` returning `200` with `{ "name": "Cloudflare" }`.
@@ -1539,9 +1548,9 @@ Decisions 1, 2, 3, 4, 6, 7, 11, and 13 are resolved. Decision 15 must be resolve
 - Auth integration tests cover anonymous rejection, Google authorization URL construction, untrusted callback rejection, authenticated session loading, sign-out revocation, and separate internal User/provider Account records.
 - Capability resolution combines applicable Workspace and Collection grants. Workspace grants reach future Collections, Collection grants remain isolated, only Workspace-scoped Owners manage Owner access, and atomic membership mutations preserve at least one Workspace-scoped Owner.
 - Invitation APIs create Workspace or selected-Collection grants, default supplied email addresses to a verified-email restriction with explicit opt-out, return fragment-based bearer URLs once, store SHA-256 hashes only, provide a rate-limited metadata-only preview, revoke pending invitations, and accept through one rollback-safe D1 batch.
-- Shared Zod contracts and chained Hono routes implement authenticated Workspace, Collection, Item, Collection Brief, text Concept, Item workflow, commerce, owner-filtered collaboration administration, Item/Candidate discussion, Candidate-preference behavior, and Research Import Draft preview/correction/apply/discard behavior. Brief replacement, including its ordered colors, is atomic; Item detail and status writes atomically append Decision Events; Offer refreshes append Price Checks; planned-choice and purchase commands append immutable snapshots; Import Draft application atomically creates validated planning records and provenance once; archived ancestors block ordinary mutations while authorized history reads remain available.
-- Domain, localization, UI-state, and Cloudflare-runtime database tests cover locale detection/direction/formatting, critical shell states, migration idempotency, all role allow/deny behavior, scope isolation, Owner boundaries, invitation expiry/revocation/email matching, rate limits, replay, competing acceptance, database uniqueness, forced rollback and retry, typed Workspace-to-Item creation, CRUD validation, archive/restore, Item filtering/pagination, positive independent quantities, Item detail snapshots, explicit status transitions, reversal classification, purchase-only Owner authorization, Decision Event and Price Check immutability, Merchant/Product/Offer scope, several Candidates and Offers, exact/starting/unknown prices, shipping bases, qualified availability, freshness, honest Collection/group rollups, partial purchase snapshots, palette bounds/normalization/order/uniqueness, structured Brief validation, one-active-Concept behavior, owner-filtered collaboration ledgers, comment capability boundaries, cross-Item target rejection, idempotent preferences, immediate membership revocation, deterministic multi-room research parsing, source classification, quantity/price inference, Import Draft authorization and non-mutation, idempotent apply/discard, Merchant reuse, application provenance, and immediate raw-input erasure.
-- The localized web studio now includes the structured Brief/text Concept, Item decision history, Merchant-backed Product/Offer comparison, explicit planned choices, separate shipping and totals, freshness/availability details, partial purchase recording, Collection/group planned-cost rollups, owner-only member/invitation administration, one-time manual invitation-link delivery, Item/Candidate discussion, resolved/tombstoned comments, Candidate preference aggregates, and an English/Persian Research Import desk with constrained Markdown/versioned-JSON intake, inference warnings, grouped proof sheets, advanced correction, source-total reconciliation, and explicit apply/discard actions. Provider-backed research is not yet implemented.
+- Shared Zod contracts and chained Hono routes implement authenticated Workspace, Collection, Item, Collection Brief, text Concept, Item workflow, commerce, owner-filtered collaboration administration, Item/Candidate discussion, Candidate-preference behavior, Research Import Drafts, and provider Research Requests/Runs/Results. Brief replacement, including its ordered colors, is atomic; Item detail and status writes atomically append Decision Events; manual and allowlisted automated Offer refreshes append Price Checks; planned-choice and purchase commands append immutable snapshots; import and Research Result promotion atomically create validated planning records and provenance once; archived ancestors block ordinary mutations while authorized history reads remain available.
+- Domain, localization, UI-state, and Cloudflare-runtime database tests cover locale detection/direction/formatting, critical shell states, migration idempotency, all role allow/deny behavior, scope isolation, Owner boundaries, invitation expiry/revocation/email matching, rate limits, replay, competing acceptance, database uniqueness, forced rollback and retry, typed Workspace-to-Item creation, CRUD validation, archive/restore, Item filtering/pagination, positive independent quantities, Item detail snapshots, explicit status transitions, reversal classification, purchase-only Owner authorization, Decision Event and Price Check immutability, Merchant/Product/Offer scope, several Candidates and Offers, exact/starting/unknown prices, shipping bases, qualified availability, freshness, honest Collection/group rollups, partial purchase snapshots, palette bounds/normalization/order/uniqueness, structured Brief validation, one-active-Concept behavior, owner-filtered collaboration ledgers, comment capability boundaries, cross-Item target rejection, idempotent preferences, immediate membership revocation, deterministic multi-room research parsing, source classification, quantity/price inference, Import Draft authorization and non-mutation, idempotent apply/discard, Merchant reuse, application provenance, immediate raw-input erasure, bounded provider requests, exact Browser Run allowlisting, asynchronous Research lifecycle/provenance, promotion idempotency, permission isolation, and the guarantee that research creates no decision or purchase.
+- The localized web studio now includes the structured Brief/text Concept, Item decision history, Merchant-backed Product/Offer comparison, explicit planned choices, separate shipping and totals, freshness/availability details, partial purchase recording, Collection/group planned-cost rollups, owner-only member/invitation administration, one-time manual invitation-link delivery, Item/Candidate discussion, resolved/tombstoned comments, Candidate preference aggregates, an English/Persian Research Import desk, and a compact Live Research desk with visible async states, source attribution, moderation, and explicit promotion. Provider research never selects a Candidate or records a decision or purchase.
 
 ## Current reference basis
 
@@ -1561,7 +1570,14 @@ These links informed the architecture and must be rechecked before implementing 
 - [Cloudflare R2 limits](https://developers.cloudflare.com/r2/platform/limits/)
 - [Cloudflare Browser Run overview (formerly Browser Rendering)](https://developers.cloudflare.com/browser-run/)
 - [Cloudflare Browser Run limits](https://developers.cloudflare.com/browser-run/limits/)
+- [Cloudflare Browser Run Playwright guide](https://developers.cloudflare.com/browser-run/playwright/)
+- [Cloudflare Workflows guide](https://developers.cloudflare.com/workflows/get-started/guide/)
+- [Cloudflare Workflows Workers API](https://developers.cloudflare.com/workflows/build/workers-api/)
 - [Cloudflare Workflows limits](https://developers.cloudflare.com/workflows/reference/limits/)
+- [Tavily Search API](https://docs.tavily.com/documentation/api-reference/endpoint/search)
+- [Tavily API credits](https://docs.tavily.com/documentation/api-credits)
+- [Tavily terms](https://www.tavily.com/terms)
+- [IKEA Netherlands terms of use](https://www.ikea.com/nl/en/customer-service/terms-conditions/terms-and-conditions-of-use-pub92fe171d/)
 - [Better Auth Hono integration](https://better-auth.com/docs/integrations/hono)
 - [Better Auth database guide](https://better-auth.com/docs/concepts/database)
 - [Better Auth session management](https://better-auth.com/docs/concepts/session-management)
@@ -1612,6 +1628,8 @@ The product owner explicitly authorized Task 8 on 2026-09-01. Task 8 implements 
 
 The product owner resolved Decision 11 and explicitly authorized Task 9A on 2026-09-02. Task 9A implements versioned JSON and constrained Markdown research imports, reviewable structured proposals, deterministic source/quantity/price interpretation, visible ambiguity and reconciliation warnings, capability-checked atomic application, durable created/reused provenance, idempotent retries, and immediate raw-input erasure after apply or discard. It is complete and validated through the full quality gate, idempotent local migration and seed, representative/adversarial parser and Cloudflare-runtime API coverage, and one authenticated Argent Chromium smoke check of the seeded proof sheet without horizontal overflow.
 
+The product owner explicitly authorized Task 9B on 2026-09-02. Decisions 9 and 10 were resolved conservatively: bounded Tavily Basic Search receives only explicit query constraints, and Browser Run is restricted to the exact first-party product-fixture path with no retailer allowlist. Task 9B implements asynchronous Research Requests/Runs/Results/Sources through Cloudflare Workflows, 30-day snapshots, visible failure/moderation states, idempotent human-confirmed promotion into ordinary planning records, and user-requested Offer refresh only for permitted pages. It is complete and validated through the full quality gate, idempotent local migration and seed, focused provider/Workflow/authorization/promotion tests, deployment dry-run, and one authenticated Argent Chromium smoke check of the form, seeded result, provenance labels, and promotion controls.
+
 On 2026-09-01, the product owner added a future ChatGPT MCP integration as the final roadmap task. It remains deferred until the production API and permission-filtered Context Builder are stable, and it must reuse existing application services rather than introduce parallel domain or database behavior.
 
-The next ordered implementation task is Task 9B: Provider research MVP. Decisions 9 and 10 must be resolved first, and implementation starts only after the product owner explicitly requests continuation in a later session.
+The next ordered implementation task is Task 10: AI context and export. It starts only after the product owner explicitly requests continuation in a later session.

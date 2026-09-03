@@ -52,7 +52,7 @@ http://localhost:5173/api/auth/callback/google
 
 Register the equivalent HTTPS URI for each deployed environment: `<BETTER_AUTH_URL>/api/auth/callback/google`. Put its client ID and client secret in `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Never commit `.dev.vars`, paste a secret into source code, or expose the client secret to React.
 
-Preview and production require the same five bindings:
+Preview and production require the same six secrets:
 
 ```text
 AUTH_TRUSTED_ORIGINS
@@ -60,6 +60,7 @@ BETTER_AUTH_SECRET
 BETTER_AUTH_URL
 GOOGLE_CLIENT_ID
 GOOGLE_CLIENT_SECRET
+TAVILY_API_KEY
 ```
 
 Set each value interactively from `apps/web`; use the matching Wrangler environment:
@@ -70,6 +71,8 @@ bunx wrangler secret put <NAME> --env production
 ```
 
 Production origins must use HTTPS. Better Auth then emits secure cookies. Authentication rate limits persist in D1 and use Cloudflare's edge-controlled `CF-Connecting-IP` header rather than a caller-supplied address.
+
+`TAVILY_API_KEY` enables live provider research. The initial adapter deliberately uses Tavily Basic search with no generated answer, raw page content, or images and returns at most five results per run. The non-secret `RESEARCH_BROWSER_ALLOWED_ORIGIN` is configured in `wrangler.json`; keep it equal to the exact first-party application origin. Browser Run extraction is limited to the app's controlled `/api/research-fixtures/products/<slug>` path until a retailer explicitly permits automated extraction.
 
 ### Future Expo clients
 
@@ -89,7 +92,7 @@ bun run build
 bun run check
 ```
 
-`bun run check` runs all quality gates and a Wrangler dry run. The Worker tests execute in Cloudflare's Vitest integration, apply the D1 migrations to an isolated local database, protect the existing `GET /api/` response, exercise database constraints, and validate Google/session, scoped authorization, transactional invitations, typed Workspace/Collection/Item APIs, structured Collection Briefs, text Concepts, Item workflow permissions, Merchant-backed Product/Offer comparison, honest planned-cost rollups, and immutable partial-purchase snapshots without contacting Google. Runtime-independent tests also cover locale policy, RTL/LTR direction, formatting, palette rules, status-transition classification, Offer freshness and cost aggregation, and the web shell's critical-state resolvers.
+`bun run check` runs all quality gates and a Wrangler dry run. The Worker tests execute in Cloudflare's Vitest integration, apply the D1 migrations to an isolated local database, protect the existing `GET /api/` response, exercise database constraints, and validate Google/session, scoped authorization, transactional invitations, typed Workspace/Collection/Item APIs, structured Collection Briefs, text Concepts, Item workflow permissions, Merchant-backed Product/Offer comparison, honest planned-cost rollups, immutable partial-purchase snapshots, Import Drafts, and provider-research Workflows without contacting Google, Tavily, or retailer pages. Runtime-independent tests also cover locale policy, RTL/LTR direction, formatting, palette rules, status-transition classification, Offer freshness and cost aggregation, research retention, and the web shell's critical-state resolvers.
 
 ## Core API
 
@@ -106,6 +109,8 @@ Authenticated users can create, edit, archive, and restore Workspaces, Collectio
 The Item detail dialog keeps full planning facts beside explicit status controls and newest-first human-authored history. Status never changes automatically. Editors can record non-purchase status decisions, while only Owners can mark an Item purchased under the current policy. Backward transitions remain possible but are warned before confirmation and labeled as reversals in history. Detail changes and status changes atomically append immutable Decision Events in D1.
 
 The comparison dialog supports several Products per Item and several retailer Offers per Product. It keeps unit price, price kind, shipping amount/basis, availability qualifiers, source, freshness, and total distinct; users explicitly choose the Candidate, Offer, and purchase quantity used by the plan. Collection and group summaries include only those planned lines, retain lower-bound/incomplete states, list missing plans, and compare complete compatible totals with the Collection budget. Partial purchases create immutable exact-price snapshots and never automatically complete an Item.
+
+The Live Research desk creates asynchronous Research Requests backed by a Cloudflare Workflow and the bounded Tavily adapter. It shows queued/running/partial/completed/failed/cancelled states, source links and retrieval times, and 30-day suggestion snapshots. Results stay advisory: dismiss/restore is reversible, while promotion requires explicit direct-Product-URL confirmation and creates ordinary Product, Candidate, Merchant, Offer, Price Check, and provenance records exactly once. Research can never plan a Candidate, decide an Item, or record a purchase. Manual automated Offer refresh is available only for the exact first-party Browser Run allowlist; all retailer Offers remain manually editable.
 
 Each Collection can show and edit its practical Brief, optional EUR budget, ordered core/supporting color preference, HTTPS reference links, and one optional text Concept alongside its Items. Palettes allow up to six colors per group, preserve user order, normalize hex values, and always pair swatches with text. Concept images, uploads, R2 storage, and AI visualization remain intentionally absent until their future roadmap tasks.
 
@@ -125,7 +130,7 @@ bun run db:seed:local
 
 `bun run db:generate` first regenerates Better Auth's Drizzle tables and then creates a reviewable SQL migration for all schema changes. Do not edit `apps/web/src/db/schema/auth.ts` or generated migration metadata by hand. Review the generated SQL before applying or committing it.
 
-`bun run db:migrate:local` is safe to rerun; already-applied migrations are a no-op. `bun run db:seed:local` loads fixed, idempotent development data into the local database only. It includes an Item that needs four chairs, representative requirements and human decision history, a LISABO Candidate plan that buys two, an IKEA Netherlands Merchant, an Offer and Price Check, plus a scoped collaborator with Item/Candidate comments and one Candidate preference. This preserves the distinction between need units, Offer units, discussion, and final decisions.
+`bun run db:migrate:local` is safe to rerun; already-applied migrations are a no-op. `bun run db:seed:local` loads fixed, idempotent development data into the local database only. It includes an Item that needs four chairs, representative requirements and human decision history, a LISABO Candidate plan that buys two, an IKEA Netherlands Merchant, an Offer and Price Check, a scoped collaborator with Item/Candidate comments and one Candidate preference, an unapplied Import Draft, and a completed advisory Research Run. This preserves the distinction between need units, Offer units, research, discussion, and final decisions.
 
 Preview and production use distinct D1 resources. Configure the Cloudflare account/resources for those environments before the first remote migration or deployment; the commands above never mutate a remote database. After changing any binding, regenerate Worker types with `bun run cf-typegen`.
 
@@ -136,4 +141,4 @@ bun run cf-typegen
 bun run deploy
 ```
 
-Run `bun run cf-typegen` after changing Worker bindings. Deployment requires the appropriate Cloudflare account, D1 resources, and secrets; Tasks 1–7 do not create or mutate remote Cloudflare resources.
+Run `bun run cf-typegen` after changing Worker bindings. Deployment requires the appropriate Cloudflare account, D1 resources, Workflow, Browser Run binding, and secrets. Apply the latest remote D1 migration and set `TAVILY_API_KEY` before deploying Task 9B; ordinary local commands never mutate remote resources.

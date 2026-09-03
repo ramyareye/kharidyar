@@ -12,6 +12,7 @@ const testAuthBindings = {
 	BETTER_AUTH_URL: "http://example.com",
 	GOOGLE_CLIENT_ID: "test-google-client-id",
 	GOOGLE_CLIENT_SECRET: "test-google-client-secret",
+	TAVILY_API_KEY: "test-tavily-api-key",
 } as const;
 
 for (const [name, value] of Object.entries(testAuthBindings)) {

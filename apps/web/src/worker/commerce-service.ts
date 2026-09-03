@@ -455,6 +455,11 @@ function permissions(
 			access.target,
 			"offer_manage",
 		),
+		canRefreshOffers: hasCapability(
+			access.grants,
+			access.target,
+			"offer_refresh",
+		),
 		canRecordPurchase: hasCapability(
 			access.grants,
 			access.target,

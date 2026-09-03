@@ -10,6 +10,11 @@ export const invitationAcceptanceRateLimit = {
 	windowMilliseconds: 60_000,
 } as const;
 
+export const researchCreationRateLimit = {
+	limit: 5,
+	windowMilliseconds: 60_000,
+} as const;
+
 interface RateLimitRow {
 	count: number;
 	window_started_at: number;
@@ -40,7 +45,10 @@ async function privateRateLimitKey(
 }
 
 export async function enforceCollaborationRateLimit(input: {
-	action: "invitation_acceptance" | "invitation_preview";
+	action:
+		| "invitation_acceptance"
+		| "invitation_preview"
+		| "research_creation";
 	database: D1Database;
 	identity: string;
 	limit: number;
@@ -88,7 +96,9 @@ export async function enforceCollaborationRateLimit(input: {
 		throw new ApiError(
 			429,
 			"RATE_LIMITED",
-			"Too many invitation requests. Please try again later.",
+			input.action === "research_creation"
+				? "Too many research requests. Please try again later."
+				: "Too many invitation requests. Please try again later.",
 			{ retryAfterSeconds },
 		);
 	}

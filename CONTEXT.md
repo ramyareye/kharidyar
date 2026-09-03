@@ -68,6 +68,32 @@ _Avoid_: Trusted source data, applied planning records
 The durable provenance mapping from one applied Import Proposal to the planning records it created or reused.
 _Avoid_: Import Draft, automatic synchronization, Research Run
 
+## Provider research
+
+**Research Request**:
+The user's explicit search question and normalized constraints for one Collection, optionally related to one Item.
+_Avoid_: Collection Brief, Import Draft, prompt built from hidden context
+
+**Research Run**:
+One asynchronous, retryable execution of a Research Request with a visible lifecycle, provider identity, and requester.
+_Avoid_: Research Request, final decision, invisible background state
+
+**Research Source**:
+The HTTPS source URL, provider, retrieval time, extraction state, and expiring snapshot behind one finding.
+_Avoid_: Offer, trusted instruction, permission to scrape
+
+**Research Result**:
+An advisory, sourced finding from a Research Run that remains separate from normal planning records until explicit promotion.
+_Avoid_: Product, Candidate, Offer, selected option
+
+**Research Promotion**:
+The idempotent, human-confirmed conversion of one active Research Result into ordinary Product, Candidate, Merchant, Offer, and Price Check records, with durable provenance.
+_Avoid_: automatic selection, purchase, repeated import
+
+**Automated Offer Refresh**:
+A user-requested Price Check extracted only from an exact, approved Product-page allowlist; unsupported retailer URLs stay manual.
+_Avoid_: scheduled monitoring, broad crawling, access-control bypass
+
 ## Planning
 
 **Item**:

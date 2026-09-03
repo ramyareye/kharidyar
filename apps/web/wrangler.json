@@ -19,9 +19,23 @@
 			"BETTER_AUTH_SECRET",
 			"BETTER_AUTH_URL",
 			"GOOGLE_CLIENT_ID",
-			"GOOGLE_CLIENT_SECRET"
+			"GOOGLE_CLIENT_SECRET",
+			"TAVILY_API_KEY"
 		]
 	},
+	"vars": {
+		"RESEARCH_BROWSER_ALLOWED_ORIGIN": "https://kharidyar.formahsa.workers.dev"
+	},
+	"browser": {
+		"binding": "BROWSER"
+	},
+	"workflows": [
+		{
+			"name": "kharidyar-research-local",
+			"binding": "RESEARCH_WORKFLOW",
+			"class_name": "ResearchWorkflow"
+		}
+	],
 	"upload_source_maps": true,
 	"d1_databases": [
 		{
@@ -38,9 +52,23 @@
 					"BETTER_AUTH_SECRET",
 					"BETTER_AUTH_URL",
 					"GOOGLE_CLIENT_ID",
-					"GOOGLE_CLIENT_SECRET"
+					"GOOGLE_CLIENT_SECRET",
+					"TAVILY_API_KEY"
 				]
 			},
+			"vars": {
+				"RESEARCH_BROWSER_ALLOWED_ORIGIN": "https://kharidyar-preview.formahsa.workers.dev"
+			},
+			"browser": {
+				"binding": "BROWSER"
+			},
+			"workflows": [
+				{
+					"name": "kharidyar-research-preview",
+					"binding": "RESEARCH_WORKFLOW",
+					"class_name": "ResearchWorkflow"
+				}
+			],
 			"d1_databases": [
 				{
 					"binding": "DB",
@@ -57,9 +85,23 @@
 					"BETTER_AUTH_SECRET",
 					"BETTER_AUTH_URL",
 					"GOOGLE_CLIENT_ID",
-					"GOOGLE_CLIENT_SECRET"
+					"GOOGLE_CLIENT_SECRET",
+					"TAVILY_API_KEY"
 				]
 			},
+			"vars": {
+				"RESEARCH_BROWSER_ALLOWED_ORIGIN": "https://kharidyar.formahsa.workers.dev"
+			},
+			"browser": {
+				"binding": "BROWSER"
+			},
+			"workflows": [
+				{
+					"name": "kharidyar-research",
+					"binding": "RESEARCH_WORKFLOW",
+					"class_name": "ResearchWorkflow"
+				}
+			],
 			"d1_databases": [
 				{
 					"binding": "DB",

@@ -13,13 +13,16 @@ import {
 	groupLabel,
 	hasCapability,
 	isOfferStale,
+	isResearchRunTerminal,
 	itemStatusTransition,
 	money,
   normalizeHexColor,
 	offerStaleAfterMilliseconds,
 	offerTerms,
 	plannedPurchaseQuantity,
+	providerResearchRetentionMilliseconds,
 	quantityPlan,
+	researchSnapshotExpiresAt,
 	resolveCapabilities,
 	type MembershipGrant,
 	type MembershipRole,
@@ -510,5 +513,18 @@ describe("group and budget primitives", () => {
 			status: "lower_bound",
 			differenceMinor: 4_000,
 		});
+	});
+});
+
+describe("provider research lifecycle", () => {
+	it("distinguishes active runs and fixes snapshot retention at 30 days", () => {
+		expect(isResearchRunTerminal("queued")).toBe(false);
+		expect(isResearchRunTerminal("partial")).toBe(false);
+		expect(isResearchRunTerminal("completed")).toBe(true);
+		expect(isResearchRunTerminal("failed")).toBe(true);
+		expect(researchSnapshotExpiresAt(1_000)).toBe(
+			1_000 + providerResearchRetentionMilliseconds,
+		);
+		expect(() => researchSnapshotExpiresAt(-1)).toThrow(TypeError);
 	});
 });

@@ -17,6 +17,10 @@ import {
 	itemResponseSchema,
 	itemStatusChangeResponseSchema,
 	itemWorkflowResponseSchema,
+	researchDeskResponseSchema,
+	researchRequestCreateInputSchema,
+	researchResultModerationInputSchema,
+	researchResultPromotionInputSchema,
 	workspaceListResponseSchema,
 	workspaceResponseSchema,
 	workspaceCollaborationResponseSchema,
@@ -53,6 +57,9 @@ import {
 	type PriceCheckInput,
 	type ProductUpdateInput,
 	type PurchaseRecordInput,
+	type ResearchDeskResponse,
+	type ResearchRequestCreateInput,
+	type ResearchResultPromotionInput,
 	type DecisionEventResource,
 	type WorkspaceCreateInput,
 	type WorkspaceResource,
@@ -153,6 +160,29 @@ export interface PlanningApi {
 		collectionId: string,
 		draftId: string,
 	) => Promise<ImportDraftResource>;
+	readResearchDesk: (collectionId: string) => Promise<ResearchDeskResponse>;
+	createResearchRequest: (
+		collectionId: string,
+		value: ResearchRequestCreateInput,
+	) => Promise<ResearchDeskResponse>;
+	retryResearchRequest: (
+		collectionId: string,
+		requestId: string,
+	) => Promise<ResearchDeskResponse>;
+	cancelResearchRun: (
+		collectionId: string,
+		runId: string,
+	) => Promise<ResearchDeskResponse>;
+	moderateResearchResult: (
+		collectionId: string,
+		resultId: string,
+		dismissed: boolean,
+	) => Promise<ResearchDeskResponse>;
+	promoteResearchResult: (
+		collectionId: string,
+		resultId: string,
+		value: ResearchResultPromotionInput,
+	) => Promise<ResearchDeskResponse>;
 	archiveCollection: (collectionId: string) => Promise<CollectionResource>;
 	archiveItem: (itemId: string) => Promise<ItemResource>;
 	archiveWorkspace: (workspaceId: string) => Promise<WorkspaceResource>;
@@ -237,6 +267,11 @@ export interface PlanningApi {
 		offerId: string,
 		value: PriceCheckInput,
 	) => Promise<ItemComparisonResponse>;
+	refreshOffer: (
+		itemId: string,
+		candidateId: string,
+		offerId: string,
+	) => Promise<ItemComparisonResponse>;
 	recordPurchase: (
 		itemId: string,
 		value: PurchaseRecordInput,
@@ -317,6 +352,57 @@ export interface EditableResource<T> {
 }
 
 export const planningApi: PlanningApi = {
+	async readResearchDesk(collectionId) {
+		return commerceRequest(
+			`/collections/${encodeURIComponent(collectionId)}/research`,
+			"GET",
+			researchDeskResponseSchema,
+		);
+	},
+
+	async createResearchRequest(collectionId, value) {
+		return commerceRequest(
+			`/collections/${encodeURIComponent(collectionId)}/research-requests`,
+			"POST",
+			researchDeskResponseSchema,
+			researchRequestCreateInputSchema.parse(value),
+		);
+	},
+
+	async retryResearchRequest(collectionId, requestId) {
+		return commerceRequest(
+			`/collections/${encodeURIComponent(collectionId)}/research-requests/${encodeURIComponent(requestId)}/runs`,
+			"POST",
+			researchDeskResponseSchema,
+		);
+	},
+
+	async cancelResearchRun(collectionId, runId) {
+		return commerceRequest(
+			`/collections/${encodeURIComponent(collectionId)}/research-runs/${encodeURIComponent(runId)}/cancel`,
+			"POST",
+			researchDeskResponseSchema,
+		);
+	},
+
+	async moderateResearchResult(collectionId, resultId, dismissed) {
+		return commerceRequest(
+			`/collections/${encodeURIComponent(collectionId)}/research-results/${encodeURIComponent(resultId)}/moderation`,
+			"PUT",
+			researchDeskResponseSchema,
+			researchResultModerationInputSchema.parse({ dismissed }),
+		);
+	},
+
+	async promoteResearchResult(collectionId, resultId, value) {
+		return commerceRequest(
+			`/collections/${encodeURIComponent(collectionId)}/research-results/${encodeURIComponent(resultId)}/promote`,
+			"POST",
+			researchDeskResponseSchema,
+			researchResultPromotionInputSchema.parse(value),
+		);
+	},
+
 	async listImportDrafts(collectionId) {
 		return (
 			await commerceRequest(
@@ -572,6 +658,14 @@ export const planningApi: PlanningApi = {
 			"POST",
 			itemComparisonResponseSchema,
 			value,
+		);
+	},
+
+	async refreshOffer(itemId, candidateId, offerId) {
+		return commerceRequest(
+			`/items/${encodeURIComponent(itemId)}/candidates/${encodeURIComponent(candidateId)}/offers/${encodeURIComponent(offerId)}/refresh`,
+			"POST",
+			itemComparisonResponseSchema,
 		);
 	},
 

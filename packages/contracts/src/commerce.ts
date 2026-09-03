@@ -353,6 +353,7 @@ export const commercePermissionsSchema = z
 		canArchiveCandidates: z.boolean(),
 		canManageProducts: z.boolean(),
 		canManageOffers: z.boolean(),
+		canRefreshOffers: z.boolean(),
 		canRecordPurchase: z.boolean(),
 		canViewWorkspaceCatalog: z.boolean(),
 	})

@@ -31,6 +31,7 @@ import { CollectionDirection } from "./CollectionDirection";
 import { ItemDiscussionDialog } from "./ItemDiscussionDialog";
 import { ItemWorkflowDialog } from "./ItemWorkflowDialog";
 import { ItemComparisonDialog } from "./ItemComparisonDialog";
+import { ProviderResearchDialog } from "./ProviderResearchDialog";
 import { ResearchImportDialog } from "./ResearchImportDialog";
 import { CollectionBriefForm, ConceptForm } from "./collection-direction-forms";
 import {
@@ -55,6 +56,7 @@ type EditorState =
 	| { kind: "item-edit"; resource: ItemResource }
 	| { kind: "item-workflow"; resource: ItemResource }
 	| { kind: "research-import"; resource: CollectionResource }
+	| { kind: "provider-research"; resource: CollectionResource }
 	| { kind: "concept-edit" }
 	| { kind: "workspace-create" }
 	| { kind: "workspace-collaboration"; resource: WorkspaceSummary }
@@ -1439,6 +1441,21 @@ export function PlanningDashboard({
 													{t("import.open")}
 												</button>
 											) : null}
+											{!selectedCollection.archivedAt ? (
+												<button
+													type="button"
+													className="button button--secondary"
+													onClick={() =>
+														setEditor({
+															kind: "provider-research",
+															resource: selectedCollection,
+														})
+													}
+												>
+													<InlineIcon>⌕</InlineIcon>
+													{t("research.open")}
+												</button>
+											) : null}
 											{!selectedCollection.archivedAt &&
 											itemPermissions.canCreate ? (
 												<button
@@ -1675,6 +1692,14 @@ export function PlanningDashboard({
 					api={api}
 					collection={editor.resource}
 					onApplied={() => setRetryNonce((current) => current + 1)}
+					onClose={() => setEditor(null)}
+				/>
+			) : editor?.kind === "provider-research" ? (
+				<ProviderResearchDialog
+					api={api}
+					collection={editor.resource}
+					items={activeItems}
+					onChange={() => setRetryNonce((current) => current + 1)}
 					onClose={() => setEditor(null)}
 				/>
 			) : editor?.kind === "item-edit" ? (
