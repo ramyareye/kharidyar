@@ -6,6 +6,7 @@ import {
 	collectionListResponseSchema,
 	collectionResponseSchema,
 	conceptResponseSchema,
+	contextSnapshotResponseSchema,
 	commentInputSchema,
 	commentResolutionInputSchema,
 	invitationCreatedResponseSchema,
@@ -36,6 +37,7 @@ import {
 	type CollectionUpdateInput,
 	type ConceptInput,
 	type ConceptResource,
+	type ContextSnapshotResource,
 	type CommentInput,
 	type CommentResolutionInput,
 	type InvitationCreateInput,
@@ -117,6 +119,26 @@ async function parsedResponse<T>(
 	return schema.parse(body);
 }
 
+async function textResponse(response: Response): Promise<string> {
+	if (response.ok) return response.text();
+
+	const body: unknown = await response.json().catch(() => null);
+	const error = apiErrorResponseSchema.safeParse(body);
+	if (error.success) {
+		throw new PlanningApiError(
+			error.data.error.code,
+			error.data.error.message,
+			response.status,
+		);
+	}
+
+	throw new PlanningApiError(
+		"INTERNAL_ERROR",
+		"The server returned an unreadable response.",
+		response.status,
+	);
+}
+
 async function commerceRequest<T>(
 	path: string,
 	method: "DELETE" | "GET" | "PATCH" | "POST" | "PUT",
@@ -195,6 +217,10 @@ export interface PlanningApi {
 		value: ItemCreateInput,
 	) => Promise<ItemResource>;
 	createWorkspace: (value: WorkspaceCreateInput) => Promise<WorkspaceResource>;
+	createContextSnapshot: (
+		collectionId: string,
+	) => Promise<ContextSnapshotResource>;
+	exportContextSnapshotMarkdown: (snapshotId: string) => Promise<string>;
 	createCandidate: (
 		itemId: string,
 		value: CandidateCreateInput,
@@ -219,6 +245,7 @@ export interface PlanningApi {
 	listItems: (collectionId: string) => Promise<ItemListResult>;
 	listWorkspaces: () => Promise<WorkspaceSummary[]>;
 	readItemDiscussion: (itemId: string) => Promise<ItemDiscussionResponse>;
+	readContextSnapshot: (snapshotId: string) => Promise<ContextSnapshotResource>;
 	readWorkspaceCollaboration: (
 		workspaceId: string,
 	) => Promise<WorkspaceCollaborationResponse>;
@@ -352,6 +379,35 @@ export interface EditableResource<T> {
 }
 
 export const planningApi: PlanningApi = {
+	async createContextSnapshot(collectionId) {
+		return (
+			await commerceRequest(
+				`/collections/${encodeURIComponent(collectionId)}/context-snapshots`,
+				"POST",
+				contextSnapshotResponseSchema,
+			)
+		).snapshot;
+	},
+
+	async readContextSnapshot(snapshotId) {
+		return (
+			await commerceRequest(
+				`/context-snapshots/${encodeURIComponent(snapshotId)}`,
+				"GET",
+				contextSnapshotResponseSchema,
+			)
+		).snapshot;
+	},
+
+	async exportContextSnapshotMarkdown(snapshotId) {
+		return textResponse(
+			await fetch(
+				`/api/context-snapshots/${encodeURIComponent(snapshotId)}/export.md`,
+				{ credentials: "same-origin" },
+			),
+		);
+	},
+
 	async readResearchDesk(collectionId) {
 		return commerceRequest(
 			`/collections/${encodeURIComponent(collectionId)}/research`,

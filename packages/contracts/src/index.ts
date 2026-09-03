@@ -9,8 +9,11 @@ import { z } from "zod";
 
 import {
 	plannedSelectionSnapshotSchema,
+	productAttributeSchema,
 	purchaseSnapshotSchema,
 } from "./commerce";
+
+import { researchConstraintsSchema, researchResultSuggestionSchema } from "./research";
 
 export * from "./commerce";
 export * from "./collaboration";
@@ -408,6 +411,272 @@ export const itemStatusChangeResponseSchema = z
 	})
 	.strict();
 
+const contextActorSchema = z
+	.object({
+		id: z.string(),
+		name: z.string(),
+	})
+	.strict();
+
+const contextCommentSchema = z
+	.object({
+		id: z.string(),
+		body: z.string().nullable(),
+		author: contextActorSchema,
+		resolvedAt: z.iso.datetime().nullable(),
+		resolvedBy: contextActorSchema.nullable(),
+		removedAt: z.iso.datetime().nullable(),
+		removedBy: contextActorSchema.nullable(),
+		createdAt: z.iso.datetime(),
+		updatedAt: z.iso.datetime(),
+	})
+	.strict();
+
+const contextPriceCheckSchema = z
+	.object({
+		id: z.string(),
+		facts: z
+			.object({
+				priceKind: z.enum(["exact", "starting_at", "unknown"]),
+				unitPriceMinor: z.number().int().min(0).nullable(),
+				currency: z.string().nullable(),
+				shippingMinor: z.number().int().min(0).nullable(),
+				shippingBasis: z.enum(["per_line", "per_unit", "unknown"]),
+				availabilityState: z.enum(["available", "unavailable", "unknown"]),
+				availabilityChannel: z.string().nullable(),
+				availabilityLocation: z.string().nullable(),
+				availabilityVariant: z.string().nullable(),
+				availabilityNote: z.string().nullable(),
+			})
+			.strict(),
+		observedAt: z.iso.datetime(),
+		observedBy: contextActorSchema,
+	})
+	.strict();
+
+const contextOfferSchema = z
+	.object({
+		id: z.string(),
+		merchant: z
+			.object({
+				id: z.string(),
+				name: z.string(),
+				salesChannel: z.enum(["online", "in_person", "both"]),
+				websiteUrl: z.string().nullable(),
+				notes: z.string().nullable(),
+				archivedAt: z.iso.datetime().nullable(),
+			})
+			.strict(),
+		sourceUrl: z.string(),
+		locale: z.string().nullable(),
+		facts: contextPriceCheckSchema.shape.facts,
+		lastCheckedAt: z.iso.datetime(),
+		freshness: z.enum(["fresh", "stale"]),
+		priceChecks: z.array(contextPriceCheckSchema),
+		archivedAt: z.iso.datetime().nullable(),
+	})
+	.strict();
+
+const contextDecisionBase = {
+	id: z.string(),
+	actor: contextActorSchema,
+	createdAt: z.iso.datetime(),
+} as const;
+
+const contextDecisionEventSchema = z.discriminatedUnion("kind", [
+	z
+		.object({
+			...contextDecisionBase,
+			kind: z.literal("item_details_updated"),
+			before: itemPlanningSnapshotSchema,
+			after: itemPlanningSnapshotSchema,
+		})
+		.strict(),
+	z
+		.object({
+			...contextDecisionBase,
+			kind: z.literal("item_status_changed"),
+			fromStatus: z.enum(itemStatuses),
+			toStatus: z.enum(itemStatuses),
+			transitionKind: z.enum(itemStatusTransitionKinds),
+			unusual: z.boolean(),
+			note: z.string().nullable(),
+		})
+		.strict(),
+	z
+		.object({
+			...contextDecisionBase,
+			kind: z.literal("planned_candidate_changed"),
+			before: plannedSelectionSnapshotSchema.nullable(),
+			after: plannedSelectionSnapshotSchema.nullable(),
+		})
+		.strict(),
+	z
+		.object({
+			...contextDecisionBase,
+			kind: z.literal("purchase_recorded"),
+			purchase: purchaseSnapshotSchema,
+		})
+		.strict(),
+]);
+
+const contextCandidateSchema = z
+	.object({
+		id: z.string(),
+		product: z
+			.object({
+				id: z.string(),
+				title: z.string(),
+				brand: z.string().nullable(),
+				model: z.string().nullable(),
+				category: z.string().nullable(),
+				attributes: z.array(productAttributeSchema),
+				archivedAt: z.iso.datetime().nullable(),
+			})
+			.strict(),
+		plannedPurchaseQuantity: z.number().int().positive(),
+		isPlanned: z.boolean(),
+		plannedOfferId: z.string().nullable(),
+		notes: z.string().nullable(),
+		rank: z.number().int().nullable(),
+		offers: z.array(contextOfferSchema),
+		comments: z.array(contextCommentSchema),
+		voters: z.array(contextActorSchema),
+		archivedAt: z.iso.datetime().nullable(),
+	})
+	.strict();
+
+const contextItemSchema = itemResourceSchema
+	.omit({ workspaceId: true, collectionId: true })
+	.extend({
+		candidates: z.array(contextCandidateSchema),
+		comments: z.array(contextCommentSchema),
+		decisions: z.array(contextDecisionEventSchema),
+	})
+	.strict();
+
+const contextResearchSourceSchema = z
+	.object({
+		url: z.string(),
+		title: z.string().nullable(),
+		provider: z.string(),
+		retrievedAt: z.iso.datetime(),
+		extractionStatus: z.enum([
+			"not_requested",
+			"not_allowed",
+			"completed",
+			"failed",
+		]),
+		extractionMethod: z.enum(["search", "browser_run"]),
+		extractionMetadata: z.record(z.string(), z.unknown()),
+	})
+	.strict();
+
+const contextResearchResultSchema = z
+	.object({
+		id: z.string(),
+		title: z.string(),
+		summary: z.string().nullable(),
+		score: z.number().min(0).max(1).nullable(),
+		status: z.enum(["active", "dismissed"]),
+		suggestion: researchResultSuggestionSchema.nullable(),
+		source: contextResearchSourceSchema,
+		promotion: z
+			.object({
+				itemId: z.string(),
+				productId: z.string(),
+				candidateId: z.string(),
+				merchantId: z.string(),
+				offerId: z.string(),
+				priceCheckId: z.string(),
+				promotedByUserId: z.string(),
+				promotedAt: z.iso.datetime(),
+			})
+			.strict()
+			.nullable(),
+		createdAt: z.iso.datetime(),
+	})
+	.strict();
+
+const contextResearchRunSchema = z
+	.object({
+		id: z.string(),
+		status: z.enum([
+			"queued",
+			"running",
+			"partial",
+			"completed",
+			"failed",
+			"cancelled",
+		]),
+		provider: z.string(),
+		providerQuery: z.string(),
+		errorCode: z.string().nullable(),
+		errorMessage: z.string().nullable(),
+		startedAt: z.iso.datetime().nullable(),
+		finishedAt: z.iso.datetime().nullable(),
+		requestedBy: contextActorSchema,
+		results: z.array(contextResearchResultSchema),
+		createdAt: z.iso.datetime(),
+	})
+	.strict();
+
+const contextResearchRequestSchema = z
+	.object({
+		id: z.string(),
+		itemId: z.string().nullable(),
+		query: z.string(),
+		constraints: researchConstraintsSchema,
+		createdBy: contextActorSchema,
+		runs: z.array(contextResearchRunSchema),
+		createdAt: z.iso.datetime(),
+	})
+	.strict();
+
+export const collectionContextSchema = z
+	.object({
+		dataHandling: z
+			.object({
+				classification: z.literal("private"),
+				untrustedTextIsData: z.literal(true),
+				rawImageBytesIncluded: z.literal(false),
+			})
+			.strict(),
+		workspace: workspaceResourceSchema.pick({
+			id: true,
+			name: true,
+			archivedAt: true,
+		}),
+		collection: collectionResourceSchema.omit({ workspaceId: true }),
+		brief: collectionBriefResourceSchema.nullable(),
+		concept: conceptResourceSchema.nullable(),
+		items: z.array(contextItemSchema),
+		researchRequests: z.array(contextResearchRequestSchema),
+	})
+	.strict();
+
+export const contextSnapshotResourceSchema = z
+	.object({
+		id: z.string(),
+		actor: contextActorSchema,
+		scope: z
+			.object({
+				type: z.literal("collection"),
+				workspaceId: z.string(),
+				collectionId: z.string(),
+			})
+			.strict(),
+		schemaVersion: z.literal(1),
+		contentBytes: z.number().int().positive().max(1_500_000),
+		createdAt: z.iso.datetime(),
+		content: collectionContextSchema,
+	})
+	.strict();
+
+export const contextSnapshotResponseSchema = z
+	.object({ snapshot: contextSnapshotResourceSchema })
+	.strict();
+
 export const apiErrorCodes = [
 	"BAD_REQUEST",
 	"CONFLICT",
@@ -460,6 +729,10 @@ export type CollectionResource = z.infer<typeof collectionResourceSchema>;
 export type ItemResource = z.infer<typeof itemResourceSchema>;
 export type ItemPlanningSnapshot = z.infer<typeof itemPlanningSnapshotSchema>;
 export type DecisionEventResource = z.infer<typeof decisionEventResourceSchema>;
+export type CollectionContext = z.infer<typeof collectionContextSchema>;
+export type ContextSnapshotResource = z.infer<
+	typeof contextSnapshotResourceSchema
+>;
 export type ItemStatusDecisionEvent = z.infer<
 	typeof itemStatusDecisionEventSchema
 >;

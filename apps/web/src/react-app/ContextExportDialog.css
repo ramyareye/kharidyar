@@ -1,0 +1,123 @@
+.context-export {
+	display: grid;
+	gap: 1.25rem;
+}
+
+.context-export__notice {
+	border-block: 1px solid var(--line);
+	padding-block: 1rem;
+}
+
+.context-export__notice h3,
+.context-export__empty h3,
+.context-export__preview h3 {
+	margin: 0;
+}
+
+.context-export__notice > p:last-child,
+.context-export__empty p {
+	color: var(--ink-muted);
+	line-height: 1.65;
+	margin-block-end: 0;
+}
+
+.context-export__empty {
+	align-items: start;
+	background: color-mix(in srgb, var(--paper-light) 74%, transparent);
+	border: 1px solid var(--line);
+	display: grid;
+	gap: 0.8rem;
+	padding: clamp(1.1rem, 3vw, 2rem);
+}
+
+.context-export__empty > div {
+	color: var(--clay);
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: 1.2rem;
+	letter-spacing: 0.08em;
+}
+
+.context-export__empty .button {
+	justify-self: start;
+}
+
+.context-export__register {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.context-export__register > div {
+	border: 1px solid var(--line);
+	display: grid;
+	gap: 0.35rem;
+	margin-inline-start: -1px;
+	padding: 0.8rem;
+}
+
+.context-export__register span {
+	color: var(--ink-muted);
+	font-size: 0.7rem;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+
+.context-export__register strong {
+	font-size: 0.9rem;
+	font-weight: 600;
+}
+
+.context-export__preview {
+	border: 1px solid var(--line);
+}
+
+.context-export__preview > header {
+	align-items: center;
+	border-block-end: 1px solid var(--line);
+	display: flex;
+	gap: 1rem;
+	justify-content: space-between;
+	padding: 1rem;
+}
+
+.context-export__actions,
+.context-export__footer {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.65rem;
+}
+
+.context-export__preview pre {
+	background: #1c211d;
+	color: #f3f0e7;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: 0.76rem;
+	line-height: 1.65;
+	margin: 0;
+	max-block-size: min(48vh, 34rem);
+	overflow: auto;
+	padding: clamp(1rem, 2.5vw, 1.5rem);
+	text-align: start;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
+.context-export__footer {
+	align-items: center;
+	justify-content: space-between;
+}
+
+@media (max-width: 700px) {
+	.context-export__register {
+		grid-template-columns: 1fr;
+	}
+
+	.context-export__register > div {
+		margin-block-start: -1px;
+		margin-inline-start: 0;
+	}
+
+	.context-export__preview > header {
+		align-items: start;
+		flex-direction: column;
+	}
+}

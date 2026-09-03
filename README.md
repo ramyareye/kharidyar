@@ -92,7 +92,7 @@ bun run build
 bun run check
 ```
 
-`bun run check` runs all quality gates and a Wrangler dry run. The Worker tests execute in Cloudflare's Vitest integration, apply the D1 migrations to an isolated local database, protect the existing `GET /api/` response, exercise database constraints, and validate Google/session, scoped authorization, transactional invitations, typed Workspace/Collection/Item APIs, structured Collection Briefs, text Concepts, Item workflow permissions, Merchant-backed Product/Offer comparison, honest planned-cost rollups, immutable partial-purchase snapshots, Import Drafts, and provider-research Workflows without contacting Google, Tavily, or retailer pages. Runtime-independent tests also cover locale policy, RTL/LTR direction, formatting, palette rules, status-transition classification, Offer freshness and cost aggregation, research retention, and the web shell's critical-state resolvers.
+`bun run check` runs all quality gates and a Wrangler dry run. The Worker tests execute in Cloudflare's Vitest integration, apply the D1 migrations to an isolated local database, protect the existing `GET /api/` response, exercise database constraints, and validate Google/session, scoped authorization, transactional invitations, typed Workspace/Collection/Item APIs, structured Collection Briefs, text Concepts, Item workflow permissions, Merchant-backed Product/Offer comparison, honest planned-cost rollups, immutable partial-purchase snapshots, Import Drafts, provider-research Workflows, and permission-filtered Context Snapshots without contacting Google, Tavily, retailer pages, or an AI provider. Runtime-independent tests also cover locale policy, RTL/LTR direction, formatting, palette rules, status-transition classification, Offer freshness and cost aggregation, research retention, and the web shell's critical-state resolvers.
 
 ## Core API
 
@@ -101,6 +101,8 @@ Authenticated Hono RPC routes expose Workspace, Collection, and Item create/read
 Commerce routes expose Item-scoped Candidate comparison, canonical Product editing, Workspace-private Merchant creation, multiple Offers with append-only Price Checks, planned Candidate/Offer selection, Owner-only purchase snapshots, and Collection planned-cost rollups. Product, Merchant, Offer, Candidate, and purchase permissions are derived from database scope; caller-supplied parent identifiers never establish access.
 
 Collection-only collaborators receive a minimal parent Workspace navigation summary. They remain unable to read Workspace details or access sibling Collections.
+
+Collection Context routes create immutable, schema-versioned snapshots only after checking the actor's `export_context` capability. Snapshot reads and Markdown exports are creator-only and recheck current Collection access, so a revoked collaborator cannot retain access through an old snapshot URL. The Context Builder includes only records reachable from the requested Collection and deliberately excludes emails, credentials, session and invitation tokens, raw provider payloads, and image bytes.
 
 ## Web planning studio
 
@@ -111,6 +113,8 @@ The Item detail dialog keeps full planning facts beside explicit status controls
 The comparison dialog supports several Products per Item and several retailer Offers per Product. It keeps unit price, price kind, shipping amount/basis, availability qualifiers, source, freshness, and total distinct; users explicitly choose the Candidate, Offer, and purchase quantity used by the plan. Collection and group summaries include only those planned lines, retain lower-bound/incomplete states, list missing plans, and compare complete compatible totals with the Collection budget. Partial purchases create immutable exact-price snapshots and never automatically complete an Item.
 
 The Live Research desk creates asynchronous Research Requests backed by a Cloudflare Workflow and the bounded Tavily adapter. It shows queued/running/partial/completed/failed/cancelled states, source links and retrieval times, and 30-day suggestion snapshots. Results stay advisory: dismiss/restore is reversible, while promotion requires explicit direct-Product-URL confirmation and creates ordinary Product, Candidate, Merchant, Offer, Price Check, and provenance records exactly once. Research can never plan a Candidate, decide an Item, or record a purchase. Manual automated Offer refresh is available only for the exact first-party Browser Run allowlist; all retailer Offers remain manually editable.
+
+The AI Context dialog builds a private snapshot for the selected Collection and shows the complete Markdown before reuse. Users can copy or download it; building or exporting a snapshot does not call an AI provider. The exported header marks user-authored and external text as untrusted data, while the stored JSON preserves the exact machine-readable boundary for later audited AI operations.
 
 Each Collection can show and edit its practical Brief, optional EUR budget, ordered core/supporting color preference, HTTPS reference links, and one optional text Concept alongside its Items. Palettes allow up to six colors per group, preserve user order, normalize hex values, and always pair swatches with text. Concept images, uploads, R2 storage, and AI visualization remain intentionally absent until their future roadmap tasks.
 
@@ -141,4 +145,4 @@ bun run cf-typegen
 bun run deploy
 ```
 
-Run `bun run cf-typegen` after changing Worker bindings. Deployment requires the appropriate Cloudflare account, D1 resources, Workflow, Browser Run binding, and secrets. Apply the latest remote D1 migration and set `TAVILY_API_KEY` before deploying Task 9B; ordinary local commands never mutate remote resources.
+Run `bun run cf-typegen` after changing Worker bindings. Deployment requires the appropriate Cloudflare account, D1 resources, Workflow, Browser Run binding, and secrets. Apply the latest remote D1 migration and set `TAVILY_API_KEY` before deploying; ordinary local commands never mutate remote resources.

@@ -94,6 +94,20 @@ _Avoid_: automatic selection, purchase, repeated import
 A user-requested Price Check extracted only from an exact, approved Product-page allowlist; unsupported retailer URLs stay manual.
 _Avoid_: scheduled monitoring, broad crawling, access-control bypass
 
+## AI context
+
+**Context Builder**:
+The server-side operation that begins with an authenticated User and one requested Collection, rechecks `export_context`, and assembles only records reachable through that authorized Collection.
+_Avoid_: client-assembled prompt, Workspace-wide dump, hidden cross-Collection lookup
+
+**AI Context Snapshot**:
+A private, immutable, schema-versioned JSON record of exactly what the Context Builder exposed, including its actor, Collection scope, creation time, and byte size.
+_Avoid_: live query, editable document, raw provider response, AI output
+
+**Markdown Context Export**:
+A deterministic human-readable rendering of one AI Context Snapshot for inspection or reuse. It treats user-authored and externally sourced text as untrusted data and contains no credentials, session or invitation tokens, raw provider payloads, or image bytes.
+_Avoid_: prompt instruction, automatic provider submission, source of truth
+
 ## Planning
 
 **Item**:

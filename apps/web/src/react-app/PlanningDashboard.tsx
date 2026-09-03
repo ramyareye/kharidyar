@@ -28,6 +28,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLocale } from "./locale-context";
 import { CollaborationAdminDialog } from "./CollaborationAdminDialog";
 import { CollectionDirection } from "./CollectionDirection";
+import { ContextExportDialog } from "./ContextExportDialog";
 import { ItemDiscussionDialog } from "./ItemDiscussionDialog";
 import { ItemWorkflowDialog } from "./ItemWorkflowDialog";
 import { ItemComparisonDialog } from "./ItemComparisonDialog";
@@ -50,6 +51,7 @@ type EditorState =
   | { kind: "brief-edit" }
 	| { kind: "collection-create" }
 	| { kind: "collection-edit"; resource: CollectionResource }
+	| { kind: "context-export"; resource: CollectionResource }
 	| { kind: "item-create" }
 	| { kind: "item-comparison"; resource: ItemResource }
 	| { kind: "item-discussion"; resource: ItemResource }
@@ -1407,7 +1409,7 @@ export function PlanningDashboard({
 														<p dir="auto">{selectedCollection.description}</p>
 													) : null}
 												</div>
-												<div className="collection-folio__actions">
+								<div className="collection-folio__actions">
 													<ResourceActions
 														archived={Boolean(selectedCollection.archivedAt)}
 														busy={busy}
@@ -1424,8 +1426,21 @@ export function PlanningDashboard({
 															void restoreCollection(selectedCollection)
 														}
 														resourceName={selectedCollection.name}
-													/>
-											{!selectedCollection.archivedAt &&
+									/>
+									<button
+										type="button"
+										className="button button--quiet"
+										onClick={() =>
+											setEditor({
+												kind: "context-export",
+												resource: selectedCollection,
+											})
+										}
+									>
+										<InlineIcon>{`{ }`}</InlineIcon>
+										{t("context.open")}
+									</button>
+							{!selectedCollection.archivedAt &&
 											itemPermissions.canCreate ? (
 												<button
 													type="button"
@@ -1649,6 +1664,12 @@ export function PlanningDashboard({
 					initial={editor.resource}
 					onClose={() => setEditor(null)}
 					onSubmit={updateCollection}
+				/>
+			) : editor?.kind === "context-export" ? (
+				<ContextExportDialog
+					api={api}
+					collection={editor.resource}
+					onClose={() => setEditor(null)}
 				/>
 			) : editor?.kind === "item-create" ? (
 				<ItemForm
