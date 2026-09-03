@@ -23,6 +23,10 @@ import {
 import { conflict, notFound } from "./api-errors";
 import { loadCollectionAccess, requireCapability } from "./authorization";
 import {
+	contextSnapshotCreationRateLimit,
+	enforceCollaborationRateLimit,
+} from "./collaboration-rate-limit";
+import {
 	readCollectionBrief,
 	readConcept,
 } from "./collection-direction-service";
@@ -335,6 +339,7 @@ function researchContext(
 async function collectionContext(input: {
 	collectionId: string;
 	database: D1Database;
+	rateLimitSecret: string;
 	userId: string;
 }): Promise<{ collection: CollectionRow; content: CollectionContext }> {
 	requireCapability(
@@ -345,6 +350,15 @@ async function collectionContext(input: {
 		),
 		"export_context",
 	);
+	await enforceCollaborationRateLimit({
+		action: "context_snapshot_creation",
+		database: input.database,
+		identity: `${input.userId}:${input.collectionId}`,
+		limit: contextSnapshotCreationRateLimit.limit,
+		now: Date.now(),
+		secret: input.rateLimitSecret,
+		windowMilliseconds: contextSnapshotCreationRateLimit.windowMilliseconds,
+	});
 
 	const collection = await input.database
 		.prepare(
@@ -672,6 +686,7 @@ export async function createCollectionContextSnapshot(input: {
 	actorName: string;
 	collectionId: string;
 	database: D1Database;
+	rateLimitSecret: string;
 	userId: string;
 }): Promise<ContextSnapshotResource> {
 	const { collection, content } = await collectionContext(input);

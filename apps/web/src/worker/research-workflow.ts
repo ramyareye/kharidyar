@@ -33,12 +33,24 @@ function messageFrom(error: unknown): string {
     : "Unknown research failure.";
 }
 
+function errorName(error: unknown): string {
+  if (!(error instanceof Error)) return "UnknownError";
+  return /^[A-Za-z][A-Za-z0-9._-]{0,79}$/.test(error.name)
+    ? error.name
+    : "Error";
+}
+
 export class ResearchWorkflow extends WorkflowEntrypoint<
   Env,
   ResearchWorkflowParams
 > {
   async run(event: WorkflowEvent<ResearchWorkflowParams>, step: WorkflowStep) {
     const params = researchWorkflowParamsSchema.parse(event.payload);
+    let logScope: {
+      actorId: string;
+      collectionId: string;
+      workspaceId: string;
+    } | null = null;
     try {
       const execution = await step.do("load-research-run", () =>
         loadResearchExecution({
@@ -50,6 +62,11 @@ export class ResearchWorkflow extends WorkflowEntrypoint<
       if (execution === null) {
         return { runId: params.runId, status: "cancelled" as const };
       }
+      logScope = {
+        actorId: execution.actorId,
+        collectionId: execution.collectionId,
+        workspaceId: execution.workspaceId,
+      };
 
       const providerResult = await step.do<ProviderStepResult>(
         "search-provider",
@@ -85,14 +102,23 @@ export class ResearchWorkflow extends WorkflowEntrypoint<
         },
       );
       if (!providerResult.ok) {
-        await step.do("record-provider-failure", () =>
-          failResearchRun({
+        await step.do("record-provider-failure", async () => {
+          await failResearchRun({
             code: providerResult.code,
             database: this.env.DB,
             message: providerResult.message,
             runId: params.runId,
-          }),
-        );
+          });
+          console.warn({
+            event: "research_provider_failed",
+            reasonCode: providerResult.code,
+            actorId: execution.actorId,
+            workspaceId: execution.workspaceId,
+            collectionId: execution.collectionId,
+            researchRequestId: params.requestId,
+            researchRunId: params.runId,
+          });
+        });
         return { runId: params.runId, status: "failed" as const };
       }
 
@@ -155,9 +181,18 @@ export class ResearchWorkflow extends WorkflowEntrypoint<
           updates: extractions,
         }),
       );
-      await step.do("complete-research-run", () =>
-        completeResearchRun(this.env.DB, params.runId),
-      );
+      await step.do("complete-research-run", async () => {
+        await completeResearchRun(this.env.DB, params.runId);
+        console.info({
+          event: "research_run_completed",
+          resultCount: stored.length,
+          actorId: execution.actorId,
+          workspaceId: execution.workspaceId,
+          collectionId: execution.collectionId,
+          researchRequestId: params.requestId,
+          researchRunId: params.runId,
+        });
+      });
       return {
         resultCount: stored.length,
         runId: params.runId,
@@ -165,22 +200,32 @@ export class ResearchWorkflow extends WorkflowEntrypoint<
       };
     } catch (error) {
       try {
-        await step.do("record-unexpected-failure", () =>
-          failResearchRun({
+        await step.do("record-unexpected-failure", async () => {
+          await failResearchRun({
             code: "workflow_failed",
             database: this.env.DB,
             message: messageFrom(error),
             runId: params.runId,
-          }),
-        );
+          });
+          console.error({
+            event: "research_workflow_failed",
+            reasonCode: "workflow_failed",
+            errorName: errorName(error),
+            actorId: logScope?.actorId,
+            workspaceId: logScope?.workspaceId,
+            collectionId: logScope?.collectionId,
+            researchRequestId: params.requestId,
+            researchRunId: params.runId,
+          });
+        });
       } catch (recordingError) {
-        console.error(
-          JSON.stringify({
-            error: messageFrom(recordingError),
-            message: "research_failure_recording_failed",
-            runId: params.runId,
-          }),
-        );
+        console.error({
+          event: "research_failure_recording_failed",
+          reasonCode: "failure_recording_failed",
+          errorName: errorName(recordingError),
+          researchRequestId: params.requestId,
+          researchRunId: params.runId,
+        });
       }
       return { runId: params.runId, status: "failed" as const };
     }

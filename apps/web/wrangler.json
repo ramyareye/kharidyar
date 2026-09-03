@@ -11,7 +11,12 @@
 		"nodejs_compat"
 	],
 	"observability": {
-		"enabled": true
+		"enabled": true,
+		"logs": {
+			"enabled": true,
+			"head_sampling_rate": 1,
+			"invocation_logs": false
+		}
 	},
 	"secrets": {
 		"required": [
@@ -46,6 +51,14 @@
 	],
 	"env": {
 		"preview": {
+			"observability": {
+				"enabled": true,
+				"logs": {
+					"enabled": true,
+					"head_sampling_rate": 1,
+					"invocation_logs": false
+				}
+			},
 			"secrets": {
 				"required": [
 					"AUTH_TRUSTED_ORIGINS",
@@ -79,6 +92,14 @@
 		},
 		"production": {
 			"name": "kharidyar",
+			"observability": {
+				"enabled": true,
+				"logs": {
+					"enabled": true,
+					"head_sampling_rate": 1,
+					"invocation_logs": false
+				}
+			},
 			"secrets": {
 				"required": [
 					"AUTH_TRUSTED_ORIGINS",

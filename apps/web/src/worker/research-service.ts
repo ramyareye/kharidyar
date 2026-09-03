@@ -121,6 +121,7 @@ interface ResultRow {
 interface ExecutionRow {
   run_id: string;
   request_id: string;
+  requested_by_user_id: string;
   workspace_id: string;
   collection_id: string;
   status: ResearchRunStatus;
@@ -138,6 +139,7 @@ interface PromotionStateRow {
 }
 
 export interface ResearchExecution {
+  actorId: string;
   collectionId: string;
   constraints: ResearchConstraints;
   query: string;
@@ -176,6 +178,13 @@ function safeErrorMessage(error: unknown): string {
   return error instanceof Error
     ? error.message.slice(0, 1_000) || "Unknown error"
     : "Unknown error";
+}
+
+function safeErrorName(error: unknown): string {
+  if (!(error instanceof Error)) return "UnknownError";
+  return /^[A-Za-z][A-Za-z0-9._-]{0,79}$/.test(error.name)
+    ? error.name
+    : "Error";
 }
 
 function can(access: ResourceAccess, capability: Capability): boolean {
@@ -454,10 +463,13 @@ export async function readResearchDesk(input: {
 }
 
 async function launchWorkflow(input: {
+  collectionId: string;
   database: D1Database;
   requestId: string;
   runId: string;
+  userId: string;
   workflow: ResearchWorkflowBinding;
+  workspaceId: string;
 }): Promise<void> {
   try {
     await input.workflow.create({
@@ -475,6 +487,16 @@ async function launchWorkflow(input: {
       )
       .bind(safeErrorMessage(error), now, input.runId)
       .run();
+    console.error({
+      event: "research_workflow_start_failed",
+      reasonCode: "workflow_start_failed",
+      errorName: safeErrorName(error),
+      actorId: input.userId,
+      workspaceId: input.workspaceId,
+      collectionId: input.collectionId,
+      researchRequestId: input.requestId,
+      researchRunId: input.runId,
+    });
   }
 }
 
@@ -511,7 +533,15 @@ async function insertRun(input: {
       now,
     )
     .run();
-  await launchWorkflow({ ...input, runId });
+  await launchWorkflow({
+    collectionId: input.collection.id,
+    database: input.database,
+    requestId: input.requestId,
+    runId,
+    userId: input.userId,
+    workflow: input.workflow,
+    workspaceId: input.collection.workspace_id,
+  });
   return runId;
 }
 
@@ -672,13 +702,15 @@ export async function cancelResearchRun(input: {
     const instance = await input.workflow.get(run.workflow_instance_id);
     await instance.terminate();
   } catch (error) {
-    console.warn(
-      JSON.stringify({
-        message: "research_workflow_termination_failed",
-        runId: run.id,
-        error: safeErrorMessage(error),
-      }),
-    );
+    console.warn({
+      event: "research_workflow_termination_failed",
+      reasonCode: "workflow_termination_failed",
+      errorName: safeErrorName(error),
+      actorId: input.userId,
+      collectionId: collection.id,
+      workspaceId: collection.workspace_id,
+      researchRunId: run.id,
+    });
   }
   return readResearchDesk(input);
 }
@@ -968,6 +1000,7 @@ export async function loadResearchExecution(input: {
       `select
 				r.id as run_id,
 				r.request_id,
+				r.requested_by_user_id,
 				r.workspace_id,
 				r.collection_id,
 				r.status,
@@ -992,6 +1025,7 @@ export async function loadResearchExecution(input: {
       .run();
   }
   return {
+    actorId: row.requested_by_user_id,
     collectionId: row.collection_id,
     constraints: researchConstraintsSchema.parse(
       JSON.parse(row.constraints_json),

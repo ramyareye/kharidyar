@@ -72,6 +72,8 @@ bunx wrangler secret put <NAME> --env production
 
 Production origins must use HTTPS. Better Auth then emits secure cookies. Authentication rate limits persist in D1 and use Cloudflare's edge-controlled `CF-Connecting-IP` header rather than a caller-supplied address.
 
+Every API response receives a server-generated request ID, defensive browser headers, and `no-store` caching unless a route explicitly declares a safe public cache policy. Static assets receive a compatible Content Security Policy and browser headers through `public/_headers`. Immutable Context Snapshot creation is limited to ten attempts per actor and Collection per hour to bound accidental or abusive storage growth.
+
 `TAVILY_API_KEY` enables live provider research. The initial adapter deliberately uses Tavily Basic search with no generated answer, raw page content, or images and returns at most five results per run. The non-secret `RESEARCH_BROWSER_ALLOWED_ORIGIN` is configured in `wrangler.json`; keep it equal to the exact first-party application origin. Browser Run extraction is limited to the app's controlled `/api/research-fixtures/products/<slug>` path until a retailer explicitly permits automated extraction.
 
 ### Future Expo clients
@@ -146,3 +148,5 @@ bun run deploy
 ```
 
 Run `bun run cf-typegen` after changing Worker bindings. Deployment requires the appropriate Cloudflare account, D1 resources, Workflow, Browser Run binding, and secrets. Apply the latest remote D1 migration and set `TAVILY_API_KEY` before deploying; ordinary local commands never mutate remote resources.
+
+Cloudflare custom logs and source maps are enabled explicitly for local, preview, and production. Automatic invocation logs are disabled because OAuth callback URLs contain short-lived authorization codes. Application logs therefore use generated request IDs, resource identifiers, and safe reason codes without request query strings, cookies, tokens, provider messages, or private planning content.

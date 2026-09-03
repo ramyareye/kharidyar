@@ -73,6 +73,7 @@ async function resetFixture(): Promise<void> {
 			"delete from workspaces where created_by_user_id in (select id from user where id like 'context-%')",
 		),
 		env.DB.prepare("delete from user where id like 'context-%'"),
+		env.DB.prepare("delete from collaboration_rate_limits"),
 	]);
 
 	const now = Date.now();
@@ -557,5 +558,37 @@ describe("permission-filtered context snapshots", () => {
 			},
 		);
 		expect(crossSite.status).toBe(403);
+	});
+
+	it("bounds immutable snapshot creation per actor and Collection", async () => {
+		for (let attempt = 0; attempt < 10; attempt += 1) {
+			const created = await createSnapshot(users.owner);
+			expect(created.response.status).toBe(201);
+		}
+
+		const limited = await createSnapshot(users.owner);
+		expect(limited.response.status).toBe(429);
+		expect(limited.response.headers.get("x-content-type-options")).toBe(
+			"nosniff",
+		);
+		expect(limited.response.headers.get("x-request-id")).toMatch(
+			/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+		);
+		expect(Number(limited.response.headers.get("retry-after"))).toBeGreaterThan(
+			0,
+		);
+		expect(await limited.response.json()).toEqual({
+			error: {
+				code: "RATE_LIMITED",
+				message: "Too many context snapshots. Please try again later.",
+			},
+		});
+
+		const stored = await env.DB.prepare(
+			"select count(*) as count from context_snapshots where actor_user_id = ?1 and collection_id = ?2",
+		)
+			.bind(users.owner, collectionA1)
+			.first<{ count: number }>();
+		expect(stored?.count).toBe(10);
 	});
 });

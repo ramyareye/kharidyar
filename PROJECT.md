@@ -2,7 +2,7 @@
 
 - Status: Approved by the product owner
 - Last updated: 2026-09-03
-- Implementation status: Tasks 1 through 10 complete and validated; Task 11 is next
+- Implementation status: Tasks 1 through 10 complete and validated; Task 11 is in progress
 
 ## Purpose of this document
 
@@ -986,7 +986,7 @@ These endpoints do not exist in the collaborative MVP. The future tasks add them
 - Resource ownership is resolved from the database; client-provided Workspace or Collection IDs are never trusted as authorization proof.
 - Cross-Workspace and cross-Collection ID substitution is covered by tests.
 - Invitation raw tokens contain at least 256 bits of cryptographically secure entropy, are single-use, expiring and revocable, and are hashed at rest.
-- Authentication, invitation preview and acceptance, and research creation receive rate limits appropriate to abuse risk from the task that introduces each endpoint.
+- Authentication, invitation preview and acceptance, research creation, and immutable Context Snapshot creation receive rate limits appropriate to abuse and storage risk from the task that introduces each endpoint.
 - Pre-auth invitation preview treats the URL as a bearer secret and exposes only the explicitly approved metadata defined in the invitation flow.
 - OAuth state, CSRF, cookie, trusted-origin, and callback protections use Better Auth's supported flow rather than custom shortcuts.
 - Secrets remain in Cloudflare secrets or approved environment-specific secret storage.
@@ -1112,6 +1112,7 @@ The future tasks that introduce media must add tests for:
 - Avoid logging private content unless necessary and intentionally redacted.
 - Report authorization denials, invitation failures, provider errors, and Workflow failures with safe reason codes.
 - Enable Cloudflare observability and source maps per environment.
+- Prefer sanitized application logs over platform invocation logs when request URLs can contain OAuth authorization codes or other ephemeral credentials.
 - Document local, preview, and production migration commands before the first deployment.
 - Backups and D1 Time Travel recovery are included in the production runbook.
 - Research provider usage and failure rates are measurable before scheduled automation is added.
@@ -1352,6 +1353,8 @@ Completion criteria:
 This is the assisted-research MVP boundary.
 
 ### Task 11: Production hardening and deployment
+
+Status: in progress. The security, rate-limit, and sanitized-observability slice was completed on 2026-09-03; accessibility and production-like release verification plus deployment/recovery exercises remain.
 
 Scope:
 
@@ -1632,6 +1635,8 @@ The product owner explicitly authorized Task 9B on 2026-09-02. Decisions 9 and 1
 
 The product owner explicitly authorized Task 10 on 2026-09-03. Task 10 implements a deterministic Collection-scoped Context Builder; immutable schema-versioned JSON snapshots; creator-only reads with a fresh `export_context` check; and an English/Persian inspector that previews, copies, and downloads deterministic Markdown. Snapshot content includes the Brief, budget, ordered palette, text Concept, Items, Candidates, Offers and recent Price Checks, comments, preferences, Decision Events and purchases, and sourced provider research reachable from the requested Collection. It excludes emails, credentials, session and invitation tokens, raw provider payloads, profile images, and all image bytes, and marks user-authored and external text as untrusted data. No AI provider or Agents SDK was added: optional AI normalization remains deferred behind this now-tested boundary. Task 10 is complete and validated through the full quality gate, a reviewed and applied local migration, focused Cloudflare-runtime creator/revocation/sibling-scope leakage tests, production build, and Wrangler deployment dry run.
 
+The product owner explicitly authorized Task 11 on 2026-09-03. Its first bounded hardening slice adds generated request correlation, browser and API response security headers, private API cache prevention by default, a per-actor/per-Collection Context Snapshot creation limit, and structured safe-code logs for authorization rejection, Context Snapshot creation, research-provider outcomes, and Workflow failures. Cloudflare custom logs and source maps are explicit in local, preview, and production configuration; automatic invocation logs are disabled so OAuth callback query credentials are not retained in request URLs. The remaining Task 11 work is accessibility and production-like release verification followed by deployment, migration, recovery, and rollback exercises.
+
 On 2026-09-01, the product owner added a future ChatGPT MCP integration as the final roadmap task. It remains deferred until the production API and permission-filtered Context Builder are stable, and it must reuse existing application services rather than introduce parallel domain or database behavior.
 
-The next ordered implementation task is Task 11: production hardening and deployment. It starts only after the product owner explicitly requests continuation in a later session.
+Task 11 is in progress. Its next ordered subtask is accessibility and production-like release verification; it starts only after the product owner explicitly requests continuation in a later session.

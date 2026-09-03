@@ -8,6 +8,8 @@ import {
 export interface WorkerAppEnv {
 	Bindings: Env;
 	Variables: {
+		actorId?: string;
+		requestId: string;
 		session: KharidyarSession;
 	};
 }
@@ -32,6 +34,7 @@ export const requireSession = createMiddleware<WorkerAppEnv>(
 		}
 
 		context.set("session", session);
+		context.set("actorId", session.user.id);
 		await next();
 	},
 );

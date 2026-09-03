@@ -2,6 +2,11 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 
 import { createAuth } from "../auth/server";
+import {
+	protectApiResponse,
+	requestLogFields,
+	safeErrorName,
+} from "./api-protection-middleware";
 import { ApiError } from "./api-errors";
 import { collaborationExperienceRoutes } from "./collaboration-experience-routes";
 import { collaborationRoutes } from "./collaboration-routes";
@@ -16,6 +21,8 @@ import { researchRoutes } from "./research-routes";
 import { requireSession, type WorkerAppEnv } from "./session-middleware";
 
 const app = new Hono<WorkerAppEnv>();
+
+app.use("/api/*", protectApiResponse);
 
 app.all("/api/auth/*", (context) => {
 	return createAuth(context.env).handler(context.req.raw);
@@ -74,6 +81,25 @@ app.onError((error, context) => {
 	}
 
 	if (error instanceof ApiError) {
+		const invitationFailure = context.req.path
+			.split("/")
+			.includes("invitations");
+		if (
+			invitationFailure ||
+			error.status === 403 ||
+			error.status === 404 ||
+			error.status === 429
+		) {
+			console.warn({
+				event: invitationFailure
+					? "invitation_request_failed"
+					: "api_request_rejected",
+				...requestLogFields(context, {
+					errorCode: error.code,
+					status: error.status,
+				}),
+			});
+		}
 		const headers = new Headers({
 			"cache-control": "no-store",
 			"content-type": "application/json; charset=UTF-8",
@@ -93,13 +119,13 @@ app.onError((error, context) => {
 		);
 	}
 
-	console.error(
-		JSON.stringify({
-			message: "worker_request_failed",
-			errorName: error.name,
-			path: context.req.path,
+	console.error({
+		event: "worker_request_failed",
+		...requestLogFields(context, {
+			errorName: safeErrorName(error),
+			status: 500,
 		}),
-	);
+	});
 
 	return context.json(
 		{

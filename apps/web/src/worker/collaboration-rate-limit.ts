@@ -15,6 +15,11 @@ export const researchCreationRateLimit = {
 	windowMilliseconds: 60_000,
 } as const;
 
+export const contextSnapshotCreationRateLimit = {
+	limit: 10,
+	windowMilliseconds: 60 * 60_000,
+} as const;
+
 interface RateLimitRow {
 	count: number;
 	window_started_at: number;
@@ -46,6 +51,7 @@ async function privateRateLimitKey(
 
 export async function enforceCollaborationRateLimit(input: {
 	action:
+		| "context_snapshot_creation"
 		| "invitation_acceptance"
 		| "invitation_preview"
 		| "research_creation";
@@ -93,13 +99,12 @@ export async function enforceCollaborationRateLimit(input: {
 				(row.window_started_at + input.windowMilliseconds - input.now) / 1_000,
 			),
 		);
-		throw new ApiError(
-			429,
-			"RATE_LIMITED",
+		const message =
 			input.action === "research_creation"
 				? "Too many research requests. Please try again later."
-				: "Too many invitation requests. Please try again later.",
-			{ retryAfterSeconds },
-		);
+				: input.action === "context_snapshot_creation"
+					? "Too many context snapshots. Please try again later."
+					: "Too many invitation requests. Please try again later.";
+		throw new ApiError(429, "RATE_LIMITED", message, { retryAfterSeconds });
 	}
 }

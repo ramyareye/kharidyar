@@ -27,7 +27,17 @@ export const contextRoutes = new Hono<WorkerAppEnv>()
 					"collectionId",
 				),
 				database: context.env.DB,
+				rateLimitSecret: context.env.BETTER_AUTH_SECRET,
 				userId: current.user.id,
+			});
+			console.info({
+				event: "context_snapshot_created",
+				requestId: context.get("requestId"),
+				actorId: current.user.id,
+				workspaceId: snapshot.scope.workspaceId,
+				collectionId: snapshot.scope.collectionId,
+				contextSnapshotId: snapshot.id,
+				contentBytes: snapshot.contentBytes,
 			});
 			return context.json({ snapshot }, 201);
 		},
