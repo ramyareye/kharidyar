@@ -5,6 +5,7 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "kharidyar",
+	"preview_urls": true,
 	"main": "./src/worker/index.ts",
 	"compatibility_date": "2025-10-08",
 	"compatibility_flags": [
@@ -51,6 +52,7 @@
 	],
 	"env": {
 		"preview": {
+			"name": "kharidyar-preview",
 			"observability": {
 				"enabled": true,
 				"logs": {
@@ -86,6 +88,7 @@
 				{
 					"binding": "DB",
 					"database_name": "kharidyar-preview",
+					"database_id": "153fad62-2d09-41a3-8ee7-f7efd2b91c80",
 					"migrations_dir": "migrations"
 				}
 			]

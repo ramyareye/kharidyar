@@ -144,9 +144,15 @@ Preview and production use distinct D1 resources. Configure the Cloudflare accou
 
 ```bash
 bun run cf-typegen
-bun run deploy
+bun run db:migrations:list:preview
+bun run db:migrate:preview
+bun run deploy:preview
+bun run db:migrations:list:production
+bun run db:migrate:production
+bun run deploy:production
+bun run release:smoke -- https://kharidyar.formahsa.workers.dev
 ```
 
-Run `bun run cf-typegen` after changing Worker bindings. Deployment requires the appropriate Cloudflare account, D1 resources, Workflow, Browser Run binding, and secrets. Apply the latest remote D1 migration and set `TAVILY_API_KEY` before deploying; ordinary local commands never mutate remote resources.
+Run `bun run cf-typegen` after changing Worker bindings. Deployment requires the appropriate Cloudflare account, D1 resources, Workflow, Browser Run binding, and secrets. Apply the latest remote D1 migration and set `TAVILY_API_KEY` before deploying; ordinary local commands never mutate remote resources. `bun run deploy` remains an alias for the explicit production deployment. Follow [`RELEASE.md`](./RELEASE.md) for the required preview-first order, recovery points, smoke checks, rollback compatibility rule, and D1 Time Travel procedure.
 
 Cloudflare custom logs and source maps are enabled explicitly for local, preview, and production. Automatic invocation logs are disabled because OAuth callback URLs contain short-lived authorization codes. Application logs therefore use generated request IDs, resource identifiers, and safe reason codes without request query strings, cookies, tokens, provider messages, or private planning content.

@@ -1,8 +1,8 @@
 # Kharidyar Project Specification
 
 - Status: Approved by the product owner
-- Last updated: 2026-09-03
-- Implementation status: Tasks 1 through 10 complete and validated; Task 11 is in progress
+- Last updated: 2026-09-04
+- Implementation status: Tasks 1 through 11 complete and validated
 
 ## Purpose of this document
 
@@ -1354,7 +1354,7 @@ This is the assisted-research MVP boundary.
 
 ### Task 11: Production hardening and deployment
 
-Status: in progress. The security, rate-limit, sanitized-observability, accessibility, and production-like release-verification slices were completed on 2026-09-03; deployment, migration, recovery, and rollback exercises remain.
+Status: completed and validated on 2026-09-04. Preview and production D1 are migrated, preview recovery and schema-compatible production rollback exercises passed, both Workers are deployed and smoke-verified, and the product owner confirmed Google sign-in plus an authenticated planning read against production.
 
 Scope:
 
@@ -1366,6 +1366,22 @@ Completion criteria:
 - Preview and production resources are isolated.
 - Deployment and rollback/recovery procedures are exercised.
 - The release checklist has no unresolved critical findings.
+
+### Future task: Optional OpenAI research adapter
+
+This is an optional alternative to Tavily, not a prerequisite for the MVP and not the same as the later ChatGPT MCP client. It starts only after the product owner approves OpenAI API cost, retention, and privacy terms. It:
+
+- Adds an OpenAI Responses API adapter using built-in web search behind the existing Research provider boundary; it never relies on a personal ChatGPT session or subscription.
+- Sends only the explicit research query and approved structured constraints by default. Collection Briefs, comments, member data, and other private context remain excluded unless a later reviewed feature requires and discloses them.
+- Normalizes returned sources and suggestions into the existing Research Run, Source, and Result model, records the exact provider/model/tool configuration, and preserves human-confirmed promotion into ordinary planning records.
+- Makes provider selection explicit and configurable. It does not silently fall back between Tavily and OpenAI, issue duplicate paid searches, or merge differently sourced answers without provenance.
+- Applies provider-specific budgets, rate limits, timeouts, failure states, and observability while keeping the rest of the app usable when the OpenAI adapter is disabled.
+
+Completion criteria:
+
+- Existing Tavily records remain valid after the provider constraint migration.
+- Authorization, source provenance, bounded-query, failure, cost-limit, and idempotent-promotion tests pass for the OpenAI adapter.
+- Disabling either provider does not change stored planning records or break the other provider.
 
 ### Future task: Concept media foundation
 
@@ -1537,8 +1553,8 @@ Decisions 1, 2, 3, 4, 6, 7, 9, 10, 11, and 13 are resolved. Decision 15 must be 
 ## Current repository state
 
 - Branch: `main`.
-- History: scaffold baseline followed by committed Task 1 monorepo, Task 2 domain/D1, Task 3 Google authentication, Task 4 authorization/invitations, Tasks 5A/5B core planning, Task 6A Collection Brief/text Concept, Task 6B Item workflow, the branding/MCP roadmap note, Task 7 Product/Offer comparison, Task 8 collaboration, Task 9A deterministic Research Import Drafts, and Task 9B provider research. Task 10 is the current completed but uncommitted implementation.
-- Tasks 1 through 10 are complete and validated; Task 11 is next.
+- History: scaffold baseline followed by committed Task 1 monorepo, Task 2 domain/D1, Task 3 Google authentication, Task 4 authorization/invitations, Tasks 5A/5B core planning, Task 6A Collection Brief/text Concept, Task 6B Item workflow, the branding/MCP roadmap note, Task 7 Product/Offer comparison, Task 8 collaboration, Task 9A deterministic Research Import Drafts, Task 9B provider research, Task 10 Context Builder, and the first two Task 11 hardening/accessibility slices. The final Task 11 release workflow is complete and is the current uncommitted implementation.
+- Tasks 1 through 11 are complete and validated.
 - The repository is a Bun `1.3.12` workspace with `apps/web`, `packages/domain`, `packages/contracts`, and `packages/i18n`. No mobile, API-client, or config package has been created.
 - `bun.lock` is the sole package-manager lockfile present, and Bun workspaces are declared in the root `package.json`.
 - The Vite/React frontend provides localized Google sign-in and a protected planning studio with Workspace, Collection, and Item create/edit/archive/restore flows, URL-restored selection, quantity-aware Item cards, lightweight group navigation, a Collection direction surface for the Brief, EUR budget, ordered color preference, references, and optional text Concept, plus a permission-aware Item detail/status/history workflow. English and Persian layouts are responsive at desktop and narrow widths.
@@ -1591,6 +1607,7 @@ These links informed the architecture and must be rechecked before implementing 
 - [Better Auth Google authentication](https://better-auth.com/docs/authentication/google)
 - [Better Auth Apple authentication](https://better-auth.com/docs/authentication/apple)
 - [OpenAI ChatGPT plugin MCP server guide](https://developers.openai.com/plugins/build/mcp-server)
+- [OpenAI Responses API](https://developers.openai.com/api/reference/cli/resources/responses/methods/create)
 - [Hono RPC guide](https://hono.dev/docs/guides/rpc)
 - [Hono validation guide](https://hono.dev/docs/guides/validation)
 - [Drizzle with Cloudflare D1](https://orm.drizzle.team/docs/sqlite/connect-cloudflare-d1)
@@ -1641,4 +1658,8 @@ Task 11's accessibility and production-like release-verification slice was compl
 
 On 2026-09-01, the product owner added a future ChatGPT MCP integration as the final roadmap task. It remains deferred until the production API and permission-filtered Context Builder are stable, and it must reuse existing application services rather than introduce parallel domain or database behavior.
 
-Task 11 is in progress. Its next ordered subtask is the deployment, migration, recovery, and rollback exercise; it starts only after the product owner explicitly requests continuation in a later session.
+Task 11's release slice was continued on 2026-09-03. A production export was rehearsed privately against an isolated local D1 clone before remote changes; migrations 0005 through 0009 applied there with all aggregate counts preserved and no foreign-key violations. Preview D1 was migrated through 0009 and an actual Time Travel restore removed a disposable probe while preserving its migrated schema. Production recovery bookmark `0000002a-00000000-000050db-67893c41de3e7dbedb985fd118609cbb` was recorded, production migrations 0005 through 0009 then applied successfully, aggregate user/Workspace/Collection/Item counts were preserved, and `PRAGMA foreign_key_check` remained clean. The private temporary export and clone were deleted after verification.
+
+Task 11 deployment continued on 2026-09-04 after the product owner supplied temporary mode-`600` secret files outside the repository and refreshed Wrangler OAuth. Preview Worker version `dd7ab70a-db7a-4c03-836a-d05507716f09` deployed with isolated D1, Workflow, Browser Run, and secrets; its release smoke and Google OAuth callback initiation passed. Production Worker version `5938210e-5144-4bd7-8d0a-fec679d2d690` deployed with the existing authentication secrets preserved and the new Tavily key; release smoke, Google OAuth callback initiation, and one bounded Tavily Basic Search passed. An identical schema-compatible drill version, `4a4c51e1-5326-4514-bbbd-9a6ba7c9a3b8`, was deployed and smoke-tested, then Wrangler rollback returned 100% of traffic to version `5938210e-5144-4bd7-8d0a-fec679d2d690`. Production D1 remained at ten migrations with its aggregate user/Workspace/Collection/Item counts preserved and no foreign-key violations. Both temporary secret files were deleted after use.
+
+On 2026-09-04, the product owner confirmed a successful Google sign-in and authenticated planning read at `https://kharidyar.formahsa.workers.dev`. This completed Task 11. On the same date, the product owner also added a future optional OpenAI Responses API web-search adapter. It must reuse the existing permission, provenance, Research record, and human-confirmation boundaries and remains separate from the final ChatGPT MCP client task.
