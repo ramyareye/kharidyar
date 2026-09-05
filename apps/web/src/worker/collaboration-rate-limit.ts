@@ -21,6 +21,8 @@ export const contextSnapshotCreationRateLimit = {
 } as const;
 
 export type CollaborationRateLimitAction =
+	| "mcp_request"
+	| "mcp_registration"
 	| "concept_media_upload"
 	| "context_snapshot_creation"
 	| "invitation_acceptance"
@@ -103,7 +105,9 @@ export async function enforceCollaborationRateLimit(input: {
 			),
 		);
 		const message =
-			input.action === "concept_media_upload"
+			input.action.startsWith("mcp_")
+				? "Too many connector requests. Please try again later."
+			: input.action === "concept_media_upload"
 				? "Too many image uploads. Please try again later."
 				: input.action === "research_creation"
 					? "Too many research requests. Please try again later."

@@ -1137,14 +1137,14 @@ Repository policy requires one ordered task per substantial work session. Start 
 
 ### Remaining delivery order (product-owner decision, 2026-09-05)
 
-After the completed release documentation is committed, the selected sequence is:
+The release documentation was committed and pushed as `a96aa4e`. After deferring API-first research and reconciling the interrupted API draft, the product owner prioritized a private MCP integration so each person can use WantKit from their own ChatGPT or Claude account. The selected sequence is:
 
-1. OpenAI research adapter.
-2. AI Concept visualization from uploaded base photos.
-3. ChatGPT MCP integration, initially read-only.
+1. Private MCP integration for ChatGPT and Claude, initially a read-only personal-use pilot.
+2. Private local Codex research connector for research initiated inside WantKit.
+3. AI Concept visualization from uploaded base photos.
 4. Web UI revamp after those integrations are complete.
 
-Expo is deferred outside this delivery sequence. This order supersedes the earlier plan to place MCP after Expo; it does not approve provider spending, retention/privacy terms, or image-subject scope. Resolve the relevant decisions before each implementation begins.
+The paid OpenAI API research adapter and Expo are deferred outside this delivery sequence. This order supersedes the API-first and local-Codex-first plans and the earlier placement of MCP after image visualization or Expo. It does not approve live provider spending, deployment, public directory publication, or image-subject scope. Read [HANDOFF.md](./HANDOFF.md) before implementation: the baseline passes, and the interrupted API draft is preserved locally outside active source and migration paths.
 
 ### Task 1: Monorepo foundation
 
@@ -1391,9 +1391,55 @@ Completion criteria:
 - Deployment and rollback/recovery procedures are exercised.
 - The release checklist has no unresolved critical findings.
 
-### Future task: Optional OpenAI research adapter
+### Next task: Private MCP integration for ChatGPT and Claude
 
-This is an optional alternative to Tavily, not a prerequisite for the MVP and not the same as the later ChatGPT MCP client. It starts only after the product owner approves OpenAI API cost, retention, and privacy terms. It:
+Status: Implemented and verified locally on 2026-09-05, then deployed to approved preview for the verified owner account. Production remains unchanged; no commit. Ten read-only tools, per-user OAuth, consent/disconnect screens, and an additive seven-table OAuth migration are ready for review. Full `bun run check` passed with 140 tests. Local browser checks used fake accounts. After restarting an expired consent flow, the user confirmed ChatGPT successfully read Workspace “Test 1.” Browser control remains disconnected; other live tool reads and disconnect/revocation are unverified. Claude is pending because the user signed in only to ChatGPT. Live-test approval is already granted; the full pilot is not yet complete. See [PRIVATE_MCP.md](./PRIVATE_MCP.md) for setup, limits and verification, and [HANDOFF.md](./HANDOFF.md) for the next step.
+
+The person opens their own ChatGPT or Claude, connects their WantKit account, and asks the assistant to use authorized WantKit records alongside whatever personal context that assistant makes available. Task 10's permission-filtered Context Builder and Task 11's production hardening are complete. MCP adds clients to the existing backend; it needs no paid model API integration or local research runner.
+
+- Expose one versioned MCP adapter over existing permission-checked application services, with explicit input/output schemas and bounded responses. Prefer authenticated streamable HTTP for browser clients; validate any local transport or supported private tunnel against the chosen client before relying on it. A reachable authenticated endpoint does not imply public data or public directory publication.
+- Each person signs into their assistant through the provider's own interface and separately authorizes access to their own WantKit account. Map the connector authorization to one Kharidyar User; use supported OAuth, narrow read scopes, expiry, revocation, and a fresh capability check on every tool call. Never collect provider passwords, browser cookies, Codex credential files, or Claude subscription tokens.
+- Start with focused read tools for accessible Workspaces, Collections, Items, Candidates, Offers, research results, and permission-filtered text context. Context must preserve the existing `export_context` and creator/current-access boundaries. Tools delegate to application services; MCP transport code never accesses D1 directly.
+- Keep the initial tool set read-only: listing or reading context leaves planning records and stored Context Snapshots unchanged. No automatic research dispatch, provider fallback, purchases, decisions, invitations, membership changes, deletion, or photo transmission. Accurate tool annotations supplement server enforcement.
+- Treat tool inputs, stored user text, and research content as untrusted data. Preserve source attribution, validate all returned records, and keep secrets and unnecessary personal data out of metadata and results. A custom assistant UI is outside this pilot.
+- Personal memories remain controlled by ChatGPT or Claude. Account sign-in does not grant WantKit access to all chats or memories, and a local coding agent must not be assumed to inherit browser-chat memory. Send only the records needed for the requested task; exclude account-wide memory/history imports and background exports. Explain that connected data is processed by the chosen provider under its settings and policies.
+- Research can happen in the user's assistant with the search tools available to that account. The pilot reads WantKit data; it does not replace the existing Tavily button. Users can save chosen findings through the existing reviewable Import Draft flow. A later, separately scoped MCP write tool may submit selected findings as a draft with provenance and explicit confirmation; it may not silently mutate planning records.
+- Describe cost as potentially no extra model API bill within included assistant usage. Plan eligibility, usage limits, hosting, and any transport costs still apply. Check actual ChatGPT and Claude account capabilities before live validation; a private connector does not guarantee memory availability or unlimited free use.
+
+Completion criteria:
+
+- OAuth identity mapping, second-user isolation, cross-Workspace/Collection leakage, revoked or expired authorization, lost Collection access, malformed inputs, pagination/output bounds, and rate-limit tests pass.
+- Local MCP inspection verifies tool discovery, schemas, annotations, allowed/denied calls, and absence of state-changing tools. Existing Tavily and planning tests pass; permission-filtered context retains its established privacy boundaries.
+- Document private setup and disconnect for ChatGPT and Claude without public directory publication. Perform one representative read flow in each intended client after checking account eligibility and obtaining any required live-access approval; record unsupported account/transport behavior rather than claiming untested compatibility. Mocked checks alone do not complete live client validation.
+- Disconnect stops future tool access without affecting the web app or stored planning data. Document that disconnecting does not erase information already retained in assistant conversations.
+
+References checked on 2026-09-05: [ChatGPT developer mode](https://developers.openai.com/api/docs/guides/developer-mode), [ChatGPT connection and tunnel options](https://developers.openai.com/plugins/deploy/connect-chatgpt), [Claude custom connectors](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp), [ChatGPT memory](https://help.openai.com/en/articles/8590148-memory-faq), and [Claude memory](https://support.claude.com/en/articles/11817273-use-claude-s-chat-search-and-memory-to-build-on-previous-context). Account eligibility and live memory behavior have not been validated for this app. The implemented static-client OAuth setup and current authentication references are documented in [PRIVATE_MCP.md](./PRIVATE_MCP.md).
+
+### Later task: Private local Codex research connector
+
+Status: Follows the private MCP pilot. Baseline reconciliation removed the interrupted API-only draft from active paths and preserved it locally; the local companion has not been implemented. This remains a private personal-use pilot with pairing and authorization per user. See [HANDOFF.md](./HANDOFF.md) for baseline validation and recovery details.
+
+- Each user runs their own local companion with their own supported Codex login. Codex credentials remain on that user's machine; the app never shares the project owner's account or accepts uploaded Codex credential files. Arbitrary AI providers and fully offline models are later extensions, not part of this task.
+- Limit the connector to explicit Research queries and structured filters initiated inside WantKit. It complements the preceding MCP integration, which lets ChatGPT and Claude read the app. Codex web search can supply alternative research results after normalization and validation; a local index of saved material alone cannot discover fresh listings or prices. Keep Tavily available without automatic fallback or background AI requests.
+- Prefer an outbound, authenticated job-pull connection from the companion to the app. Keep Codex local via a supported CLI/SDK interface; do not publicly expose an unrestricted agent, shell, or development session. This transport is a proposed implementation starting point, not an implemented design.
+- Pair each connector to an authenticated app user using revocable, narrowly scoped credentials. Recheck current Collection permissions when accepting, claiming, and submitting work; prevent cross-user jobs, result replay, and access after revocation. Run each job in an isolated context with bounded tools, runtime, and output.
+- Return schema-validated advisory results and source provenance through the existing Research services. Treat local output as untrusted, preserve human-confirmed promotion, and make offline, expired-login, quota, cancellation, and failure states explicit. Record the actual provider/model/configuration without claiming that locally reported sources were independently verified by the server.
+- Explain the data path before dispatch: local orchestration still sends prompts to OpenAI, and submitted results are stored by this app under its normal access rules. ChatGPT-login use consumes the user's plan allowance; API-key login incurs API charges. Neither offline privacy nor unlimited free usage is promised. The API-specific retention settings below do not apply automatically to Codex-login use.
+
+Completion criteria:
+
+- One user can explicitly pair, request research, review cited suggestions, and disconnect; a second-user isolation test proves that one user cannot spend another user's allowance or read their jobs.
+- Offline, expired/revoked pairing, lost Collection access, duplicate completion, cancellation, malicious output, and bounded execution tests pass. Existing Tavily and planning flows remain usable.
+- A documented private local setup and one or two representative manual checks pass, with no public agent listener, shared account credentials, paid API fallback, or automatic planning mutations.
+- Any eventual multi-user/public rollout has a separate account-entitlement and security review. A successful private pilot alone is not a public-service release approval.
+
+References checked on 2026-09-05: [Codex automation and authentication](https://learn.chatgpt.com/docs/non-interactive-mode#authenticate-in-automation), [plan usage limits](https://learn.chatgpt.com/docs/pricing#what-are-the-usage-limits-for-my-plan), and [app-server transport cautions](https://learn.chatgpt.com/docs/app-server). Recheck current support before implementation; the app-server WebSocket transport is currently documented as experimental and unsupported for production workloads.
+
+### Deferred task: Optional OpenAI API research adapter
+
+Status: The product owner approved the initial settings on 2026-09-05, then deferred this task in favor of local Codex. The partial contract/schema/configuration code and generated migration were preserved in a verified local archive and removed from active paths during baseline reconciliation. The adapter, UI, budget enforcement, and tests remain unimplemented. No OpenAI credentials or paid calls were configured by this task, and it was not deployed. See [HANDOFF.md](./HANDOFF.md) for the archive location; its draft migration must not be applied.
+
+This is an optional alternative to Tavily, not a prerequisite for the MVP or the private MCP clients. It starts only after the product owner approves OpenAI API cost, retention, and privacy terms. It:
 
 - Adds an OpenAI Responses API adapter using built-in web search behind the existing Research provider boundary; it never relies on a personal ChatGPT session or subscription.
 - Sends only the explicit research query and approved structured constraints by default. Collection Briefs, comments, member data, and other private context remain excluded unless a later reviewed feature requires and discloses them.
@@ -1406,6 +1452,22 @@ Completion criteria:
 - Existing Tavily records remain valid after the provider constraint migration.
 - Authorization, source provenance, bounded-query, failure, cost-limit, and idempotent-promotion tests pass for the OpenAI adapter.
 - Disabling either provider does not change stored planning records or break the other provider.
+
+#### Previously approved starting settings — inactive while deferred
+
+Retain these as the starting proposal when the API task resumes; reconfirm then-current pricing and data handling before activation. They do not authorize API fallback from the local connector.
+
+- OpenAI research allowance: USD 5 per UTC calendar month across this app, split into USD 4 for production and USD 1 for preview/testing. Enforce these allowances in the application, including retries and in-flight reservations. This covers app-originated OpenAI research usage only, not taxes, Cloudflare, Tavily, image editing, or unrelated API-key use; it is not an account-wide billing guarantee.
+- Send only the explicit search query and approved structured filters. Exclude photos, full Briefs, comments, member data, and automatic context exports. Keep Tavily selectable with no silent provider fallback.
+- Use foreground Responses requests with `store: false`, without persistent conversations or uploaded files. Use standard API processing without claiming EU-only residency or Zero Data Retention. API data is not used for training by default unless the account opts in. Abuse-monitoring content is normally retained up to 30 days, with legal/safety exceptions; prompt caching may also retain encrypted application state up to 24 hours. These are provider-side policies, separate from our own Research records. See [OpenAI data controls](https://developers.openai.com/api/docs/guides/your-data).
+- Price reference checked on 2026-09-05: the non-preview `web_search` tool costs USD 10 per 1,000 calls plus model token charges, including retrieved search content. Select and pin a supported model and its pricing before activation; no model or live account access was validated in this setup review. See [OpenAI API pricing](https://developers.openai.com/api/docs/pricing).
+
+#### Implementation steps when resumed
+
+1. Extend the Tavily-only provider contract and database constraint while preserving existing Research records; snapshot each Run's provider/model/tool configuration.
+2. Add the OpenAI adapter and explicit localized provider selection using the existing authorized Research workflow. Accept validated HTTPS sources and keep human-confirmed promotion; follow [Responses web-search source attribution](https://developers.openai.com/api/docs/guides/tools-web-search).
+3. Add durable budget reservations and usage settlement before provider calls. Bound search calls, input/output, timeout, and retries; keep uncertain or still-running attempts charged conservatively rather than freeing their reservation on client cancellation. Test concurrent spending and retry behavior.
+4. Test adapters with mocked responses, then configure a server-only API key and perform bounded preview verification within the approved testing allowance before any production release.
 
 ### Post-MVP task: Concept media foundation
 
@@ -1437,26 +1499,9 @@ This starts only after the Concept media foundation and Task 10's access-filtere
 - Preserves the original, records provider/input provenance, labels edits as illustrative, and lets an authorized human keep, reject, or choose the cover.
 - Tests cross-Collection isolation, provider failure, cancellation, deletion, cost limits, and the guarantee that Item changes never trigger generation automatically.
 
-### Future task: ChatGPT MCP integration
-
-This follows AI Concept visualization in the selected delivery sequence and precedes the web UI revamp; it does not depend on Expo. It starts only after Task 10's permission-filtered Context Builder, Task 11's production hardening, and the public API contracts are stable. It adds ChatGPT as another client without creating a second backend or bypassing Kharidyar's domain rules. It:
-
-- Exposes a versioned streamable-HTTP MCP endpoint, typically `/mcp`, as a thin adapter over the same application services and validated commands used by the web and future Expo clients; MCP tools never query or mutate D1 directly.
-- Authenticates each user through the then-current supported OAuth flow, maps that identity to one Kharidyar User, and performs capability checks for every tool call.
-- Starts with focused read tools for accessible Workspaces, Collections, Items, decision history, and permission-filtered context. A later reviewed tool set may create or update planning records, but invitation, membership, deletion, purchase, and other consequential commands are excluded from the first release.
-- Uses explicit input/output schemas, stable record identifiers, accurate read-only/destructive/open-world annotations, bounded result sizes, rate limits, and no secrets or unnecessary personal data in tool metadata or results.
-- Treats tool inputs and stored research text as untrusted, requires server-side validation and confirmation for any future write, records MCP-originated writes through the normal audit path, and adds no custom ChatGPT UI unless a proven workflow needs one.
-
-Completion criteria:
-
-- Cross-Workspace and cross-Collection leakage, revoked access, invalid input, rate-limit, and OAuth-account mapping tests pass.
-- Every tool delegates to an existing permission-checked query or command; direct database access from the MCP transport layer is absent.
-- Tool schemas, annotations, representative calls, edge cases, and out-of-scope requests pass local MCP inspection and ChatGPT developer-mode testing.
-- The integration can be disabled without affecting the web app, mobile app, API, or stored planning data.
-
 ### Future task: Web UI revamp
 
-This follows the OpenAI research adapter, AI Concept visualization, and ChatGPT MCP integration. Agree the visual direction and screen scope with the product owner before implementation. Preserve the established domain behavior, permission checks, English/Persian support, accessibility, and responsive layouts; this is a web-interface task, not an Expo migration.
+This follows private MCP integration for ChatGPT and Claude, the local Codex research connector, and AI Concept visualization. The deferred OpenAI API adapter is not a prerequisite. Agree the visual direction and screen scope with the product owner before implementation. Preserve the established domain behavior, permission checks, English/Persian support, accessibility, and responsive layouts; this is a web-interface task, not an Expo migration.
 
 ### Deferred task: Expo mobile application
 
@@ -1586,7 +1631,7 @@ Decisions 1, 2, 3, 4, 6, 7, 9, 10, 11, 13, and 15 are resolved. Decisions 16 and
 ## Current repository state
 
 - Branch: `main`.
-- History: scaffold baseline followed by committed Task 1 monorepo, Task 2 domain/D1, Task 3 Google authentication, Task 4 authorization/invitations, Tasks 5A/5B core planning, Task 6A Collection Brief/text Concept, Task 6B Item workflow, the branding/MCP roadmap note, Task 7 Product/Offer comparison, Task 8 collaboration, Task 9A deterministic Research Import Drafts, Task 9B provider research, Task 10 Context Builder, and Task 11 production hardening and deployment. The post-MVP Concept media foundation was committed and pushed as `7fc8165`; only its release documentation remains uncommitted.
+- History: scaffold baseline followed by committed Task 1 monorepo, Task 2 domain/D1, Task 3 Google authentication, Task 4 authorization/invitations, Tasks 5A/5B core planning, Task 6A Collection Brief/text Concept, Task 6B Item workflow, the branding/MCP roadmap note, Task 7 Product/Offer comparison, Task 8 collaboration, Task 9A deterministic Research Import Drafts, Task 9B provider research, Task 10 Context Builder, and Task 11 production hardening and deployment. The post-MVP Concept media foundation was committed and pushed as `7fc8165`; its completed release documentation and revised delivery order were committed and pushed as `a96aa4e`.
 - Tasks 1 through 11 and the post-MVP Concept media foundation are complete and validated in production. Migration 0010 and its Worker deployment are applied in preview and production, with both authenticated image flows confirmed by the product owner.
 - The repository is a Bun `1.3.12` workspace with `apps/web`, `packages/domain`, `packages/contracts`, and `packages/i18n`. No mobile, API-client, or config package has been created.
 - `bun.lock` is the sole package-manager lockfile present, and Bun workspaces are declared in the root `package.json`.
@@ -1692,7 +1737,7 @@ The product owner explicitly authorized Task 11 on 2026-09-03. Its first bounded
 
 Task 11's accessibility and production-like release-verification slice was completed on 2026-09-03. Dialogs now trap keyboard focus, close with Escape when safe, lock background scrolling, and restore focus to their opener. Skip navigation transfers focus without a decorative outline on the destination; selected group filters expose pressed state; icon-only links have localized accessible names; decorative branding is hidden from assistive technology; small controls meet the WCAG 2.2 minimum target size; and muted text, controls, placeholders, and focus indicators meet their required contrast roles. One desktop LTR flow and one narrow Persian RTL flow passed against the built Worker in the production-like Cloudflare runtime, including dialog focus behavior and horizontal-overflow checks.
 
-On 2026-09-01, the product owner added a future ChatGPT MCP integration as the final roadmap task. It remains deferred until the production API and permission-filtered Context Builder are stable, and it must reuse existing application services rather than introduce parallel domain or database behavior.
+On 2026-09-01, the product owner added a future ChatGPT MCP integration as the final roadmap task, conditional on a stable production API and permission-filtered Context Builder. Those prerequisites are complete. The later 2026-09-05 decision below supersedes its original position; it must still reuse existing application services rather than introduce parallel domain or database behavior.
 
 Task 11's release slice was continued on 2026-09-03. A production export was rehearsed privately against an isolated local D1 clone before remote changes; migrations 0005 through 0009 applied there with all aggregate counts preserved and no foreign-key violations. Preview D1 was migrated through 0009 and an actual Time Travel restore removed a disposable probe while preserving its migrated schema. Production recovery bookmark `0000002a-00000000-000050db-67893c41de3e7dbedb985fd118609cbb` was recorded, production migrations 0005 through 0009 then applied successfully, aggregate user/Workspace/Collection/Item counts were preserved, and `PRAGMA foreign_key_check` remained clean. The private temporary export and clone were deleted after verification.
 
@@ -1701,3 +1746,7 @@ Task 11 deployment continued on 2026-09-04 after the product owner supplied temp
 On 2026-09-04, the product owner confirmed a successful Google sign-in and authenticated planning read at `https://kharidyar.formahsa.workers.dev`. This completed Task 11. On the same date, the product owner also added a future optional OpenAI Responses API web-search adapter. It must reuse the existing permission, provenance, Research record, and human-confirmation boundaries and remains separate from the ChatGPT MCP client task.
 
 The product owner explicitly authorized the post-MVP Concept media foundation on 2026-09-04. It adds private user-provided base/reference images without adding AI generation: direct authenticated uploads are validated and normalized to WebP through Cloudflare Images, stored under opaque immutable keys in environment-isolated private R2 buckets, and delivered only after a fresh Collection access check. Replacing, deleting, or removing the Concept removes the stored bytes immediately and retains only a non-downloadable D1 tombstone. The implementation includes configurable count, byte, and rate limits; uploader and person-photo consent provenance; English/Persian management UI; migration 0010; fixed seed coverage without fake objects; and focused Cloudflare-runtime and UI-state tests. The preview and production buckets were created privately. On 2026-09-05, the pushed implementation was migrated and deployed to preview with passing release smoke and anonymous media-access checks. After the product owner confirmed the preview image cycle, the same application commit was migrated and deployed to production with preserved aggregate data counts, clean foreign keys, and passing release, media-boundary, and Google sign-in initiation checks. The product owner then confirmed the authenticated production image cycle, completing the release. Recovery details and the next steps are recorded in [RELEASE.md](./RELEASE.md#2026-09-05-concept-media-production-release).
+
+On 2026-09-05, after baseline reconciliation, the product owner approved prioritizing private MCP integration for ChatGPT and Claude ahead of the local Codex research runner. Each person uses their own assistant account and separately authorizes their own WantKit account; personal memories stay under the assistant's controls. The first pilot is read-only and does not require public directory publication. Selected findings retain the existing human-reviewed Import Draft path; MCP writes are a later scoped extension. The approved order is private MCP → local Codex research → AI Concept visualization → web UI revamp, with paid OpenAI API research and Expo deferred. This planning update changed documentation only; it did not implement, connect, publish, commit, or deploy a feature.
+
+Later on 2026-09-05, the authorized private MCP implementation passed local validation: ten tools, personal OAuth/consent/disconnect, additive OAuth tables and English/Persian screens; all 140 tests and the full quality check passed. The uncommitted connector was subsequently deployed to approved preview for the verified owner only. The user confirmed a successful ChatGPT read of Workspace “Test 1” after restarting expired consent. Live disconnect/revocation and Claude validation remain pending; see [PRIVATE_MCP.md](./PRIVATE_MCP.md).

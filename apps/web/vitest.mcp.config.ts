@@ -1,15 +1,14 @@
-import {
-	cloudflareTest,
-	readD1Migrations,
-} from "@cloudflare/vitest-plugin";
+import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-plugin";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 const migrationsPath = fileURLToPath(new URL("./migrations", import.meta.url));
 const testAuthBindings = {
-	AUTH_TRUSTED_ORIGINS: "http://example.com",
+	MCP_ENABLED: "true",
+	MCP_ALLOWED_USER_IDS: "mcp-owner,mcp-other,mcp-viewer",
+	AUTH_TRUSTED_ORIGINS: "http://localhost:5173",
 	BETTER_AUTH_SECRET: "task-3-test-secret-with-at-least-32-characters",
-	BETTER_AUTH_URL: "http://example.com",
+	BETTER_AUTH_URL: "http://localhost:5173",
 	GOOGLE_CLIENT_ID: "test-google-client-id",
 	GOOGLE_CLIENT_SECRET: "test-google-client-secret",
 	TAVILY_API_KEY: "test-tavily-api-key",
@@ -34,8 +33,7 @@ export default defineConfig({
 		}),
 	],
 	test: {
-		include: ["test/**/*.test.ts"],
-		exclude: ["test/mcp.test.ts"],
+		include: ["test/mcp.test.ts"],
 		setupFiles: ["./test/apply-migrations.ts"],
 	},
 });

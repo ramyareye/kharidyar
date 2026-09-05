@@ -357,6 +357,7 @@ export async function listWorkspaces(input: {
 	database: D1Database;
 	query: ArchiveListQuery;
 	userId: string;
+	page?: { limit: number; offset: number };
 }): Promise<readonly WorkspaceSummary[]> {
 	// A Collection-only grant gets a minimal parent navigation summary. Reading
 	// the Workspace resource or settings still requires a Workspace grant.
@@ -387,9 +388,9 @@ export async function listWorkspaces(input: {
 						where c.workspace_id = w.id and cm.user_id = ?2
 					)
 				)
-			order by w.updated_at desc, w.id`,
+			order by w.updated_at desc, w.id limit ?3 offset ?4`,
 		)
-		.bind(input.query.includeArchived ? 1 : 0, input.userId)
+		.bind(input.query.includeArchived ? 1 : 0, input.userId, input.page?.limit ?? -1, input.page?.offset ?? 0)
 		.all<WorkspaceNavigationRow>();
 	return result.results.map(workspaceSummary);
 }
@@ -562,6 +563,7 @@ export async function listCollections(input: {
 	query: ArchiveListQuery;
 	userId: string;
 	workspaceId: string;
+	page?: { limit: number; offset: number };
 }): Promise<readonly CollectionResource[]> {
 	await requireWorkspaceNavigationAccess(
 		input.database,
@@ -591,12 +593,14 @@ export async function listCollections(input: {
 						where cm.collection_id = c.id and cm.user_id = ?3
 					)
 				)
-			order by c.updated_at desc, c.id`,
+			order by c.updated_at desc, c.id limit ?4 offset ?5`,
 		)
 		.bind(
 			input.workspaceId,
 			input.query.includeArchived ? 1 : 0,
 			input.userId,
+			input.page?.limit ?? -1,
+			input.page?.offset ?? 0,
 		)
 		.all<CollectionRow>();
 	return result.results.map(collectionResource);

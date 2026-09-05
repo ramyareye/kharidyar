@@ -1228,6 +1228,7 @@ export function PlanningDashboard({
 			<header className="studio-header">
 				<BrandMark compact />
 				<div className="studio-header__actions">
+					<a className="text-button" href="/connectors">{t("connectors.title")}</a>
 					<LocaleSwitch />
 					<div className="account-chip">
 						<UserAvatar name={user.name} image={user.image} />

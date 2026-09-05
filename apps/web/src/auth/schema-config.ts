@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth/minimal";
+import { createMcpAuthPlugins } from "./mcp-options";
 
 import {
 	authAccountOptions,
@@ -11,6 +12,7 @@ export const auth = betterAuth({
 	// This config exists only for deterministic schema generation. Task 3 owns
 	// request-aware runtime URL and secret configuration.
 	baseURL: "http://localhost:5173",
+	plugins: createMcpAuthPlugins("http://localhost:5173", { MCP_ENABLED: "true" }),
 	secret: "schema-generation-only-secret-change-me-1234567890",
 	account: authAccountOptions,
 	rateLimit: authRateLimitOptions,

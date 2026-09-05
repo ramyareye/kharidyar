@@ -2,13 +2,8 @@ import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { betterAuth } from "better-auth/minimal";
 
 import { createDatabase } from "../db/client";
-import {
-	account,
-	rateLimit,
-	session,
-	user,
-	verification,
-} from "../db/schema/auth";
+import * as authSchema from "../db/schema/auth";
+import { createMcpAuthPlugins, type McpBindings } from "./mcp-options";
 import {
 	authAccountOptions,
 	authIpAddressOptions,
@@ -16,7 +11,7 @@ import {
 	authSessionOptions,
 } from "./shared-options";
 
-export interface AuthBindings {
+export interface AuthBindings extends McpBindings {
 	AUTH_TRUSTED_ORIGINS: string;
 	BETTER_AUTH_SECRET: string;
 	BETTER_AUTH_URL: string;
@@ -33,8 +28,6 @@ export interface AuthRuntimeConfig {
 	trustedOrigins: string[];
 	useSecureCookies: boolean;
 }
-
-const authSchema = { account, rateLimit, session, user, verification };
 
 function requiredBinding(name: keyof AuthBindings, value: string): string {
 	const normalized = value.trim();
@@ -122,6 +115,7 @@ export function createAuth(bindings: AuthBindings) {
 		},
 		appName: "Kharidyar",
 		baseURL: config.baseURL,
+		plugins: bindings.MCP_ENABLED === "true" ? createMcpAuthPlugins(config.baseURL, bindings) : [],
 		database: drizzleAdapter(database, {
 			provider: "sqlite",
 			schema: authSchema,

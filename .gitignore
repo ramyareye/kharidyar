@@ -202,3 +202,4 @@ dist
 
 ### Browser QA ###
 output/playwright/
+.playwright-cli/

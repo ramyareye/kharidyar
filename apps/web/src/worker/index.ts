@@ -1,7 +1,9 @@
 import { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
 
 import { createAuth } from "../auth/server";
+import { mcpEnabled, mcpPath, mcpReadScope } from "../auth/mcp-options";
 import {
 	protectApiResponse,
 	requestLogFields,
@@ -19,13 +21,61 @@ import { itemWorkflowRoutes } from "./item-workflow-routes";
 import { importDraftRoutes } from "./import-draft-routes";
 import { researchFixtureRoutes } from "./research-fixture-routes";
 import { researchRoutes } from "./research-routes";
+import { mcpRoutes } from "./mcp-routes";
 import { requireSession, type WorkerAppEnv } from "./session-middleware";
 
 const app = new Hono<WorkerAppEnv>();
 
 app.use("/api/*", protectApiResponse);
 
+// Expose only the OAuth flow, not the provider's general client/resource CRUD.
+const oauthPaths = new Set([
+	"/oauth2/authorize",
+	"/oauth2/token",
+	"/oauth2/consent",
+	"/oauth2/continue",
+	"/oauth2/revoke",
+]);
+app.use(
+	"/api/auth/oauth2/*",
+	bodyLimit({
+		maxSize: 16_384,
+		onError: (c) => c.json({ error: "Request body too large." }, 413),
+	}),
+);
 app.all("/api/auth/*", (context) => {
+	const path = context.req.path.slice("/api/auth".length);
+	// Do not let alternate path encodings bypass the explicit endpoint allowlist.
+	if (path.includes("%") || path.includes("//") || path.endsWith("/"))
+		return context.notFound();
+	if (
+		(path.startsWith("/oauth2/") &&
+			(!mcpEnabled(context.env) || !oauthPaths.has(path))) ||
+		path.startsWith("/admin/") ||
+		path.startsWith("/wantkit-mcp/")
+	)
+		return context.notFound();
+	return createAuth(context.env).handler(context.req.raw);
+});
+
+app.use("/.well-known/*", protectApiResponse);
+app.all("/.well-known/*", (context) => {
+	if (!mcpEnabled(context.env)) return context.notFound();
+	if (
+		[
+			"/.well-known/oauth-protected-resource",
+			`/.well-known/oauth-protected-resource${mcpPath}`,
+		].includes(context.req.path)
+	) {
+		// This resource accepts bearer tokens only; do not advertise the provider's
+		// optional DPoP support until the resource verifies proofs too.
+		return context.json({
+			resource: `${context.env.BETTER_AUTH_URL}${mcpPath}`,
+			authorization_servers: [`${context.env.BETTER_AUTH_URL}/api/auth`],
+			scopes_supported: [mcpReadScope],
+			bearer_methods_supported: ["header"],
+		});
+	}
 	return createAuth(context.env).handler(context.req.raw);
 });
 
@@ -49,6 +99,7 @@ app.get("/api/session", requireSession, (context) => {
 });
 
 const apiRoutes = new Hono<WorkerAppEnv>()
+	.route("/", mcpRoutes)
 	.route("/", collaborationExperienceRoutes)
 	.route("/", collaborationRoutes)
 	.route("/", coreWorkspaceRoutes)

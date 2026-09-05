@@ -196,8 +196,32 @@ R2 bytes and D1 metadata have deliberately different recovery behavior:
 
 ### Next ordered steps
 
-1. Review and commit `PROJECT.md` and `RELEASE.md` through the repository's exact staged-tree approval gate; the production test confirmation is recorded.
-2. Begin the selected OpenAI research-adapter task after resolving its cost and retention/privacy approvals. The product owner's remaining order is recorded in `PROJECT.md`: OpenAI research, AI Concept visualization, ChatGPT MCP, then web UI revamp; Expo is deferred. No future feature has started.
+The completed Concept-media release documentation was committed and pushed as `a96aa4e`. The revised roadmap and private MCP implementation remain uncommitted.
+
+1. Finish the [private MCP pilot](./PRIVATE_MCP.md) with the remaining approved live checks. Local implementation and checks passed, and the user confirmed a successful ChatGPT Workspace read. Live disconnect/revocation and Claude validation remain pending. See [HANDOFF.md](./HANDOFF.md).
+2. Continue only after a new request with the private local Codex research runner, AI Concept visualization, then web UI revamp. Paid OpenAI API and Expo remain deferred.
+
+### 2026-09-05: Private MCP implementation — local only
+
+- Added ten permission-checked read tools, personal OAuth registration/S256/consent/disconnect, revocation and session checks, limits, and English/Persian setup screens. No public directory publication, assistant memory import, MCP write tools, or AI provider calls.
+- New migration `0011_flimsy_mojo.sql` adds seven OAuth tables/indexes, with matching generated schema metadata. It does not alter/drop existing planning tables. Applied only in isolated tests; persistent local, preview and production databases remain unchanged.
+- `MCP_ENABLED="false"` and an empty allowlist remain in all checked-in environments. Dependencies, auth/service/routes, UI, migration, Worker configuration/types, tests and docs are unstaged. No commit or deployment was performed.
+- Full `bun run check` passed: 140 tests, lint, typecheck, migration metadata, production build and deployment dry-run. Fake-account browser checks covered registration, secret reveal/dismissal, consent, provider selection and disconnect in English and Persian. Setup and remaining live checks: [PRIVATE_MCP.md](./PRIVATE_MCP.md).
+- Before MCP work, baseline reconciliation preserved the interrupted API draft in a verified local archive and removed its unsafe `0011_openai_research.sql` from active paths. Baseline validation passed all 127 existing tests. Recovery details remain in the handoff.
+- Proposed next release is preview only, after explicit approval, with a D1 bookmark, additive migration and allowlist limited to approved WantKit users. A code rollback can retain the added OAuth tables; permanent revocation requires deleting registrations. Disabling the flag stops access but does not erase stored grants or assistant-retained conversations.
+
+## 2026-09-05: Private MCP preview deployment
+
+- Explicitly approved by the product owner after reviewing the local implementation. Deployed the uncommitted MCP tree based on `a96aa4e`; no staging or commit. The existing release runbook's clean-commit default was superseded by that specific preview approval.
+- Environment: preview only, Worker `kharidyar-preview`, [preview app](https://kharidyar-preview.formahsa.workers.dev). Deployed at `2026-09-05T19:21:51.183424Z`, operator Codex using the authorized Wrangler account.
+- Previous version: `0610503c-6972-4d3e-bc65-928e3de0e6e3`. New version: `b51b0cd5-d575-4d39-8d8f-e24ef2232677`, confirmed at 100% traffic.
+- Pre-migration D1 bookmark: `00000011-00000016-000050dd-a93197d80e1e66a5478a1d42b8c6ecf4`. Applied only `0011_flimsy_mojo.sql` (27 statements; seven additive OAuth tables). Twelve total migrations now applied.
+- Preserved before/after counts: 1 User, 1 Workspace, 1 Collection, 0 Items, 1 Concept Image; zero foreign-key violations. OAuth client count was zero immediately after migration.
+- Enabled MCP for the sole verified preview WantKit user through the ignored generated deployment configuration. Checked-in configuration remains disabled with an empty allowlist in every environment; production was neither migrated nor deployed. A normal rebuild restores those safe defaults, so later pilot deploys must deliberately reapply the reviewed preview-only override.
+- Preflight: existing full check/140 tests, fresh preview build and exact-config dry-run passed; all six existing remote secret names were present. No existing secret values were read or changed.
+- Post-deployment release smoke passed. Protected-resource/issuer metadata matched preview and advertised S256; anonymous MCP returned non-cacheable `401` with the expected OAuth discovery challenge. Authenticated setup page loads for the owner. ChatGPT Pro private setup created “WantKit Preview” and opened WantKit consent, then browser control disconnected. An aggregate-only check before successful consent found 1 registration, 0 consents and 0 active access/refresh tokens. The user's window stayed open; the 21:59 Amsterdam screenshot showed `invalid_signature` for the original consent link, which expired at 21:39. Synthetic checks through installed BetterAuth serialization/verification confirmed correct fresh/expired signature handling. After restarting sign-in from the existing plugin, the user confirmed ChatGPT successfully read Workspace “Test 1.” No code change or redeployment was needed. This is a user-reported live read; other tool reads and live disconnect/revocation remain unverified. Claude is pending because the user signed in only to ChatGPT.
+- Source manifest SHA-256: `4221032db2e405b2b5cbc7bbaa93a4641de72af9e615b7397e8b1303a18b53b4`; Worker bundle SHA-256: `a2d932f204957776e6e946ca749c5a0f7c3b65893a44365492ff295949c47683`. Manifest is local at `/tmp/wantkit-mcp-preview-source-manifest.json`; deployment/smoke logs use `/tmp/wantkit-mcp-preview-*.log`. The manifest covers application/package files, not the subsequent documentation updates or ignored preview allowlist.
+- Recovery: the previous code version can retain the additive tables. Disabling MCP stops access; delete a registration to revoke it permanently. Do not roll back D1 or delete planning/image data to disable the connector.
 
 ## Release record template
 

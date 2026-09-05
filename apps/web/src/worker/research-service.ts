@@ -297,8 +297,18 @@ export async function readResearchDesk(input: {
   database: D1Database;
   userId: string;
 }): Promise<ResearchDeskResponse> {
-  const { access, collection } = await researchAccess(input);
+  await researchAccess(input);
   await purgeExpiredSnapshots(input.database, Date.now());
+  return readResearchDeskContent(input);
+}
+
+// The MCP and context readers must not perform incidental snapshot cleanup.
+export async function readResearchDeskContent(input: {
+  collectionId: string;
+  database: D1Database;
+  userId: string;
+}): Promise<ResearchDeskResponse> {
+  const { access, collection } = await researchAccess(input);
   const requests = await input.database
     .prepare(
       `select

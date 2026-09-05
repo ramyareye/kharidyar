@@ -31,7 +31,7 @@ import {
 	readConcept,
 } from "./collection-direction-service";
 import { itemResource, type ItemRow } from "./core-workspace-service";
-import { readResearchDesk } from "./research-service";
+import { readResearchDeskContent } from "./research-service";
 
 const contextSchemaVersion = 1 as const;
 const maximumSnapshotBytes = 1_500_000;
@@ -293,7 +293,7 @@ function decision(row: DecisionRow): ContextDecision {
 }
 
 function researchContext(
-	requests: Awaited<ReturnType<typeof readResearchDesk>>["requests"],
+	requests: Awaited<ReturnType<typeof readResearchDeskContent>>["requests"],
 ): CollectionContext["researchRequests"] {
 	return requests.map((request) => ({
 		id: request.id,
@@ -611,7 +611,7 @@ async function collectionContext(input: {
 		candidatesByItem.set(row.item_id, values);
 	}
 
-	const research = await readResearchDesk(input);
+	const research = await readResearchDeskContent(input);
 	const items: ContextItem[] = itemRows.map((row) => {
 		const resource: ItemResource = itemResource(row);
 		return {
@@ -680,6 +680,15 @@ function snapshotResource(row: SnapshotRow): ContextSnapshotResource {
 		createdAt: timestamp(row.created_at),
 		content: JSON.parse(row.content_json),
 	});
+}
+
+export async function readCurrentCollectionContext(input: {
+	collectionId: string;
+	database: D1Database;
+	rateLimitSecret: string;
+	userId: string;
+}): Promise<CollectionContext> {
+	return (await collectionContext(input)).content;
 }
 
 export async function createCollectionContextSnapshot(input: {

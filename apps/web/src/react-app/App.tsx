@@ -3,6 +3,7 @@ import { useState } from "react";
 import { authClient } from "./auth-client";
 import { useLocale } from "./locale-context";
 import { PlanningDashboard } from "./PlanningDashboard";
+import { ConnectorsPage } from "./ConnectorsPage";
 import { BrandMark, LocaleSwitch } from "./ui";
 import "./App.css";
 
@@ -53,7 +54,7 @@ function SignedOutScreen({ sessionError }: { sessionError: boolean }) {
 		try {
 			const result = await authClient.signIn.social({
 				provider: "google",
-				callbackURL: `${window.location.origin}/`,
+				callbackURL: `${window.location.origin}${window.location.pathname.startsWith("/connectors") ? "/connectors" : "/"}`,
 			});
 
 			if (result.error) {
@@ -168,6 +169,7 @@ function App() {
 		return <SignedOutScreen sessionError={Boolean(error)} />;
 	}
 
+	if (window.location.pathname.startsWith("/connectors")) return <ConnectorsPage email={session.user.email} />;
 	return <SignedInShell user={session.user} />;
 }
 
