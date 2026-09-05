@@ -588,7 +588,7 @@ export async function removeConcept(input: {
   collectionId: string;
   database: D1Database;
   userId: string;
-}): Promise<void> {
+}): Promise<string | null> {
   await requireMutableCollection(
     input.database,
     input.userId,
@@ -597,7 +597,7 @@ export async function removeConcept(input: {
   );
   const current = await activeConceptRow(input.database, input.collectionId);
   if (current === null) {
-    return;
+    return null;
   }
   const now = Date.now();
   const result = await input.database
@@ -639,8 +639,9 @@ export async function removeConcept(input: {
       "concept_edit",
     );
     if ((await activeConceptRow(input.database, input.collectionId)) === null) {
-      return;
+      return current.id;
     }
     throw conflict("The Concept changed. Please retry.");
   }
+  return current.id;
 }

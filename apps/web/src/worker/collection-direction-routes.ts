@@ -5,6 +5,7 @@ import {
 import { Hono } from "hono";
 
 import { jsonContractValidator } from "./contract-validation";
+import { deleteAllConceptMedia } from "./concept-media-service";
 import {
   readCollectionBrief,
   readConcept,
@@ -99,7 +100,7 @@ export const collectionDirectionRoutes = new Hono<WorkerAppEnv>()
     requireSession,
     async (context) => {
       const current = context.get("session");
-      await removeConcept({
+      const removedConceptId = await removeConcept({
         collectionId: requiredIdentifier(
           context.req.param("collectionId"),
           "collectionId",
@@ -107,6 +108,14 @@ export const collectionDirectionRoutes = new Hono<WorkerAppEnv>()
         database: context.env.DB,
         userId: current.user.id,
       });
+      if (removedConceptId !== null) {
+        await deleteAllConceptMedia({
+          bucket: context.env.CONCEPT_MEDIA,
+          conceptId: removedConceptId,
+          database: context.env.DB,
+          userId: current.user.id,
+        });
+      }
       return context.json({ concept: null, permissions: { canEdit: true } });
     },
   );

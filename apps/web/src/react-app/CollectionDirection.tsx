@@ -1,11 +1,16 @@
 import type {
   CollectionBriefColor,
   CollectionBriefResource,
+  ConceptImageResource,
+  ConceptImageUpdateInput,
+  ConceptMediaResponse,
   ConceptResource,
 } from "@kharidyar/contracts";
 import { formatMoney } from "@kharidyar/i18n";
 
+import { ConceptMedia } from "./ConceptMedia";
 import { useLocale } from "./locale-context";
+import type { ConceptImageUploadValue } from "./planning-api";
 
 function DirectionTags({
   label,
@@ -171,20 +176,33 @@ export function CollectionDirection({
   canEditBrief,
   canEditConcept,
   concept,
+  media,
   loading,
+  onDeleteImage,
   onEditBrief,
   onEditConcept,
   onRemoveConcept,
+  onReorderImages,
+  onUpdateImage,
+  onUploadImage,
 }: {
   brief: CollectionBriefResource | null;
   busy: boolean;
   canEditBrief: boolean;
   canEditConcept: boolean;
   concept: ConceptResource | null;
+  media: ConceptMediaResponse | null;
   loading: boolean;
+  onDeleteImage: (image: ConceptImageResource) => Promise<void>;
   onEditBrief: () => void;
   onEditConcept: () => void;
   onRemoveConcept: () => void;
+  onReorderImages: (imageIds: string[]) => Promise<boolean>;
+  onUpdateImage: (
+    imageId: string,
+    value: ConceptImageUpdateInput,
+  ) => Promise<boolean>;
+  onUploadImage: (value: ConceptImageUploadValue) => Promise<boolean>;
 }) {
   const { t } = useLocale();
   const hasPalette = Boolean(
@@ -260,6 +278,16 @@ export function CollectionDirection({
                 <p className="concept-card__narrative" dir="auto">
                   {concept.narrative}
                 </p>
+                {media ? (
+                  <ConceptMedia
+                    busy={busy}
+                    media={media}
+                    onDelete={onDeleteImage}
+                    onReorder={onReorderImages}
+                    onUpdate={onUpdateImage}
+                    onUpload={onUploadImage}
+                  />
+                ) : null}
                 {canEditConcept ? (
                   <button
                     type="button"

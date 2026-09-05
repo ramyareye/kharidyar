@@ -20,6 +20,13 @@ export const contextSnapshotCreationRateLimit = {
 	windowMilliseconds: 60 * 60_000,
 } as const;
 
+export type CollaborationRateLimitAction =
+	| "concept_media_upload"
+	| "context_snapshot_creation"
+	| "invitation_acceptance"
+	| "invitation_preview"
+	| "research_creation";
+
 interface RateLimitRow {
 	count: number;
 	window_started_at: number;
@@ -50,11 +57,7 @@ async function privateRateLimitKey(
 }
 
 export async function enforceCollaborationRateLimit(input: {
-	action:
-		| "context_snapshot_creation"
-		| "invitation_acceptance"
-		| "invitation_preview"
-		| "research_creation";
+	action: CollaborationRateLimitAction;
 	database: D1Database;
 	identity: string;
 	limit: number;
@@ -100,8 +103,10 @@ export async function enforceCollaborationRateLimit(input: {
 			),
 		);
 		const message =
-			input.action === "research_creation"
-				? "Too many research requests. Please try again later."
+			input.action === "concept_media_upload"
+				? "Too many image uploads. Please try again later."
+				: input.action === "research_creation"
+					? "Too many research requests. Please try again later."
 				: input.action === "context_snapshot_creation"
 					? "Too many context snapshots. Please try again later."
 					: "Too many invitation requests. Please try again later.";

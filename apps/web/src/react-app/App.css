@@ -1841,6 +1841,303 @@
   color: #f1b39f;
 }
 
+.concept-media {
+  margin-block: 0 1.75rem;
+  padding-block-start: 1.35rem;
+  border-block-start: 1px solid rgba(252, 250, 244, 0.2);
+}
+
+.concept-media__header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.concept-media__header > div {
+  min-inline-size: 0;
+}
+
+.concept-media__header h5 {
+  margin-block: 0.35rem 0;
+  color: var(--paper-white);
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 500;
+}
+
+.concept-media__header > div > p:last-child {
+  margin-block: 0.55rem 0;
+  color: rgba(252, 250, 244, 0.66);
+  font-size: 0.65rem;
+  line-height: 1.6;
+}
+
+.concept-media__header > span {
+  flex: 0 0 auto;
+  padding-block: 0.35rem;
+  padding-inline: 0.55rem;
+  border: 1px solid rgba(252, 250, 244, 0.28);
+  color: rgba(252, 250, 244, 0.72);
+  font-size: 0.58rem;
+}
+
+.concept-media__empty {
+  margin-block: 1rem 0;
+  padding-block: 1rem;
+  padding-inline: 1rem;
+  border: 1px dashed rgba(252, 250, 244, 0.25);
+  color: rgba(252, 250, 244, 0.62);
+  font-size: 0.66rem;
+  line-height: 1.6;
+}
+
+.concept-media__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.85rem;
+  margin-block-start: 1rem;
+}
+
+.concept-image-card {
+  min-inline-size: 0;
+  color: var(--ink);
+  background: var(--paper-light);
+}
+
+.concept-image-card__visual {
+  position: relative;
+  display: grid;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--paper-deep);
+}
+
+.concept-image-card__visual img,
+.concept-image-card__broken {
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.concept-image-card__visual img {
+  display: block;
+  object-fit: cover;
+}
+
+.concept-image-card__broken {
+  display: grid;
+  place-content: center;
+  gap: 0.35rem;
+  padding: 1rem;
+  color: var(--ink-muted);
+  font-size: 0.63rem;
+  text-align: center;
+}
+
+.concept-image-card__broken span {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.concept-image-card__badges {
+  position: absolute;
+  inset-block-start: 0.55rem;
+  inset-inline-start: 0.55rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.concept-image-card__badges span {
+  padding-block: 0.3rem;
+  padding-inline: 0.45rem;
+  color: var(--paper-white);
+  background: rgba(31, 39, 32, 0.88);
+  font-size: 0.5rem;
+  font-weight: 750;
+}
+
+.concept-image-card__body {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.85rem;
+}
+
+.concept-image-card__caption,
+.concept-image-card__meta {
+  margin: 0;
+}
+
+.concept-image-card__caption {
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  line-height: 1.55;
+}
+
+.concept-image-card__meta {
+  color: var(--ink-muted);
+  font-size: 0.54rem;
+  line-height: 1.5;
+}
+
+.concept-image-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.concept-image-card__actions button {
+  min-block-size: 2.35rem;
+  padding-inline: 0.65rem;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.58rem;
+}
+
+.concept-image-card__actions button:not(:disabled):hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.concept-image-card__actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.concept-image-card__actions .concept-image-card__delete:not(:disabled):hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.concept-media-upload {
+  margin-block-start: 1rem;
+  border: 1px solid rgba(252, 250, 244, 0.28);
+}
+
+.concept-media-upload > summary {
+  display: flex;
+  align-items: center;
+  min-block-size: 2.75rem;
+  padding-block: 0.65rem;
+  padding-inline: 0.8rem;
+  color: rgba(252, 250, 244, 0.82);
+  cursor: pointer;
+  font-size: 0.66rem;
+  font-weight: 750;
+}
+
+.concept-media-upload[open] > summary {
+  border-block-end: 1px solid rgba(252, 250, 244, 0.2);
+}
+
+.concept-media-upload form {
+  display: grid;
+  gap: 1rem;
+  padding: 0.9rem;
+}
+
+.concept-media-upload__grid {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.concept-media-upload .field,
+.concept-media-upload .field input,
+.concept-media-upload .field select {
+  min-inline-size: 0;
+}
+
+.concept-media-upload .field__label,
+.concept-media-upload .field-hint {
+  color: rgba(252, 250, 244, 0.68);
+}
+
+.concept-media-upload .field__label small {
+  color: rgba(252, 250, 244, 0.55);
+}
+
+.concept-media-upload .field input,
+.concept-media-upload .field select {
+  border-color: rgba(252, 250, 244, 0.34);
+  color: var(--paper-white);
+  background: rgba(252, 250, 244, 0.07);
+}
+
+.concept-media-upload .field input::file-selector-button {
+  margin-inline-end: 0.65rem;
+  border: 0;
+  color: var(--ink);
+  background: var(--paper-white);
+  cursor: pointer;
+}
+
+.concept-media-upload .field input::placeholder {
+  color: rgba(252, 250, 244, 0.55);
+}
+
+.concept-media-upload .field select option {
+  color: var(--ink);
+  background: var(--paper-white);
+}
+
+.concept-media-upload .field input:focus,
+.concept-media-upload .field select:focus {
+  border-color: rgba(252, 250, 244, 0.82);
+  background: rgba(252, 250, 244, 0.11);
+}
+
+.check-field {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0.65rem;
+  color: rgba(252, 250, 244, 0.72);
+  cursor: pointer;
+  font-size: 0.64rem;
+  line-height: 1.55;
+}
+
+.check-field input {
+  inline-size: 1rem;
+  block-size: 1rem;
+  margin-block-start: 0.05rem;
+  accent-color: var(--clay);
+}
+
+.check-field--consent {
+  padding-block: 0.75rem;
+  padding-inline: 0.8rem;
+  border: 1px solid rgba(216, 170, 145, 0.45);
+  color: var(--paper-white);
+}
+
+.concept-media-upload__warning {
+  margin: 0;
+  padding-block: 0.7rem;
+  padding-inline: 0.8rem;
+  border: 1px solid rgba(216, 170, 145, 0.38);
+  color: #edc8b6;
+  font-size: 0.61rem;
+  line-height: 1.55;
+}
+
+.concept-media-upload .field-error {
+  color: #f1b39f;
+}
+
+.concept-media-upload .button {
+  justify-self: start;
+  color: var(--moss-dark);
+  background: var(--paper-white);
+}
+
+.concept-media-upload .button:not(:disabled):hover {
+  background: #fff;
+}
+
 .direction-empty {
   display: grid;
   grid-template-columns: 3rem minmax(0, 1fr);

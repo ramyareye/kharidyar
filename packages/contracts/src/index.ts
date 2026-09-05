@@ -17,6 +17,7 @@ import { researchConstraintsSchema, researchResultSuggestionSchema } from "./res
 
 export * from "./commerce";
 export * from "./collaboration";
+export * from "./concept-media";
 export * from "./import-draft";
 export * from "./research";
 
@@ -686,6 +687,8 @@ export const apiErrorCodes = [
 	"INVITATION_INVALID",
 	"INVITATION_REVOKED",
 	"INTERNAL_ERROR",
+	"INVALID_MEDIA",
+	"MEDIA_LIMIT_EXCEEDED",
 	"NOT_FOUND",
 	"RATE_LIMITED",
 	"RESOURCE_ARCHIVED",

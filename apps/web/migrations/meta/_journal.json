@@ -71,6 +71,13 @@
       "when": 1788424519049,
       "tag": "0009_chemical_satana",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1788511137321,
+      "tag": "0010_minor_leech",
+      "breakpoints": true
     }
   ]
 }

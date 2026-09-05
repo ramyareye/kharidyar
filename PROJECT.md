@@ -2,7 +2,7 @@
 
 - Status: Approved by the product owner
 - Last updated: 2026-09-04
-- Implementation status: Tasks 1 through 11 complete and validated
+- Implementation status: Tasks 1 through 11 and the post-MVP Concept media foundation are complete and validated locally
 
 ## Purpose of this document
 
@@ -47,7 +47,7 @@ Pay particular attention to:
 - The repository becomes a Bun monorepo that can later add an Expo application.
 - AI may research and recommend, but may not mark an Item as decided or purchased without an explicit user action.
 - A Collection may have one optional Concept: its visual and experiential direction. Concept is not another hierarchy level or a replacement for Collection.
-- The collaborative MVP keeps Concept text-only. Private image upload, storage, and visualization are deferred to explicit future tasks.
+- The collaborative MVP shipped with a text-only Concept. The post-MVP Concept media foundation adds private user-provided base/reference images; AI visualization remains deferred to its own explicit future task.
 - AI Concept visualization is image-to-image: the user supplies a base photo of a space or person, the original remains unchanged, and the system creates separate edited variants.
 - For a future `person` base image, only its uploader may request transmission to an AI image provider, with a fresh explicit confirmation for each request. Ownership role alone does not grant that permission.
 - Web-MVP Collections use EUR only because planning purchases from Netherlands and other Euro-priced retailers is the current use case. Multi-currency Collections and IRR/toman input or display are deferred until a concrete need defines their semantics.
@@ -71,7 +71,7 @@ Pay particular attention to:
 - The MVP creates invitation links for an owner to copy and share manually. Transactional email delivery is deferred until an approved provider and delivery task exist.
 - Task 1 creates only `apps/web`, `packages/domain`, and `packages/contracts`. Shared API-client and i18n packages are created only when their first real consumers or catalogs exist.
 - The initial Concept model permits one active Concept per Collection rather than multiple competing Concepts, nested Topics, or a free-form design canvas.
-- When the future media task is approved, Concept images use private R2 objects with authorization metadata in D1. The bucket is not public, and an AI edit never overwrites the user-provided base image.
+- Concept images use private R2 objects with authorization and lifecycle metadata in D1. The bucket is not public, source uploads are normalized to immutable WebP objects, and a future AI edit never overwrites the user-provided base image.
 - Collection color preference is an ordered value inside the Brief: at most six core colors and six supporting colors, with no percentages, automatic matching, or separate authorization scope.
 - An Item has a positive integer quantity needed, while a Candidate records the independently chosen number of Product/Offer units to plan. The MVP does not guess pack-to-need conversion, and actual purchase quantity is captured separately in Offer units.
 - An optional free-text Item group label provides lightweight sections such as “Bedroom” and “Living room” without adding hierarchy, permissions, or nested Collections.
@@ -84,7 +84,7 @@ Pay particular attention to:
 
 Kharidyar helps an individual or small group plan purchases, research options, compare retailer offers, make decisions, and preserve the context behind those decisions.
 
-A user creates a Workspace such as “Reza's Purchases.” Within it, the user creates Collections such as “New Home,” “Sport Wardrobe,” or “Monthly Shopping.” Each Collection has a brief describing its goals, budget, functional preferences, materials, colors, preferred brands, and things to avoid. A visually driven Collection may also have a text Concept such as “Japanese modern home” or “minimal sport style.” Private Concept images may be added in a later phase.
+A user creates a Workspace such as “Reza's Purchases.” Within it, the user creates Collections such as “New Home,” “Sport Wardrobe,” or “Monthly Shopping.” Each Collection has a brief describing its goals, budget, functional preferences, materials, colors, preferred brands, and things to avoid. A visually driven Collection may also have a Concept such as “Japanese modern home” or “minimal sport style,” with a private base photo and reference images visible only to authorized Collection collaborators.
 
 Collections contain Items: the needs the user is trying to satisfy, such as a bed, vacuum cleaner, running shoes, or dining table. Items may have a needed quantity and a lightweight display group such as “Bedroom.” Each Item may have Candidate Products. A Product is the canonical thing, while an Offer is a retailer-specific listing with price semantics, shipping, availability, source URL, and last-checked time.
 
@@ -98,7 +98,7 @@ Purchase planning is fragmented across browser tabs, notes, spreadsheets, chat m
 
 - What the user actually needs.
 - The style, functional, budget, and timing constraints.
-- The overall visual direction—and, in a later media phase, reference imagery—that should keep individual choices coherent.
+- The overall visual direction and private reference imagery that should keep individual choices coherent.
 - Which products were considered and why.
 - The difference between a product and a retailer's current offer.
 - Friends' comments and votes.
@@ -230,8 +230,8 @@ A member who primarily examines candidates, sources, prices, comments, and votes
 49. As a future iOS user, I want to link Apple sign-in explicitly to my existing account so that hidden relay email addresses do not create duplicate identities.
 50. As an operator, I want logs and identifiers for requests and research runs so that failures can be diagnosed without exposing secrets.
 51. As a Collection editor, I want to define one optional Concept with a title and visual narrative so that separate purchases feel coherent.
-52. As a future media user, I want to upload a private base photo of a space or person so that visualization starts from reality rather than an invented scene.
-53. As a future media user, I want to keep already generated or inspirational images as Concept references so that the intended direction remains visible.
+52. As a Collection editor, I want to upload a private base photo of a space or person so that future visualization can start from reality rather than an invented scene.
+53. As a Collection editor, I want to keep already generated or inspirational images as Concept references so that the intended direction remains visible.
 54. As a Collection member, I want to see the Concept while reviewing Items and Candidates so that I can judge fit beyond price and specifications.
 55. As a future visualizer user, I want to choose which Candidates influence an AI edit of my base photo so that the result reflects my current shortlist.
 56. As a future visualizer user, I want the original photo preserved and every AI edit labeled as a separate variant so that I can compare, reject, or adopt it safely.
@@ -292,33 +292,37 @@ Color preference is a structured value inside the Collection Brief, not a separa
 
 The optional visual and experiential direction for one Collection. Examples include “Japanese modern home with warm wood and quiet lines” and “minimal sport style in neutral colors.” The UI may label this surface “Concept / Moodboard,” but the canonical domain term is `concept`.
 
-The collaborative-MVP Concept includes:
+The Concept includes:
 
 - Title and short narrative.
+- An optional active base image whose subject kind is `space` or `person`.
+- Ordered reference images.
+- An optional selected cover image.
 
-A future media extension may add subject kind (`space` or `person`), a current base image, ordered reference and edited images, and one selected cover image. Those fields and records are not created by Task 2 or Task 6A.
+The Concept media foundation creates base/reference records only. A future visualizer may add immutable `edited` images and their provenance without changing the Concept identity.
 
 Invariants:
 
 - A Collection has at most one active Concept in the initial product, and a Concept belongs to exactly one Collection.
 - A Concept is optional; Collections such as routine grocery shopping remain valid without one.
-- The Collection Brief remains authoritative for budget, requirements, color preference, materials, and things to avoid. Concept adds narrative—and, in the future, imagery—instead of duplicating those fields.
+- The Collection Brief remains authoritative for budget, requirements, color preference, materials, and things to avoid. Concept adds narrative and imagery instead of duplicating those fields.
 - Changes to Items, Candidates, or selected products never silently mutate the Concept.
-- When future media is enabled, AI may propose an edited image, but only an authorized human may select it as the Concept cover or reference.
+- AI may later propose an edited image, but only an authorized human may select it as the Concept cover or reference.
 - The initial model has no nested Topics or side-by-side Concept variants. Future edited images are alternatives inside the single Concept.
 
-### Future Concept Image
+### Concept Image
 
-A private image asset attached to a Concept. Its role is `base`, `reference`, or `edited`. Concept Image records are introduced only by the future Concept media task, not by Task 2 or Task 6A.
+A private image asset attached to a Concept. Its role is `base`, `reference`, or `edited`. The media foundation accepts user-provided `base` and `reference` images; the future visualization task alone may create `edited` images.
 
 Invariants:
 
 - AI visual editing requires an active user-provided `base` image of the real space or person.
-- The original base object is immutable. Replacing it creates a new base record and retains or deletes the old object according to the approved retention policy.
+- The original base object is immutable. Replacing it creates a new base record, tombstones the old D1 record, and immediately deletes the old R2 bytes.
 - Every edited image is a new object linked to its base or parent image and records its creator, provider, prompt/input snapshot, and creation time.
 - An already generated image may be uploaded as a `reference`, but it does not replace the required real base image for image-to-image visualization.
 - At most one base and one cover are active for a Concept at a time.
-- Image bytes live in private object storage; D1 stores ownership, role, provenance, object key, media metadata, and lifecycle state.
+- Normalized image bytes live in private object storage; D1 stores ownership, role, object key, media metadata, and lifecycle state.
+- Deletion is intentionally irreversible for image bytes: the R2 object is removed while D1 retains a non-downloadable lifecycle tombstone. There is no media trash or application backup.
 - Generated edits are illustrative and must not be presented as exact evidence of fit, dimensions, color, material, or availability.
 
 ### Item
@@ -562,14 +566,15 @@ Includes Editor capabilities, plus the relevant scope's administration:
 
 1. An authorized member creates a Collection.
 2. An editor defines the Collection Brief, including optional core/supporting color preferences, and may add one text Concept.
-3. A contributor creates an Item with constraints.
-4. Members add Candidates and Offers manually or through promoted research results.
-5. Members comment and vote.
-6. An authorized member selects a Candidate; an Owner later records a purchase, while permitted non-purchase status changes remain available to Editors.
+3. An editor may add one real base photo and ordered reference images to the Concept. Each image is validated, normalized, stored privately, and remains advisory.
+4. A contributor creates an Item with constraints.
+5. Members add Candidates and Offers manually or through promoted research results.
+6. Members comment and vote.
+7. An authorized member selects a Candidate; an Owner later records a purchase, while permitted non-purchase status changes remain available to Editors.
 
 ### Future Concept visualization
 
-1. After the future media task is enabled, an authorized user uploads a real base photo whose subject kind is `space` or `person`.
+1. An authorized user chooses the active real base photo whose subject kind is `space` or `person`.
 2. The base image is stored privately and remains immutable.
 3. For a `space` image, a user with the future visual-edit capability chooses the permitted Candidate/Product inputs and explicitly requests an edit. For a `person` image, only that image's uploader may do so, with a fresh provider-facing confirmation.
 4. The server builds a permission-filtered input snapshot from the base image, Concept, Collection Brief, and chosen products, then sends it to the approved image-edit provider.
@@ -623,11 +628,11 @@ Includes Editor capabilities, plus the relevant scope's administration:
 
 ### Concept and color preference
 
-- The collaborative MVP Concept contains a title and short visual narrative only; it has no image upload, media record, or R2 dependency.
+- The core Concept record contains a title and short visual narrative. Private media is attached through separate Concept Image records and does not change that identity.
 - The Collection Brief may contain ordered core and supporting palettes of at most six colors each.
 - Each color has a valid normalized `#RRGGBB` value and may have a user label and usage note. The UI shows text with every swatch and never relies on color alone.
 - Palette guidance is advisory. An explicit Item color requirement takes precedence, and sourced Product colors remain factual observations.
-- Private base/reference images and AI-edited variants are introduced only by the future Concept media and visualization tasks.
+- The Concept media foundation supports private base/reference images. AI-edited variants remain exclusive to the future visualization task.
 
 ### Items and decisions
 
@@ -696,7 +701,7 @@ Includes Editor capabilities, plus the relevant scope's administration:
 - Context output supports structured JSON for machines and Markdown for inspection/export.
 - Snapshot records include actor, scope, creation time, and schema version.
 - Raw secrets, session tokens, invitation tokens, and unrelated private data never enter context.
-- When future Concept media exists, raw image bytes remain excluded from ordinary text context and Markdown export. They leave private storage only during an explicit, authorized visual-edit request or authorized image delivery.
+- Raw image bytes and private media records remain excluded from ordinary text context and Markdown export. Bytes leave private storage only during authorized image delivery or a future explicit, authorized visual-edit request.
 
 ## User experience requirements
 
@@ -799,17 +804,19 @@ Task 1 creates only `apps/web`, `packages/domain`, and `packages/contracts`. Tas
 - Research steps are idempotent and safe to retry.
 - The database stores user-visible state; Workflow internal state does not become the only record of product history.
 
-### Future private Concept media
+### Private Concept media
 
-- The collaborative MVP has no Concept blob upload, R2 binding, or Concept Image table. These are introduced together only by the future Concept media task.
-- R2 stores future user-provided base/reference images and later AI-edited outputs behind the same private-media boundary.
+- The post-MVP media foundation adds the Concept Image table and private `CONCEPT_MEDIA` R2 binding without changing the original text Concept record.
+- R2 stores user-provided base/reference images and later AI-edited outputs behind the same private-media boundary.
 - D1 stores authorization, ownership, role, provenance, lifecycle, and object-key metadata. R2 stores image bytes.
 - The bucket remains private. Reads pass through an authenticated, resource-authorized Worker route or an equivalently short-lived single-object authorization.
-- Upload authorization is issued only after Collection capability checks. A short-lived presigned upload, if selected during implementation, is restricted to one generated object key and expected media type and is treated as a bearer secret.
-- Upload completion validates actual media type, size, dimensions, and ownership before the image becomes active. Current Cloudflare request-body, R2, and image-processing limits are rechecked during the future media task before choosing direct or presigned upload and a verified decode/EXIF-removal implementation.
-- Unfinalized or failed uploads remain inaccessible and are removed by a documented cleanup policy.
+- The selected path is a direct authenticated Worker upload. Collection authorization and rate limiting run before the multipart body is consumed, so there is no presigned bearer URL or unfinalized-upload state.
+- Cloudflare Images verifies decoding and source type, enforces dimension and pixel bounds, applies orientation/color-profile handling, and re-encodes accepted JPEG/PNG/WebP input to non-animated WebP. This discards unnecessary source metadata such as EXIF before persistence.
+- The application accepts at most 10 MiB per source and normalized image, 8,192 pixels per side, and 40 megapixels. It allows at most 12 active images per Concept, 250 MiB of active media per Workspace, and 20 upload attempts per actor and Collection per hour. All values remain configurable without a migration.
+- A failed D1 write deletes its newly created R2 object. A failed deletion leaves only a private, unreachable object and is retried during later authorized media reads.
 - Base and edited images use separate immutable object keys. The application never performs an in-place overwrite of a user's original.
-- Preview and production buckets are separate, and generated Worker types are refreshed after the R2 binding is added.
+- Replacing or deleting an image immediately removes its R2 bytes and retains a non-downloadable D1 lifecycle tombstone. Removing the Concept applies the same policy to every active image. No recoverable media history or backup is provided.
+- Local, preview, and production buckets are separate, and generated Worker types include the R2 and Images bindings.
 
 ### Future mobile client
 
@@ -878,12 +885,11 @@ Required constraints include:
 - Indexed Offers by Product and freshness.
 - Indexed decision history by Item and time.
 
-Future planning records are added only by the task that first uses them, not by Task 2 or Task 6A:
+Concept Images are created by the post-MVP Concept media foundation with base/reference/edited role, private R2 object key, uploader, media metadata, person-photo confirmation, lifecycle state, and optional parent image. The current API creates base/reference rows only.
 
-- Concept Images are created by the future Concept media task with base/reference/edited role, R2 object key, uploader, ownership, media metadata, provenance, lifecycle state, and optional parent image.
-- Concept Visual Edit Runs are created by the future AI Concept visualization task with the exact base image, selected Candidate/Product inputs, actor, provider, prompt/configuration snapshot, status, and output image.
+Concept Visual Edit Runs are created only by the future AI Concept visualization task—not by Task 2, Task 6A, or the media foundation—with the exact base image, selected Candidate/Product inputs, actor, provider, prompt/configuration snapshot, status, and output image.
 
-Future media constraints include at most one active base image and selected cover per Concept, a unique private object key per Concept Image, and same-Concept base/parent references for edited images.
+Media constraints include at most one active base image and selected cover per Concept, a unique private object key per Concept Image, and same-Concept base/parent references for edited images.
 
 ### Research records
 
@@ -933,14 +939,17 @@ The exact route naming is an implementation detail, but the typed API must expos
 - Read, create, update, or remove the optional Concept.
 - List and manage Collection-scoped members and invitations.
 
-### Future Concept media and visualization
+### Concept media
 
-These endpoints do not exist in the collaborative MVP. The future tasks add them without changing the current Concept identity:
+- List the Concept's active images, capability-derived actions, usage, and current configurable limits.
+- Upload one base or reference image through an authenticated, origin-protected multipart route; authorization and rate limiting occur before body parsing.
+- Read authorized image bytes without exposing the private object key as an access grant.
+- Replace the active base, reorder references, select a cover, update a caption, and permanently delete permitted image bytes.
+- Return no public R2 URL or object key in client contracts.
 
-- Request an authorized upload target for a base or reference image and finalize validated upload metadata.
-- Read an authorized Concept image without exposing its private object key as an access grant.
-- Replace the active base, reorder references, select a cover, and delete or archive permitted images.
-- Create a future visual-edit run from one active base image and an explicit set of permitted Candidate or Product inputs.
+### Future Concept visualization
+
+- Create a visual-edit run from one active base image and an explicit set of permitted Candidate or Product inputs.
 - Inspect run status and edited outputs, then explicitly keep, reject, or select an output as the cover.
 
 ### Items and decisions
@@ -986,22 +995,22 @@ These endpoints do not exist in the collaborative MVP. The future tasks add them
 - Resource ownership is resolved from the database; client-provided Workspace or Collection IDs are never trusted as authorization proof.
 - Cross-Workspace and cross-Collection ID substitution is covered by tests.
 - Invitation raw tokens contain at least 256 bits of cryptographically secure entropy, are single-use, expiring and revocable, and are hashed at rest.
-- Authentication, invitation preview and acceptance, research creation, and immutable Context Snapshot creation receive rate limits appropriate to abuse and storage risk from the task that introduces each endpoint.
+- Authentication, invitation preview and acceptance, research creation, immutable Context Snapshot creation, and Concept image upload receive rate limits appropriate to abuse and storage risk from the task that introduces each endpoint.
 - Pre-auth invitation preview treats the URL as a bearer secret and exposes only the explicitly approved metadata defined in the invitation flow.
 - OAuth state, CSRF, cookie, trusted-origin, and callback protections use Better Auth's supported flow rather than custom shortcuts.
 - Secrets remain in Cloudflare secrets or approved environment-specific secret storage.
 - Logs exclude session cookies, provider tokens, invitation tokens, complete AI prompts containing private data, and unnecessary personal information.
 
-The following controls become mandatory in the future task that introduces Concept media; they create no MVP upload endpoint or R2 dependency:
+The Concept media foundation enforces these controls:
 
 - Concept images are private and inherit Collection authorization. Public R2 access and stable unauthenticated object URLs remain disabled.
 - Uploads use server-generated opaque object keys, strict byte and dimension limits, verified image decoding, approved media types, and removal of unnecessary EXIF metadata including location where practical.
-- Image storage is bounded by a maximum image count per Concept and a maximum total media size per Workspace. The upload-authorization endpoint is rate-limited from the task that introduces it. Exact configurable limits are set from then-current platform limits and expected usage and may change without a schema migration.
-- Presigned upload or download URLs, if used, are short-lived bearer secrets scoped to one object and operation and are never written to logs or durable client state.
+- Image storage is bounded by a maximum image count per Concept and a maximum total media size per Workspace. Direct upload is rate-limited per actor and Collection. Exact configurable limits may change without a schema migration.
+- The current direct-upload/protected-read design creates no presigned upload or download bearer URL. Introducing one later requires a separate security review.
 - A user uploading a person's photo must confirm that they are the subject or have permission to use it. The image is never used for identity recognition or unrelated inference.
 - Only the uploader of a `person` base image may request that image be sent to an AI provider; Owner or Editor status does not override this rule. The UI identifies the provider-facing operation and requires a fresh explicit confirmation for every request. A `space` image may use the ordinary visual-edit capability when that future capability exists.
 - Provider retention, training, region, and deletion terms require product-owner approval before any image is sent.
-- Deleting a Concept image follows a documented policy for its R2 object, D1 metadata, derived edits, pending jobs, backups, and audit records.
+- Deleting or replacing a Concept image immediately tombstones its D1 row and deletes its R2 bytes. Removing a Concept does the same for all active images. Failed object deletion is retried; no application media trash, backup, or restore exists. The future visualizer must extend this policy for derived edits and pending jobs before launch.
 
 - Authorization checks occur again when background work reads or writes user data.
 - Research adapters obey provider terms and never bypass technical access restrictions.
@@ -1076,15 +1085,18 @@ Use the Cloudflare Workers Vitest integration so Worker APIs and bindings behave
 - Owner compares Candidates and records a purchase.
 - Research Result is promoted to a Candidate with provenance.
 
-#### Future Concept media and visualization tests
-
-The future tasks that introduce media must add tests for:
+#### Concept media tests
 
 - Active-base, selected-cover, immutable-original, unique-object-key, and same-Concept parent-image invariants.
-- Upload, read, replacement, deletion, cross-Collection denial, invalid media, expired upload authorization, cleanup, and private delivery.
-- Per-Concept image count, per-Workspace byte quota, upload-authorization rate limits, and clear localized limit errors.
+- Direct upload, read, replacement, deletion, cross-Collection denial, invalid media, cleanup, and private delivery.
+- Per-Concept image count, per-Workspace byte quota, upload rate limits, and clear localized limit errors.
+
+#### Future Concept visualization tests
+
+The future visualization task must add tests for:
+
 - Uploader-only AI transmission for a `person` base, denial for other Editors and Owners, fresh per-request confirmation, and ordinary capability checks for `space` images.
-- Upload progress, media failure states, AI-edited labels, original-versus-edited distinction, provider failure/cancellation, and misleading-result disclaimers.
+- AI-edited labels, original-versus-edited distinction, provider failure/cancellation, deletion propagation, and misleading-result disclaimers.
 
 #### Research adapter tests
 
@@ -1339,7 +1351,7 @@ Completion criteria:
 Scope:
 
 - Implement the permission-filtered Context Builder, schema-versioned snapshots, and Markdown export.
-- Include Concept narrative and Collection color preference. Future image metadata is added only after the media task exists; raw image bytes never enter ordinary text snapshots.
+- Include Concept narrative and Collection color preference. The later Concept media foundation deliberately leaves the versioned text Snapshot schema unchanged; raw image bytes and private media records never enter ordinary text snapshots.
 - After deterministic Import Draft behavior passes, optionally add schema-constrained AI normalization for less structured pasted research while retaining the same preview-and-confirm boundary.
 - Add an AI provider or Agents SDK only after deterministic context behavior passes tests.
 
@@ -1383,15 +1395,17 @@ Completion criteria:
 - Authorization, source provenance, bounded-query, failure, cost-limit, and idempotent-promotion tests pass for the OpenAI adapter.
 - Disabling either provider does not change stored planning records or break the other provider.
 
-### Future task: Concept media foundation
+### Post-MVP task: Concept media foundation
 
-This starts only when image references or visualization justify the added storage and privacy cost. It does not change the text Concept identity. It:
+Status: Complete and validated locally on 2026-09-04; remote migration and deployment remain release work.
+
+This task does not change the text Concept identity and does not generate images. It:
 
 - Adds Concept Image records and a private R2 binding for user-provided `base` and `reference` images; it does not generate images.
-- Implements authorized upload/finalization, verified decoding, type/byte/dimension validation, EXIF reduction, protected delivery, immutable originals, replacement, ordering, cover selection, deletion, and failed-upload cleanup.
-- Rechecks then-current Cloudflare Workers request-body, R2, presigned-upload, and image-processing limits before selecting the upload path and decoding/metadata-removal implementation.
-- Enforces configurable maximum images per Concept, total media bytes per Workspace, and upload-authorization rate limits without requiring a schema migration to tune the values.
-- Requires a person-photo rights confirmation, records the uploader, and clearly explains collaborator visibility.
+- Implements direct authorized upload, verified decoding, type/byte/dimension validation, metadata removal through WebP re-encoding, protected delivery, immutable originals, replacement, ordering, caption/cover changes, deletion, and failed-object cleanup.
+- Rechecks current Cloudflare Workers, R2, and Images limits and uses a direct authenticated Worker upload because the 10 MiB application cap fits beneath both Worker request-body and Images input limits. No presigned or finalization state is introduced.
+- Enforces configurable maximum images per Concept, total media bytes per Workspace, and direct-upload rate limits without requiring a schema migration to tune the values.
+- Requires a person-photo rights confirmation, records the uploader, and clearly explains collaborator visibility and irreversible byte deletion.
 
 Completion criteria:
 
@@ -1402,7 +1416,7 @@ Completion criteria:
 
 ### Future task: AI Concept visualization
 
-This starts only after the future Concept media foundation and Task 10's access-filtered context are stable, and after the product owner approves an image-edit provider and its privacy terms. It:
+This starts only after the Concept media foundation and Task 10's access-filtered context are stable, and after the product owner approves an image-edit provider and its privacy terms. It:
 
 - Requires an active user-provided base photo; it does not offer text-to-image generation without one.
 - Accepts an explicit set of permitted Candidate or Product inputs rather than silently using every Collection choice.
@@ -1539,27 +1553,30 @@ Mitigation: runtime-independent domain/contracts/i18n packages and a fetch/sessi
 - **Decision 9:** Tavily Basic Search is the first Research adapter. Each run requests at most five general web results with safe search enabled for the Netherlands and disables generated answers, images, raw page content, and automatic parameter expansion. Only the user's explicit query and structured constraints are sent; the Collection Brief and other private context are not sent. This provider remains replaceable behind the adapter.
 - **Decision 10:** No third-party retailer is approved for Browser Run extraction in the initial release. The allowlist contains only the exact first-party application origin and controlled `/api/research-fixtures/products/<slug>` path. IKEA and other retailer URLs remain attributed Research Sources and manually editable Offers unless written permission or compatible terms are documented later. Changing the allowlist does not require a schema migration.
 
+### Resolved for Concept media foundation
+
+- **Decision 15:** Replacing or deleting a Concept image immediately removes its private R2 bytes and keeps a non-downloadable D1 lifecycle tombstone. Removing a Concept applies the same rule to all active images. The application has no media trash, byte backup, or restore feature. Future edited images, provider inputs, or backup processing require an explicit extension of this policy before implementation.
+
 ### Open decisions for later tasks
 
 - **Decision 5:** Should one Item support more than one selected/final Product, for bundles or recurring purchases?
 - **Decision 12:** Is hard deletion required for privacy requests, and which historical records should instead be anonymized?
 - **Decision 14:** Should scheduled price monitoring be a post-MVP paid feature, a general feature, or remain undecided?
-- **Decision 15:** What retention and deletion policy applies to original base photos, reference images, edited variants, provider inputs, and backups?
 - **Decision 16:** Should the first AI Concept visualizer support both `space` and `person`, or launch with one subject kind first?
 - **Decision 17:** Which image-edit provider is approved, in which processing region, and with what retention and training terms?
 
-Decisions 1, 2, 3, 4, 6, 7, 9, 10, 11, and 13 are resolved. Decision 15 must be resolved before the future Concept media foundation; Decisions 16 and 17 before the future AI Concept visualization task; all other decisions affecting schema, permissions, or external providers must be resolved before their corresponding implementation task begins.
+Decisions 1, 2, 3, 4, 6, 7, 9, 10, 11, 13, and 15 are resolved. Decisions 16 and 17 must be resolved before the future AI Concept visualization task; all other decisions affecting schema, permissions, or external providers must be resolved before their corresponding implementation task begins.
 
 ## Current repository state
 
 - Branch: `main`.
-- History: scaffold baseline followed by committed Task 1 monorepo, Task 2 domain/D1, Task 3 Google authentication, Task 4 authorization/invitations, Tasks 5A/5B core planning, Task 6A Collection Brief/text Concept, Task 6B Item workflow, the branding/MCP roadmap note, Task 7 Product/Offer comparison, Task 8 collaboration, Task 9A deterministic Research Import Drafts, Task 9B provider research, Task 10 Context Builder, and the first two Task 11 hardening/accessibility slices. The final Task 11 release workflow is complete and is the current uncommitted implementation.
-- Tasks 1 through 11 are complete and validated.
+- History: scaffold baseline followed by committed Task 1 monorepo, Task 2 domain/D1, Task 3 Google authentication, Task 4 authorization/invitations, Tasks 5A/5B core planning, Task 6A Collection Brief/text Concept, Task 6B Item workflow, the branding/MCP roadmap note, Task 7 Product/Offer comparison, Task 8 collaboration, Task 9A deterministic Research Import Drafts, Task 9B provider research, Task 10 Context Builder, and Task 11 production hardening and deployment. The post-MVP Concept media foundation is the current uncommitted implementation.
+- Tasks 1 through 11 are complete and validated in production. The post-MVP Concept media foundation is complete and validated locally; migration 0010 and its Worker deployment have not been applied remotely.
 - The repository is a Bun `1.3.12` workspace with `apps/web`, `packages/domain`, `packages/contracts`, and `packages/i18n`. No mobile, API-client, or config package has been created.
 - `bun.lock` is the sole package-manager lockfile present, and Bun workspaces are declared in the root `package.json`.
-- The Vite/React frontend provides localized Google sign-in and a protected planning studio with Workspace, Collection, and Item create/edit/archive/restore flows, URL-restored selection, quantity-aware Item cards, lightweight group navigation, a Collection direction surface for the Brief, EUR budget, ordered color preference, references, and optional text Concept, plus a permission-aware Item detail/status/history workflow. English and Persian layouts are responsive at desktop and narrow widths.
-- Drizzle is the unified schema source. The first generated migration includes Better Auth's generated tables plus Workspace-private Products and the initial collaboration/planning tables; a second migration adds persistent Better Auth rate-limit storage; a third adds Invitations, selected-Collection targets, single-use acceptance provenance, and privacy-preserving collaboration rate limits; the fourth extends the structured Collection Brief and adds the one-active-Concept record; the fifth adds Item requirements and immutable Decision Events; the sixth adds Merchant-backed Offers, qualified Price Checks, planned selection, and immutable purchase snapshots; the seventh adds Item/Candidate comments and Candidate preferences; the eighth adds Import Draft lifecycle and durable application-provenance mappings; the ninth adds Research Requests, Runs, Sources, Results, and idempotent promotion provenance; and the tenth adds immutable, schema-versioned AI Context Snapshots. Later feature tables remain owned by their roadmap tasks.
-- Local migration, migration-list, schema-check, seed, type-generation, and quality commands are available from the workspace root. The fixed development seed is idempotent and includes one unapplied Import Draft plus one completed advisory Research Run.
+- The Vite/React frontend provides localized Google sign-in and a protected planning studio with Workspace, Collection, and Item create/edit/archive/restore flows, URL-restored selection, quantity-aware Item cards, lightweight group navigation, a Collection direction surface for the Brief, EUR budget, ordered color preference, references, optional text Concept, and private Concept base/reference media, plus a permission-aware Item detail/status/history workflow. English and Persian layouts are responsive at desktop and narrow widths.
+- Drizzle is the unified schema source. The first generated migration includes Better Auth's generated tables plus Workspace-private Products and the initial collaboration/planning tables; a second migration adds persistent Better Auth rate-limit storage; a third adds Invitations, selected-Collection targets, single-use acceptance provenance, and privacy-preserving collaboration rate limits; the fourth extends the structured Collection Brief and adds the one-active-Concept record; the fifth adds Item requirements and immutable Decision Events; the sixth adds Merchant-backed Offers, qualified Price Checks, planned selection, and immutable purchase snapshots; the seventh adds Item/Candidate comments and Candidate preferences; the eighth adds Import Draft lifecycle and durable application-provenance mappings; the ninth adds Research Requests, Runs, Sources, Results, and idempotent promotion provenance; the tenth adds immutable, schema-versioned AI Context Snapshots; and migration 0010 adds private Concept Image lifecycle metadata without adding a Visual Edit Run table. Later feature tables remain owned by their roadmap tasks.
+- Local migration, migration-list, schema-check, seed, type-generation, and quality commands are available from the workspace root. The fixed development seed is idempotent and includes one unapplied Import Draft, one completed advisory Research Run, and one Japanese-modern text Concept without fake media objects.
 - Runtime-independent domain primitives preserve separate Item-needed and Candidate-planned purchase quantities, money/budget validation, group labels, honest Offer price/shipping semantics, freshness, exact/lower-bound/incomplete aggregation, normalized ordered core/supporting color rules, and deterministic Item status-transition classification.
 - The root `CONTEXT.md` defines the purchase-planning language and guards the Item/Candidate/Product/Offer boundaries.
 - The baseline Worker regression test preserves `GET /api/` returning `200` with `{ "name": "Cloudflare" }`.
@@ -1567,9 +1584,9 @@ Decisions 1, 2, 3, 4, 6, 7, 9, 10, 11, and 13 are resolved. Decision 15 must be 
 - Auth integration tests cover anonymous rejection, Google authorization URL construction, untrusted callback rejection, authenticated session loading, sign-out revocation, and separate internal User/provider Account records.
 - Capability resolution combines applicable Workspace and Collection grants. Workspace grants reach future Collections, Collection grants remain isolated, only Workspace-scoped Owners manage Owner access, and atomic membership mutations preserve at least one Workspace-scoped Owner.
 - Invitation APIs create Workspace or selected-Collection grants, default supplied email addresses to a verified-email restriction with explicit opt-out, return fragment-based bearer URLs once, store SHA-256 hashes only, provide a rate-limited metadata-only preview, revoke pending invitations, and accept through one rollback-safe D1 batch.
-- Shared Zod contracts and chained Hono routes implement authenticated Workspace, Collection, Item, Collection Brief, text Concept, Item workflow, commerce, owner-filtered collaboration administration, Item/Candidate discussion, Candidate-preference behavior, Research Import Drafts, provider Research Requests/Runs/Results, and permission-filtered Context Snapshot creation/read/export. Brief replacement, including its ordered colors, is atomic; Item detail and status writes atomically append Decision Events; manual and allowlisted automated Offer refreshes append Price Checks; planned-choice and purchase commands append immutable snapshots; import and Research Result promotion atomically create validated planning records and provenance once; Context reads remain creator-only and recheck current Collection access; archived ancestors block ordinary mutations while authorized history reads remain available.
-- Domain, localization, UI-state, and Cloudflare-runtime database tests cover locale detection/direction/formatting, critical shell states, migration idempotency, all role allow/deny behavior, scope isolation, Owner boundaries, invitation expiry/revocation/email matching, rate limits, replay, competing acceptance, database uniqueness, forced rollback and retry, typed Workspace-to-Item creation, CRUD validation, archive/restore, Item filtering/pagination, positive independent quantities, Item detail snapshots, explicit status transitions, reversal classification, purchase-only Owner authorization, Decision Event and Price Check immutability, Merchant/Product/Offer scope, several Candidates and Offers, exact/starting/unknown prices, shipping bases, qualified availability, freshness, honest Collection/group rollups, partial purchase snapshots, palette bounds/normalization/order/uniqueness, structured Brief validation, one-active-Concept behavior, owner-filtered collaboration ledgers, comment capability boundaries, cross-Item target rejection, idempotent preferences, immediate membership revocation, deterministic multi-room research parsing, source classification, quantity/price inference, Import Draft authorization and non-mutation, idempotent apply/discard, Merchant reuse, application provenance, immediate raw-input erasure, bounded provider requests, exact Browser Run allowlisting, asynchronous Research lifecycle/provenance, promotion idempotency, permission isolation, Context Snapshot schema/size invariants, creator/current-access enforcement, cross-Collection and cross-Workspace non-leakage, and the guarantee that neither research nor context export creates a decision or purchase.
-- The localized web studio now includes the structured Brief/text Concept, Item decision history, Merchant-backed Product/Offer comparison, explicit planned choices, separate shipping and totals, freshness/availability details, partial purchase recording, Collection/group planned-cost rollups, owner-only member/invitation administration, one-time manual invitation-link delivery, Item/Candidate discussion, resolved/tombstoned comments, Candidate preference aggregates, an English/Persian Research Import desk, a compact Live Research desk with visible async states, source attribution, moderation, and explicit promotion, and an AI Context dialog that creates a private versioned snapshot for preview, copy, or Markdown download. Building context calls no AI provider; provider research never selects a Candidate or records a decision or purchase.
+- Shared Zod contracts and chained Hono routes implement authenticated Workspace, Collection, Item, Collection Brief, text Concept, private Concept media, Item workflow, commerce, owner-filtered collaboration administration, Item/Candidate discussion, Candidate-preference behavior, Research Import Drafts, provider Research Requests/Runs/Results, and permission-filtered Context Snapshot creation/read/export. Concept media uploads are authorized and rate-limited before multipart parsing, decoded and normalized through Cloudflare Images, stored under opaque immutable keys in private R2, and served only through an authorization-checked content endpoint. Brief replacement, including its ordered colors, is atomic; Item detail and status writes atomically append Decision Events; manual and allowlisted automated Offer refreshes append Price Checks; planned-choice and purchase commands append immutable snapshots; import and Research Result promotion atomically create validated planning records and provenance once; Context reads remain creator-only and recheck current Collection access; archived ancestors block ordinary mutations while authorized history reads remain available.
+- Domain, localization, UI-state, and Cloudflare-runtime database tests cover locale detection/direction/formatting, critical shell states, migration idempotency, all role allow/deny behavior, scope isolation, Owner boundaries, invitation expiry/revocation/email matching, rate limits, replay, competing acceptance, database uniqueness, forced rollback and retry, typed Workspace-to-Item creation, CRUD validation, archive/restore, Item filtering/pagination, positive independent quantities, Item detail snapshots, explicit status transitions, reversal classification, purchase-only Owner authorization, Decision Event and Price Check immutability, Merchant/Product/Offer scope, several Candidates and Offers, exact/starting/unknown prices, shipping bases, qualified availability, freshness, honest Collection/group rollups, partial purchase snapshots, palette bounds/normalization/order/uniqueness, structured Brief validation, one-active-Concept behavior, private media normalization and protected delivery, person-photo confirmation, base replacement and byte deletion, reference ordering and cover selection, media quotas and pre-parse rate limiting, owner-filtered collaboration ledgers, comment capability boundaries, cross-Item target rejection, idempotent preferences, immediate membership revocation, deterministic multi-room research parsing, source classification, quantity/price inference, Import Draft authorization and non-mutation, idempotent apply/discard, Merchant reuse, application provenance, immediate raw-input erasure, bounded provider requests, exact Browser Run allowlisting, asynchronous Research lifecycle/provenance, promotion idempotency, permission isolation, Context Snapshot schema/size invariants, creator/current-access enforcement, cross-Collection and cross-Workspace non-leakage, and the guarantee that neither research nor context export creates a decision or purchase.
+- The localized web studio now includes the structured Brief/text Concept, private base/reference image management with localized consent, limits, broken/empty states, captions, cover selection, ordering, replacement, and irreversible deletion messaging, Item decision history, Merchant-backed Product/Offer comparison, explicit planned choices, separate shipping and totals, freshness/availability details, partial purchase recording, Collection/group planned-cost rollups, owner-only member/invitation administration, one-time manual invitation-link delivery, Item/Candidate discussion, resolved/tombstoned comments, Candidate preference aggregates, an English/Persian Research Import desk, a compact Live Research desk with visible async states, source attribution, moderation, and explicit promotion, and an AI Context dialog that creates a private versioned snapshot for preview, copy, or Markdown download. Building context calls no AI provider; provider research never selects a Candidate or records a decision or purchase.
 
 ## Current reference basis
 
@@ -1587,6 +1604,9 @@ These links informed the architecture and must be rechecked before implementing 
 - [Cloudflare R2 presigned URLs](https://developers.cloudflare.com/r2/api/s3/presigned-urls/)
 - [Cloudflare R2 public-bucket behavior](https://developers.cloudflare.com/r2/buckets/public-buckets/)
 - [Cloudflare R2 limits](https://developers.cloudflare.com/r2/platform/limits/)
+- [Cloudflare Images binding](https://developers.cloudflare.com/images/optimization/binding/)
+- [Cloudflare Images transformation behavior](https://developers.cloudflare.com/images/optimization/features/)
+- [Cloudflare Workers limits](https://developers.cloudflare.com/workers/platform/limits/)
 - [Cloudflare Browser Run overview (formerly Browser Rendering)](https://developers.cloudflare.com/browser-run/)
 - [Cloudflare Browser Run limits](https://developers.cloudflare.com/browser-run/limits/)
 - [Cloudflare Browser Run Playwright guide](https://developers.cloudflare.com/browser-run/playwright/)
@@ -1663,3 +1683,5 @@ Task 11's release slice was continued on 2026-09-03. A production export was reh
 Task 11 deployment continued on 2026-09-04 after the product owner supplied temporary mode-`600` secret files outside the repository and refreshed Wrangler OAuth. Preview Worker version `dd7ab70a-db7a-4c03-836a-d05507716f09` deployed with isolated D1, Workflow, Browser Run, and secrets; its release smoke and Google OAuth callback initiation passed. Production Worker version `5938210e-5144-4bd7-8d0a-fec679d2d690` deployed with the existing authentication secrets preserved and the new Tavily key; release smoke, Google OAuth callback initiation, and one bounded Tavily Basic Search passed. An identical schema-compatible drill version, `4a4c51e1-5326-4514-bbbd-9a6ba7c9a3b8`, was deployed and smoke-tested, then Wrangler rollback returned 100% of traffic to version `5938210e-5144-4bd7-8d0a-fec679d2d690`. Production D1 remained at ten migrations with its aggregate user/Workspace/Collection/Item counts preserved and no foreign-key violations. Both temporary secret files were deleted after use.
 
 On 2026-09-04, the product owner confirmed a successful Google sign-in and authenticated planning read at `https://kharidyar.formahsa.workers.dev`. This completed Task 11. On the same date, the product owner also added a future optional OpenAI Responses API web-search adapter. It must reuse the existing permission, provenance, Research record, and human-confirmation boundaries and remains separate from the final ChatGPT MCP client task.
+
+The product owner explicitly authorized the post-MVP Concept media foundation on 2026-09-04. It adds private user-provided base/reference images without adding AI generation: direct authenticated uploads are validated and normalized to WebP through Cloudflare Images, stored under opaque immutable keys in environment-isolated private R2 buckets, and delivered only after a fresh Collection access check. Replacing, deleting, or removing the Concept removes the stored bytes immediately and retains only a non-downloadable D1 tombstone. The implementation includes configurable count, byte, and rate limits; uploader and person-photo consent provenance; English/Persian management UI; migration 0010; fixed seed coverage without fake objects; and focused Cloudflare-runtime and UI-state tests. The preview and production buckets were created privately, while remote migration and Worker deployment remain a separate release step.

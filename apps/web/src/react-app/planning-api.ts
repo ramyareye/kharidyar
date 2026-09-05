@@ -6,6 +6,7 @@ import {
 	collectionListResponseSchema,
 	collectionResponseSchema,
 	conceptResponseSchema,
+	conceptMediaResponseSchema,
 	contextSnapshotResponseSchema,
 	commentInputSchema,
 	commentResolutionInputSchema,
@@ -36,6 +37,10 @@ import {
 	type CollectionResource,
 	type CollectionUpdateInput,
 	type ConceptInput,
+	type ConceptImageReorderInput,
+	type ConceptImageUpdateInput,
+	type ConceptImageUploadMetadata,
+	type ConceptMediaResponse,
 	type ConceptResource,
 	type ContextSnapshotResource,
 	type CommentInput,
@@ -240,6 +245,20 @@ export interface PlanningApi {
   readConcept: (
     collectionId: string,
   ) => Promise<EditableResource<ConceptResource>>;
+  readConceptMedia: (collectionId: string) => Promise<ConceptMediaResponse>;
+  uploadConceptImage: (
+    collectionId: string,
+    value: ConceptImageUploadValue,
+  ) => Promise<ConceptMediaResponse>;
+  updateConceptImage: (
+    imageId: string,
+    value: ConceptImageUpdateInput,
+  ) => Promise<ConceptMediaResponse>;
+  reorderConceptReferences: (
+    collectionId: string,
+    value: ConceptImageReorderInput,
+  ) => Promise<ConceptMediaResponse>;
+  deleteConceptImage: (imageId: string) => Promise<ConceptMediaResponse>;
 	listCollections: (workspaceId: string) => Promise<CollectionResource[]>;
 	listImportDrafts: (collectionId: string) => Promise<ImportDraftResource[]>;
 	listItems: (collectionId: string) => Promise<ItemListResult>;
@@ -376,6 +395,10 @@ export interface ItemWorkflowResult {
 export interface EditableResource<T> {
   canEdit: boolean;
   resource: T | null;
+}
+
+export interface ConceptImageUploadValue extends ConceptImageUploadMetadata {
+  file: File;
 }
 
 export const planningApi: PlanningApi = {
@@ -844,6 +867,63 @@ export const planningApi: PlanningApi = {
     });
     const body = await parsedResponse(response, conceptResponseSchema);
     return { canEdit: body.permissions.canEdit, resource: body.concept };
+  },
+
+  async readConceptMedia(collectionId) {
+    return commerceRequest(
+      `/collections/${encodeURIComponent(collectionId)}/concept/images`,
+      "GET",
+      conceptMediaResponseSchema,
+    );
+  },
+
+  async uploadConceptImage(collectionId, value) {
+    const form = new FormData();
+    form.set("file", value.file);
+    form.set("caption", value.caption ?? "");
+    form.set("containsPerson", String(value.containsPerson));
+    form.set("personRightsConfirmed", String(value.personRightsConfirmed));
+    form.set("role", value.role);
+    if (value.subjectKind !== null) {
+      form.set("subjectKind", value.subjectKind);
+    }
+    return parsedResponse(
+      await fetch(
+        `/api/collections/${encodeURIComponent(collectionId)}/concept/images`,
+        {
+          body: form,
+          credentials: "same-origin",
+          method: "POST",
+        },
+      ),
+      conceptMediaResponseSchema,
+    );
+  },
+
+  async updateConceptImage(imageId, value) {
+    return commerceRequest(
+      `/concept-images/${encodeURIComponent(imageId)}`,
+      "PATCH",
+      conceptMediaResponseSchema,
+      value,
+    );
+  },
+
+  async reorderConceptReferences(collectionId, value) {
+    return commerceRequest(
+      `/collections/${encodeURIComponent(collectionId)}/concept/images/order`,
+      "PUT",
+      conceptMediaResponseSchema,
+      value,
+    );
+  },
+
+  async deleteConceptImage(imageId) {
+    return commerceRequest(
+      `/concept-images/${encodeURIComponent(imageId)}`,
+      "DELETE",
+      conceptMediaResponseSchema,
+    );
   },
 
   async saveConcept(collectionId, value) {

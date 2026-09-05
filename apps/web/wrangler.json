@@ -30,8 +30,24 @@
 		]
 	},
 	"vars": {
-		"RESEARCH_BROWSER_ALLOWED_ORIGIN": "https://kharidyar.formahsa.workers.dev"
+		"RESEARCH_BROWSER_ALLOWED_ORIGIN": "https://kharidyar.formahsa.workers.dev",
+		"CONCEPT_MEDIA_MAX_FILE_BYTES": "10485760",
+		"CONCEPT_MEDIA_MAX_IMAGES": "12",
+		"CONCEPT_MEDIA_MAX_PIXEL_COUNT": "40000000",
+		"CONCEPT_MEDIA_MAX_SIDE_PIXELS": "8192",
+		"CONCEPT_MEDIA_MAX_WORKSPACE_BYTES": "262144000",
+		"CONCEPT_MEDIA_UPLOAD_LIMIT": "20",
+		"CONCEPT_MEDIA_UPLOAD_WINDOW_MS": "3600000"
 	},
+	"images": {
+		"binding": "IMAGES"
+	},
+	"r2_buckets": [
+		{
+			"binding": "CONCEPT_MEDIA",
+			"bucket_name": "kharidyar-concept-media-local"
+		}
+	],
 	"browser": {
 		"binding": "BROWSER"
 	},
@@ -72,8 +88,24 @@
 				]
 			},
 			"vars": {
-				"RESEARCH_BROWSER_ALLOWED_ORIGIN": "https://kharidyar-preview.formahsa.workers.dev"
+				"RESEARCH_BROWSER_ALLOWED_ORIGIN": "https://kharidyar-preview.formahsa.workers.dev",
+				"CONCEPT_MEDIA_MAX_FILE_BYTES": "10485760",
+				"CONCEPT_MEDIA_MAX_IMAGES": "12",
+				"CONCEPT_MEDIA_MAX_PIXEL_COUNT": "40000000",
+				"CONCEPT_MEDIA_MAX_SIDE_PIXELS": "8192",
+				"CONCEPT_MEDIA_MAX_WORKSPACE_BYTES": "262144000",
+				"CONCEPT_MEDIA_UPLOAD_LIMIT": "20",
+				"CONCEPT_MEDIA_UPLOAD_WINDOW_MS": "3600000"
 			},
+			"images": {
+				"binding": "IMAGES"
+			},
+			"r2_buckets": [
+				{
+					"binding": "CONCEPT_MEDIA",
+					"bucket_name": "kharidyar-concept-media-preview"
+				}
+			],
 			"browser": {
 				"binding": "BROWSER"
 			},
@@ -114,8 +146,24 @@
 				]
 			},
 			"vars": {
-				"RESEARCH_BROWSER_ALLOWED_ORIGIN": "https://kharidyar.formahsa.workers.dev"
+				"RESEARCH_BROWSER_ALLOWED_ORIGIN": "https://kharidyar.formahsa.workers.dev",
+				"CONCEPT_MEDIA_MAX_FILE_BYTES": "10485760",
+				"CONCEPT_MEDIA_MAX_IMAGES": "12",
+				"CONCEPT_MEDIA_MAX_PIXEL_COUNT": "40000000",
+				"CONCEPT_MEDIA_MAX_SIDE_PIXELS": "8192",
+				"CONCEPT_MEDIA_MAX_WORKSPACE_BYTES": "262144000",
+				"CONCEPT_MEDIA_UPLOAD_LIMIT": "20",
+				"CONCEPT_MEDIA_UPLOAD_WINDOW_MS": "3600000"
 			},
+			"images": {
+				"binding": "IMAGES"
+			},
+			"r2_buckets": [
+				{
+					"binding": "CONCEPT_MEDIA",
+					"bucket_name": "kharidyar-concept-media-production"
+				}
+			],
 			"browser": {
 				"binding": "BROWSER"
 			},

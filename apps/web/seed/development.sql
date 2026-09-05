@@ -81,6 +81,23 @@ VALUES
 	('dev-color-support-1', 'dev-brief', 'supporting', 0, '#2F312D', 'Charcoal', 'Small hardware and contrast'),
 	('dev-color-support-2', 'dev-brief', 'supporting', 1, '#A2674A', 'Clay', 'Occasional warm accent');
 
+INSERT OR IGNORE INTO concepts (
+	id,
+	collection_id,
+	title,
+	narrative,
+	created_by_user_id,
+	updated_by_user_id
+)
+VALUES (
+	'dev-concept',
+	'dev-collection',
+	'Quiet Japanese-modern home',
+	'Warm natural wood, tactile paper light, low silhouettes, and enough contrast to keep the rooms grounded.',
+	'dev-user',
+	'dev-user'
+);
+
 INSERT OR IGNORE INTO items (
 	id,
 	workspace_id,

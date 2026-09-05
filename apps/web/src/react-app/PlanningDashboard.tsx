@@ -12,6 +12,9 @@ import type {
 	ItemResource,
 	ItemStatusChangeInput,
   ConceptInput,
+	ConceptImageResource,
+	ConceptImageUpdateInput,
+	ConceptMediaResponse,
   ConceptResource,
 	WorkspaceCreateInput,
 	WorkspaceResource,
@@ -38,6 +41,7 @@ import { CollectionBriefForm, ConceptForm } from "./collection-direction-forms";
 import {
 	PlanningApiError,
 	planningApi,
+	type ConceptImageUploadValue,
 	type PlanningApi,
 } from "./planning-api";
 import { CollectionForm, ItemForm, WorkspaceForm } from "./planning-forms";
@@ -603,6 +607,9 @@ export function PlanningDashboard({
 		useState<CollectionRollupResponse | null>(null);
 	const [brief, setBrief] = useState<CollectionBriefResource | null>(null);
 	const [concept, setConcept] = useState<ConceptResource | null>(null);
+	const [conceptMedia, setConceptMedia] = useState<ConceptMediaResponse | null>(
+		null,
+	);
 	const [canEditBrief, setCanEditBrief] = useState(false);
 	const [canEditConcept, setCanEditConcept] = useState(false);
 	const [workspacePhase, setWorkspacePhase] = useState<LoadPhase>("loading");
@@ -680,6 +687,7 @@ export function PlanningDashboard({
 		setCollectionRollup(null);
     setBrief(null);
     setConcept(null);
+    setConceptMedia(null);
     setCanEditBrief(false);
     setCanEditConcept(false);
 		setSelectedGroup("all");
@@ -741,6 +749,7 @@ export function PlanningDashboard({
 		setCollectionRollup(null);
     setBrief(null);
     setConcept(null);
+    setConceptMedia(null);
     setCanEditBrief(false);
     setCanEditConcept(false);
 		setSelectedGroup("all");
@@ -759,9 +768,10 @@ export function PlanningDashboard({
       api.listItems(selectedCollectionId),
       api.readCollectionBrief(selectedCollectionId),
       api.readConcept(selectedCollectionId),
+      api.readConceptMedia(selectedCollectionId),
 			api.readCollectionRollup(selectedCollectionId),
     ])
-			.then(([itemResult, briefResult, conceptResult, rollupResult]) => {
+			.then(([itemResult, briefResult, conceptResult, mediaResult, rollupResult]) => {
 				if (!current) return;
 				setItems(itemResult.items);
 				setItemPermissions(itemResult.permissions);
@@ -769,6 +779,7 @@ export function PlanningDashboard({
         setCanEditBrief(briefResult.canEdit);
         setConcept(conceptResult.resource);
         setCanEditConcept(conceptResult.canEdit);
+        setConceptMedia(mediaResult);
 				setCollectionRollup(rollupResult);
 				setItemPhase("ready");
         setDirectionPhase("ready");
@@ -919,6 +930,8 @@ export function PlanningDashboard({
 		const messages: Partial<Record<ApiErrorCode, MessageKey>> = {
 			BAD_REQUEST: "status.validation",
 			FORBIDDEN: "status.permissionDenied",
+			INVALID_MEDIA: "status.invalidMedia",
+			MEDIA_LIMIT_EXCEEDED: "status.mediaLimit",
 			NOT_FOUND: "status.notFound",
 			RESOURCE_ARCHIVED: "status.archived",
 			UNAUTHENTICATED: "status.unauthorizedTitle",
@@ -1063,10 +1076,15 @@ export function PlanningDashboard({
   async function saveTextConcept(value: ConceptInput) {
     if (!selectedCollectionId) return false;
     return mutate(
-      () => api.saveConcept(selectedCollectionId, value),
-      (result) => {
+      async () => {
+        const result = await api.saveConcept(selectedCollectionId, value);
+        const media = await api.readConceptMedia(selectedCollectionId);
+        return { media, result };
+      },
+      ({ media, result }) => {
         setConcept(result.resource);
         setCanEditConcept(result.canEdit);
+        setConceptMedia(media);
       },
       "toast.conceptSaved",
     );
@@ -1080,8 +1098,50 @@ export function PlanningDashboard({
       (result) => {
         setConcept(result.resource);
         setCanEditConcept(result.canEdit);
+        setConceptMedia(null);
       },
       "toast.conceptRemoved",
+    );
+  }
+
+  async function uploadConceptImage(value: ConceptImageUploadValue) {
+    if (!selectedCollectionId) return false;
+    return mutate(
+      () => api.uploadConceptImage(selectedCollectionId, value),
+      setConceptMedia,
+      "toast.mediaUploaded",
+      false,
+    );
+  }
+
+  async function updateConceptImage(
+    imageId: string,
+    value: ConceptImageUpdateInput,
+  ) {
+    return mutate(
+      () => api.updateConceptImage(imageId, value),
+      setConceptMedia,
+      "toast.mediaUpdated",
+      false,
+    );
+  }
+
+  async function reorderConceptImages(imageIds: string[]) {
+    if (!selectedCollectionId) return false;
+    return mutate(
+      () => api.reorderConceptReferences(selectedCollectionId, { imageIds }),
+      setConceptMedia,
+      "toast.mediaReordered",
+      false,
+    );
+  }
+
+  async function deleteConceptImage(image: ConceptImageResource) {
+    await mutate(
+      () => api.deleteConceptImage(image.id),
+      setConceptMedia,
+      "toast.mediaDeleted",
+      false,
     );
   }
 
@@ -1495,12 +1555,17 @@ export function PlanningDashboard({
                           canEditConcept && !selectedCollection.archivedAt
                         }
                         concept={concept}
+                        media={conceptMedia}
                         loading={directionPhase !== "ready"}
                         onEditBrief={() => setEditor({ kind: "brief-edit" })}
                         onEditConcept={() =>
                           setEditor({ kind: "concept-edit" })
                         }
                         onRemoveConcept={() => void removeTextConcept()}
+                        onDeleteImage={deleteConceptImage}
+                        onReorderImages={reorderConceptImages}
+                        onUpdateImage={updateConceptImage}
+                        onUploadImage={uploadConceptImage}
                       />
 
 											{collectionRollup && activeItems.length > 0 ? (

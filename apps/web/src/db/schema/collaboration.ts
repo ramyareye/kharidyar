@@ -1,4 +1,8 @@
-import { membershipRoles } from "@kharidyar/domain";
+import {
+	conceptImageRoles,
+	conceptSubjectKinds,
+	membershipRoles,
+} from "@kharidyar/domain";
 import { sql } from "drizzle-orm";
 import {
 	check,
@@ -336,6 +340,135 @@ export const concepts = sqliteTable(
       table.createdAt,
     ),
   ],
+);
+
+export const conceptImages = sqliteTable(
+	"concept_images",
+	{
+		id: text("id").primaryKey(),
+		conceptId: text("concept_id")
+			.notNull()
+			.references(() => concepts.id, { onDelete: "cascade" }),
+		role: text("role", { enum: conceptImageRoles }).notNull(),
+		subjectKind: text("subject_kind", { enum: conceptSubjectKinds }),
+		parentImageId: text("parent_image_id"),
+		objectKey: text("object_key").notNull(),
+		contentType: text("content_type").notNull(),
+		originalFilename: text("original_filename").notNull(),
+		byteSize: integer("byte_size").notNull(),
+		width: integer("width").notNull(),
+		height: integer("height").notNull(),
+		sha256: text("sha256").notNull(),
+		position: integer("position").default(0).notNull(),
+		caption: text("caption"),
+		containsPerson: integer("contains_person", { mode: "boolean" })
+			.default(false)
+			.notNull(),
+		personRightsConfirmedAt: integer("person_rights_confirmed_at", {
+			mode: "timestamp_ms",
+		}),
+		uploadedByUserId: text("uploaded_by_user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "restrict" }),
+		isCover: integer("is_cover", { mode: "boolean" }).default(false).notNull(),
+		deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
+		deletedByUserId: text("deleted_by_user_id").references(() => user.id, {
+			onDelete: "restrict",
+		}),
+		objectDeletedAt: integer("object_deleted_at", { mode: "timestamp_ms" }),
+		createdAt: createdAt(),
+		updatedAt: updatedAt(),
+	},
+	(table) => [
+		check(
+			"concept_images_role_check",
+			sql`${table.role} in ('base', 'reference', 'edited')`,
+		),
+		check(
+			"concept_images_subject_check",
+			sql`(
+				(${table.role} = 'base' and ${table.subjectKind} in ('space', 'person'))
+				or
+				(${table.role} <> 'base' and ${table.subjectKind} is null)
+			)`,
+		),
+		check(
+			"concept_images_parent_check",
+			sql`(
+				(${table.role} = 'edited' and ${table.parentImageId} is not null)
+				or
+				(${table.role} <> 'edited' and ${table.parentImageId} is null)
+			)`,
+		),
+		check(
+			"concept_images_content_type_check",
+			sql`${table.contentType} = 'image/webp'`,
+		),
+		check(
+			"concept_images_filename_check",
+			sql`length(trim(${table.originalFilename})) between 1 and 255`,
+		),
+		check(
+			"concept_images_size_check",
+			sql`typeof(${table.byteSize}) = 'integer' and ${table.byteSize} > 0`,
+		),
+		check(
+			"concept_images_dimensions_check",
+			sql`typeof(${table.width}) = 'integer' and ${table.width} > 0 and typeof(${table.height}) = 'integer' and ${table.height} > 0`,
+		),
+		check(
+			"concept_images_sha256_check",
+			sql`length(${table.sha256}) = 64 and ${table.sha256} = lower(${table.sha256}) and ${table.sha256} not glob '*[^0-9a-f]*'`,
+		),
+		check(
+			"concept_images_position_check",
+			sql`typeof(${table.position}) = 'integer' and ${table.position} >= 0`,
+		),
+		check(
+			"concept_images_caption_check",
+			sql`${table.caption} is null or length(trim(${table.caption})) between 1 and 500`,
+		),
+		check(
+			"concept_images_person_rights_check",
+			sql`(
+				(${table.containsPerson} = 0 and ${table.personRightsConfirmedAt} is null and ${table.subjectKind} <> 'person')
+				or
+				(${table.containsPerson} = 1 and ${table.personRightsConfirmedAt} is not null)
+			)`,
+		),
+		check(
+			"concept_images_deletion_check",
+			sql`(
+				(${table.deletedAt} is null and ${table.deletedByUserId} is null and ${table.objectDeletedAt} is null)
+				or
+				(${table.deletedAt} is not null and ${table.deletedByUserId} is not null and (${table.objectDeletedAt} is null or ${table.objectDeletedAt} >= ${table.deletedAt}))
+			)`,
+		),
+		foreignKey({
+			name: "concept_images_parent_concept_fk",
+			columns: [table.parentImageId, table.conceptId],
+			foreignColumns: [table.id, table.conceptId],
+		}).onDelete("restrict"),
+		uniqueIndex("concept_images_id_concept_uidx").on(table.id, table.conceptId),
+		uniqueIndex("concept_images_object_key_uidx").on(table.objectKey),
+		uniqueIndex("concept_images_active_base_uidx")
+			.on(table.conceptId)
+			.where(sql`${table.role} = 'base' and ${table.deletedAt} is null`),
+		uniqueIndex("concept_images_active_cover_uidx")
+			.on(table.conceptId)
+			.where(sql`${table.isCover} = 1 and ${table.deletedAt} is null`),
+		index("concept_images_concept_order_idx").on(
+			table.conceptId,
+			table.role,
+			table.position,
+			table.createdAt,
+		),
+		index("concept_images_uploader_idx").on(table.uploadedByUserId),
+		index("concept_images_pending_object_delete_idx").on(
+			table.deletedAt,
+			table.objectDeletedAt,
+		),
+	],
 );
 
 export const collectionBriefColors = sqliteTable(

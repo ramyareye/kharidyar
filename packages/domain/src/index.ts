@@ -1,4 +1,5 @@
 export * from "./authorization";
+export * from "./concept-media";
 export * from "./decision";
 export * from "./money";
 export * from "./offer";

@@ -1,6 +1,6 @@
 # Kharidyar
 
-Kharidyar is a private, collaborative purchase-planning application. Its current web foundation is a React + Vite client backed by a Hono Cloudflare Worker, D1, Drizzle, and Better Auth in a Bun workspace.
+Kharidyar is a private, collaborative purchase-planning application. Its current web foundation is a React + Vite client backed by a Hono Cloudflare Worker, D1, private R2 storage, Cloudflare Images, Drizzle, and Better Auth in a Bun workspace.
 
 The approved product specification, domain model, architecture, and roadmap are in [`PROJECT.md`](./PROJECT.md). Repository workflow and approval rules are in [`AGENTS.md`](./AGENTS.md).
 
@@ -94,7 +94,7 @@ bun run build
 bun run check
 ```
 
-`bun run check` runs all quality gates and a Wrangler dry run. The Worker tests execute in Cloudflare's Vitest integration, apply the D1 migrations to an isolated local database, protect the existing `GET /api/` response, exercise database constraints, and validate Google/session, scoped authorization, transactional invitations, typed Workspace/Collection/Item APIs, structured Collection Briefs, text Concepts, Item workflow permissions, Merchant-backed Product/Offer comparison, honest planned-cost rollups, immutable partial-purchase snapshots, Import Drafts, provider-research Workflows, and permission-filtered Context Snapshots without contacting Google, Tavily, retailer pages, or an AI provider. Runtime-independent tests also cover locale policy, RTL/LTR direction, formatting, palette rules, status-transition classification, Offer freshness and cost aggregation, research retention, and the web shell's critical-state resolvers.
+`bun run check` runs all quality gates and a Wrangler dry run. The Worker tests execute in Cloudflare's Vitest integration, apply the D1 migrations to an isolated local database, protect the existing `GET /api/` response, exercise database constraints, and validate Google/session, scoped authorization, transactional invitations, typed Workspace/Collection/Item APIs, structured Collection Briefs, private Concept media, Item workflow permissions, Merchant-backed Product/Offer comparison, honest planned-cost rollups, immutable partial-purchase snapshots, Import Drafts, provider-research Workflows, and permission-filtered Context Snapshots without contacting Google, Tavily, retailer pages, or an AI provider. Runtime-independent tests also cover locale policy, RTL/LTR direction, formatting, palette rules, status-transition classification, Offer freshness and cost aggregation, research retention, and the web shell's critical-state resolvers.
 
 ## Core API
 
@@ -118,7 +118,7 @@ The Live Research desk creates asynchronous Research Requests backed by a Cloudf
 
 The AI Context dialog builds a private snapshot for the selected Collection and shows the complete Markdown before reuse. Users can copy or download it; building or exporting a snapshot does not call an AI provider. The exported header marks user-authored and external text as untrusted data, while the stored JSON preserves the exact machine-readable boundary for later audited AI operations.
 
-Each Collection can show and edit its practical Brief, optional EUR budget, ordered core/supporting color preference, HTTPS reference links, and one optional text Concept alongside its Items. Palettes allow up to six colors per group, preserve user order, normalize hex values, and always pair swatches with text. Concept images, uploads, R2 storage, and AI visualization remain intentionally absent until their future roadmap tasks.
+Each Collection can show and edit its practical Brief, optional EUR budget, ordered core/supporting color preference, HTTPS reference links, and one optional Concept alongside its Items. Palettes allow up to six colors per group, preserve user order, normalize hex values, and always pair swatches with text. A Concept may contain one current base photo plus ordered reference images. Authorized uploads accept JPEG, PNG, or WebP, verify the decoded file, enforce configurable byte/dimension/storage/rate limits, remove unnecessary metadata by re-encoding to WebP, and serve the result only through a Collection-authorized API route. Replacing or deleting an image permanently removes its R2 bytes; D1 retains a non-downloadable lifecycle tombstone. AI visualization remains a separate future task and no image is sent to an AI provider today.
 
 The UI detects Persian or English browser preferences, falls back to English, and persists an explicit language switch. The document `lang` and `dir`, numbers, dates, and EUR amounts follow the active locale. Layout styles use logical properties so the same interface mirrors naturally between RTL and LTR.
 
@@ -136,9 +136,9 @@ bun run db:seed:local
 
 `bun run db:generate` first regenerates Better Auth's Drizzle tables and then creates a reviewable SQL migration for all schema changes. Do not edit `apps/web/src/db/schema/auth.ts` or generated migration metadata by hand. Review the generated SQL before applying or committing it.
 
-`bun run db:migrate:local` is safe to rerun; already-applied migrations are a no-op. `bun run db:seed:local` loads fixed, idempotent development data into the local database only. It includes an Item that needs four chairs, representative requirements and human decision history, a LISABO Candidate plan that buys two, an IKEA Netherlands Merchant, an Offer and Price Check, a scoped collaborator with Item/Candidate comments and one Candidate preference, an unapplied Import Draft, and a completed advisory Research Run. This preserves the distinction between need units, Offer units, research, discussion, and final decisions.
+`bun run db:migrate:local` is safe to rerun; already-applied migrations are a no-op. `bun run db:seed:local` loads fixed, idempotent development data into the local database only. It includes a Japanese-modern text Concept ready for private-image testing, an Item that needs four chairs, representative requirements and human decision history, a LISABO Candidate plan that buys two, an IKEA Netherlands Merchant, an Offer and Price Check, a scoped collaborator with Item/Candidate comments and one Candidate preference, an unapplied Import Draft, and a completed advisory Research Run. It deliberately creates no Concept Image row without matching R2 bytes. This preserves the distinction between need units, Offer units, research, discussion, and final decisions.
 
-Preview and production use distinct D1 resources. Configure the Cloudflare account/resources for those environments before the first remote migration or deployment; the commands above never mutate a remote database. After changing any binding, regenerate Worker types with `bun run cf-typegen`.
+Local, preview, and production use distinct D1 and private Concept-media R2 resources. The configured buckets are `kharidyar-concept-media-local`, `kharidyar-concept-media-preview`, and `kharidyar-concept-media-production`; none should have public access enabled. Configure the Cloudflare account/resources for those environments before the first remote migration or deployment; the commands above never mutate a remote database or create a remote bucket. After changing any binding, regenerate Worker types with `bun run cf-typegen`.
 
 ## Cloudflare commands
 
@@ -153,6 +153,6 @@ bun run deploy:production
 bun run release:smoke -- https://kharidyar.formahsa.workers.dev
 ```
 
-Run `bun run cf-typegen` after changing Worker bindings. Deployment requires the appropriate Cloudflare account, D1 resources, Workflow, Browser Run binding, and secrets. Apply the latest remote D1 migration and set `TAVILY_API_KEY` before deploying; ordinary local commands never mutate remote resources. `bun run deploy` remains an alias for the explicit production deployment. Follow [`RELEASE.md`](./RELEASE.md) for the required preview-first order, recovery points, smoke checks, rollback compatibility rule, and D1 Time Travel procedure.
+Run `bun run cf-typegen` after changing Worker bindings. Deployment requires the appropriate Cloudflare account, D1 resources, private R2 bucket, Images binding, Workflow, Browser Run binding, and secrets. Apply the latest remote D1 migration and set `TAVILY_API_KEY` before deploying; ordinary local commands never mutate remote resources. `bun run deploy` remains an alias for the explicit production deployment. Follow [`RELEASE.md`](./RELEASE.md) for the required preview-first order, recovery points, smoke checks, rollback compatibility rule, D1 Time Travel procedure, and Concept-media deletion boundary.
 
 Cloudflare custom logs and source maps are enabled explicitly for local, preview, and production. Automatic invocation logs are disabled because OAuth callback URLs contain short-lived authorization codes. Application logs therefore use generated request IDs, resource identifiers, and safe reason codes without request query strings, cookies, tokens, provider messages, or private planning content.

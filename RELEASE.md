@@ -1,17 +1,17 @@
 # Release runbook
 
-This runbook covers the Cloudflare Worker, static assets, D1 migrations, the research Workflow, Browser Run, smoke verification, code rollback, and D1 recovery. Run commands from the repository root unless a step says otherwise.
+This runbook covers the Cloudflare Worker, static assets, D1 migrations, private Concept-media R2 storage, Cloudflare Images, the research Workflow, Browser Run, smoke verification, code rollback, and D1 recovery. Run commands from the repository root unless a step says otherwise.
 
 Cloudflare Worker versions do not include D1 state. A Worker rollback changes code and bindings only, while D1 Time Travel overwrites the database in place. Treat them as separate recovery controls.
 
 ## Environments
 
-| Environment | Worker | D1 database | Workflow | Application origin |
-| --- | --- | --- | --- | --- |
-| Preview | `kharidyar-preview` | `kharidyar-preview` | `kharidyar-research-preview` | `https://kharidyar-preview.formahsa.workers.dev` |
-| Production | `kharidyar` | `kharidyar-production` | `kharidyar-research` | `https://kharidyar.formahsa.workers.dev` |
+| Environment | Worker | D1 database | private R2 bucket | Workflow | Application origin |
+| --- | --- | --- | --- | --- | --- |
+| Preview | `kharidyar-preview` | `kharidyar-preview` | `kharidyar-concept-media-preview` | `kharidyar-research-preview` | `https://kharidyar-preview.formahsa.workers.dev` |
+| Production | `kharidyar` | `kharidyar-production` | `kharidyar-concept-media-production` | `kharidyar-research` | `https://kharidyar.formahsa.workers.dev` |
 
-Local, preview, and production never share a D1 database or Workflow. `CLOUDFLARE_ENV` selects and flattens the requested Wrangler environment during the Vite build; the following deployment scripts then deploy that generated configuration.
+Local, preview, and production never share a D1 database, R2 bucket, or Workflow. `CLOUDFLARE_ENV` selects and flattens the requested Wrangler environment during the Vite build; the following deployment scripts then deploy that generated configuration.
 
 ## One-time environment setup
 
@@ -48,7 +48,17 @@ Local, preview, and production never share a D1 database or Workflow. `CLOUDFLAR
    <application-origin>/api/auth/callback/google
    ```
 
-4. Keep the D1 IDs, Workflow names, Browser Run binding, allowed research origin, and Worker names in `apps/web/wrangler.json`. Run `bun run cf-typegen` after changing a binding.
+4. Create the two remote private R2 buckets once, without enabling an `r2.dev` domain or custom public domain:
+
+   ```bash
+   cd apps/web
+   bunx wrangler r2 bucket create kharidyar-concept-media-preview
+   bunx wrangler r2 bucket create kharidyar-concept-media-production
+   bunx wrangler r2 bucket list
+   cd ../..
+   ```
+
+5. Keep the D1 IDs, private R2 bucket names, Images binding, Workflow names, Browser Run binding, allowed research origin, and Worker names in `apps/web/wrangler.json`. Run `bun run cf-typegen` after changing a binding. The application limits each source and normalized image to 10 MiB, 8,192 pixels per side, and 40 megapixels; each Concept to 12 active images; each Workspace to 250 MiB of active media; and each actor/Collection to 20 upload attempts per hour. These values are non-secret environment configuration and may be tuned without a migration.
 
 ## Release order
 
@@ -78,7 +88,7 @@ Local, preview, and production never share a D1 database or Workflow. `CLOUDFLAR
    cd ../..
    ```
 
-3. Confirm preview behavior manually for Google sign-in and one authenticated planning read. If the release changes research, also run one bounded provider request. Do not continue while a required preview secret or callback is missing.
+3. Confirm preview behavior manually for Google sign-in and one authenticated planning read. If the release changes Concept media, upload one small image, confirm an authorized read, delete it, and confirm the UI no longer loads it. If the release changes research, also run one bounded provider request. Do not continue while a required preview secret, callback, R2 bucket, or Images binding is missing.
 
 4. Record the production recovery points before changing production:
 
@@ -103,7 +113,7 @@ Local, preview, and production never share a D1 database or Workflow. `CLOUDFLAR
    bun run release:smoke -- https://kharidyar.formahsa.workers.dev
    ```
 
-7. Manually confirm Google sign-in, one authenticated planning read, and—when affected—one bounded provider request. Record the commit, new Worker version, previous Worker version, pre-migration D1 bookmark, operator, timestamp, and smoke result.
+7. Manually confirm Google sign-in, one authenticated planning read, and—when affected—one private Concept upload/read/delete cycle and one bounded provider request. Record the commit, new Worker version, previous Worker version, pre-migration D1 bookmark, operator, timestamp, and smoke result.
 
 ## Worker rollback
 
@@ -140,6 +150,17 @@ D1 Time Travel is always enabled on the production storage backend. Recovery is 
 5. If the recovery point was wrong, use the returned `previous_bookmark` to undo the restore.
 
 Exercise the restore procedure against preview or a disposable database. Do not restore production merely to prove the command works.
+
+## Concept-media retention and recovery
+
+R2 bytes and D1 metadata have deliberately different recovery behavior:
+
+- A successful image upload is normalized to a new opaque private R2 object. Source bytes are never stored.
+- Replacing a base image or deleting an image immediately tombstones the D1 row and deletes its R2 object. Removing a Concept does the same for every active image.
+- A failed R2 deletion remains a private, unreachable object and is retried by later authorized media reads. Logs contain only a safe event code and image ID.
+- D1 retains the lifecycle tombstone; the UI and content route cannot read it. There is no application-level image trash, media backup, or restore operation.
+- D1 Time Travel does not restore deleted R2 bytes. Conversely, restoring D1 to an earlier point can recreate metadata whose object no longer exists. After a D1 restore, audit active `concept_images` keys against R2 before reopening writes; missing objects must remain unavailable and be reconciled explicitly.
+- Any future backup, retention, or AI-derived-image policy requires a separate privacy review before it changes this deletion guarantee.
 
 ## Release record template
 
