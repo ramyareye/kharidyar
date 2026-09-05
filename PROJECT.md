@@ -1,8 +1,9 @@
 # Kharidyar Project Specification
 
 - Status: Approved by the product owner
-- Last updated: 2026-09-04
+- Last updated: 2026-09-05
 - Implementation status: Tasks 1 through 11 and the post-MVP Concept media foundation are complete and validated locally
+- Release status: Concept media is deployed to preview and production, with authenticated image checks confirmed by the product owner in both environments (see [RELEASE.md](./RELEASE.md#2026-09-05-concept-media-production-release)).
 
 ## Purpose of this document
 
@@ -1134,6 +1135,17 @@ The future visualization task must add tests for:
 
 Repository policy requires one ordered task per substantial work session. Start the next task only after the previous task meets its completion criteria and the product owner explicitly requests continuation.
 
+### Remaining delivery order (product-owner decision, 2026-09-05)
+
+After the completed release documentation is committed, the selected sequence is:
+
+1. OpenAI research adapter.
+2. AI Concept visualization from uploaded base photos.
+3. ChatGPT MCP integration, initially read-only.
+4. Web UI revamp after those integrations are complete.
+
+Expo is deferred outside this delivery sequence. This order supersedes the earlier plan to place MCP after Expo; it does not approve provider spending, retention/privacy terms, or image-subject scope. Resolve the relevant decisions before each implementation begins.
+
 ### Task 1: Monorepo foundation
 
 Status: completed and validated on 2026-08-30.
@@ -1397,7 +1409,7 @@ Completion criteria:
 
 ### Post-MVP task: Concept media foundation
 
-Status: Complete and validated locally on 2026-09-04; remote migration and deployment remain release work.
+Status: Complete and validated locally on 2026-09-04; deployed to preview and production on 2026-09-05 with automated release checks and product-owner confirmation of both authenticated image flows.
 
 This task does not change the text Concept identity and does not generate images. It:
 
@@ -1425,13 +1437,9 @@ This starts only after the Concept media foundation and Task 10's access-filtere
 - Preserves the original, records provider/input provenance, labels edits as illustrative, and lets an authorized human keep, reject, or choose the cover.
 - Tests cross-Collection isolation, provider failure, cancellation, deletion, cost limits, and the guarantee that Item changes never trigger generation automatically.
 
-### Future task: Expo mobile application
-
-This starts only after the web MVP and API contracts are stable. It adds native UI, deep links, secure session storage, Google and Apple sign-in, explicit provider linking, and mobile-specific end-to-end tests without replacing the Worker API or D1 data.
-
 ### Future task: ChatGPT MCP integration
 
-This is the final roadmap task and starts only after Task 10's permission-filtered Context Builder, Task 11's production hardening, and the public API contracts are stable. It adds ChatGPT as another client without creating a second backend or bypassing Kharidyar's domain rules. It:
+This follows AI Concept visualization in the selected delivery sequence and precedes the web UI revamp; it does not depend on Expo. It starts only after Task 10's permission-filtered Context Builder, Task 11's production hardening, and the public API contracts are stable. It adds ChatGPT as another client without creating a second backend or bypassing Kharidyar's domain rules. It:
 
 - Exposes a versioned streamable-HTTP MCP endpoint, typically `/mcp`, as a thin adapter over the same application services and validated commands used by the web and future Expo clients; MCP tools never query or mutate D1 directly.
 - Authenticates each user through the then-current supported OAuth flow, maps that identity to one Kharidyar User, and performs capability checks for every tool call.
@@ -1445,6 +1453,14 @@ Completion criteria:
 - Every tool delegates to an existing permission-checked query or command; direct database access from the MCP transport layer is absent.
 - Tool schemas, annotations, representative calls, edge cases, and out-of-scope requests pass local MCP inspection and ChatGPT developer-mode testing.
 - The integration can be disabled without affecting the web app, mobile app, API, or stored planning data.
+
+### Future task: Web UI revamp
+
+This follows the OpenAI research adapter, AI Concept visualization, and ChatGPT MCP integration. Agree the visual direction and screen scope with the product owner before implementation. Preserve the established domain behavior, permission checks, English/Persian support, accessibility, and responsive layouts; this is a web-interface task, not an Expo migration.
+
+### Deferred task: Expo mobile application
+
+Expo is outside the current delivery sequence and requires a separate product-owner request. It starts only after the web MVP and API contracts are stable. It adds native UI, deep links, secure session storage, Google and Apple sign-in, explicit provider linking, and mobile-specific end-to-end tests without replacing the Worker API or D1 data.
 
 ## Risks and mitigations
 
@@ -1570,8 +1586,8 @@ Decisions 1, 2, 3, 4, 6, 7, 9, 10, 11, 13, and 15 are resolved. Decisions 16 and
 ## Current repository state
 
 - Branch: `main`.
-- History: scaffold baseline followed by committed Task 1 monorepo, Task 2 domain/D1, Task 3 Google authentication, Task 4 authorization/invitations, Tasks 5A/5B core planning, Task 6A Collection Brief/text Concept, Task 6B Item workflow, the branding/MCP roadmap note, Task 7 Product/Offer comparison, Task 8 collaboration, Task 9A deterministic Research Import Drafts, Task 9B provider research, Task 10 Context Builder, and Task 11 production hardening and deployment. The post-MVP Concept media foundation is the current uncommitted implementation.
-- Tasks 1 through 11 are complete and validated in production. The post-MVP Concept media foundation is complete and validated locally; migration 0010 and its Worker deployment have not been applied remotely.
+- History: scaffold baseline followed by committed Task 1 monorepo, Task 2 domain/D1, Task 3 Google authentication, Task 4 authorization/invitations, Tasks 5A/5B core planning, Task 6A Collection Brief/text Concept, Task 6B Item workflow, the branding/MCP roadmap note, Task 7 Product/Offer comparison, Task 8 collaboration, Task 9A deterministic Research Import Drafts, Task 9B provider research, Task 10 Context Builder, and Task 11 production hardening and deployment. The post-MVP Concept media foundation was committed and pushed as `7fc8165`; only its release documentation remains uncommitted.
+- Tasks 1 through 11 and the post-MVP Concept media foundation are complete and validated in production. Migration 0010 and its Worker deployment are applied in preview and production, with both authenticated image flows confirmed by the product owner.
 - The repository is a Bun `1.3.12` workspace with `apps/web`, `packages/domain`, `packages/contracts`, and `packages/i18n`. No mobile, API-client, or config package has been created.
 - `bun.lock` is the sole package-manager lockfile present, and Bun workspaces are declared in the root `package.json`.
 - The Vite/React frontend provides localized Google sign-in and a protected planning studio with Workspace, Collection, and Item create/edit/archive/restore flows, URL-restored selection, quantity-aware Item cards, lightweight group navigation, a Collection direction surface for the Brief, EUR budget, ordered color preference, references, optional text Concept, and private Concept base/reference media, plus a permission-aware Item detail/status/history workflow. English and Persian layouts are responsive at desktop and narrow widths.
@@ -1682,6 +1698,6 @@ Task 11's release slice was continued on 2026-09-03. A production export was reh
 
 Task 11 deployment continued on 2026-09-04 after the product owner supplied temporary mode-`600` secret files outside the repository and refreshed Wrangler OAuth. Preview Worker version `dd7ab70a-db7a-4c03-836a-d05507716f09` deployed with isolated D1, Workflow, Browser Run, and secrets; its release smoke and Google OAuth callback initiation passed. Production Worker version `5938210e-5144-4bd7-8d0a-fec679d2d690` deployed with the existing authentication secrets preserved and the new Tavily key; release smoke, Google OAuth callback initiation, and one bounded Tavily Basic Search passed. An identical schema-compatible drill version, `4a4c51e1-5326-4514-bbbd-9a6ba7c9a3b8`, was deployed and smoke-tested, then Wrangler rollback returned 100% of traffic to version `5938210e-5144-4bd7-8d0a-fec679d2d690`. Production D1 remained at ten migrations with its aggregate user/Workspace/Collection/Item counts preserved and no foreign-key violations. Both temporary secret files were deleted after use.
 
-On 2026-09-04, the product owner confirmed a successful Google sign-in and authenticated planning read at `https://kharidyar.formahsa.workers.dev`. This completed Task 11. On the same date, the product owner also added a future optional OpenAI Responses API web-search adapter. It must reuse the existing permission, provenance, Research record, and human-confirmation boundaries and remains separate from the final ChatGPT MCP client task.
+On 2026-09-04, the product owner confirmed a successful Google sign-in and authenticated planning read at `https://kharidyar.formahsa.workers.dev`. This completed Task 11. On the same date, the product owner also added a future optional OpenAI Responses API web-search adapter. It must reuse the existing permission, provenance, Research record, and human-confirmation boundaries and remains separate from the ChatGPT MCP client task.
 
-The product owner explicitly authorized the post-MVP Concept media foundation on 2026-09-04. It adds private user-provided base/reference images without adding AI generation: direct authenticated uploads are validated and normalized to WebP through Cloudflare Images, stored under opaque immutable keys in environment-isolated private R2 buckets, and delivered only after a fresh Collection access check. Replacing, deleting, or removing the Concept removes the stored bytes immediately and retains only a non-downloadable D1 tombstone. The implementation includes configurable count, byte, and rate limits; uploader and person-photo consent provenance; English/Persian management UI; migration 0010; fixed seed coverage without fake objects; and focused Cloudflare-runtime and UI-state tests. The preview and production buckets were created privately, while remote migration and Worker deployment remain a separate release step.
+The product owner explicitly authorized the post-MVP Concept media foundation on 2026-09-04. It adds private user-provided base/reference images without adding AI generation: direct authenticated uploads are validated and normalized to WebP through Cloudflare Images, stored under opaque immutable keys in environment-isolated private R2 buckets, and delivered only after a fresh Collection access check. Replacing, deleting, or removing the Concept removes the stored bytes immediately and retains only a non-downloadable D1 tombstone. The implementation includes configurable count, byte, and rate limits; uploader and person-photo consent provenance; English/Persian management UI; migration 0010; fixed seed coverage without fake objects; and focused Cloudflare-runtime and UI-state tests. The preview and production buckets were created privately. On 2026-09-05, the pushed implementation was migrated and deployed to preview with passing release smoke and anonymous media-access checks. After the product owner confirmed the preview image cycle, the same application commit was migrated and deployed to production with preserved aggregate data counts, clean foreign keys, and passing release, media-boundary, and Google sign-in initiation checks. The product owner then confirmed the authenticated production image cycle, completing the release. Recovery details and the next steps are recorded in [RELEASE.md](./RELEASE.md#2026-09-05-concept-media-production-release).

@@ -162,6 +162,43 @@ R2 bytes and D1 metadata have deliberately different recovery behavior:
 - D1 Time Travel does not restore deleted R2 bytes. Conversely, restoring D1 to an earlier point can recreate metadata whose object no longer exists. After a D1 restore, audit active `concept_images` keys against R2 before reopening writes; missing objects must remain unavailable and be reconciled explicitly.
 - Any future backup, retention, or AI-derived-image policy requires a separate privacy review before it changes this deletion guarantee.
 
+## 2026-09-05: Concept-media preview release
+
+- Deployed at `2026-09-05T11:07:56.662357Z` by Codex using the product owner's authorized Wrangler session.
+- Git commit: `7fc8165dd8c36d06cc348be38f920ae9d61e3f07` (`feat: add private concept media foundation`); working tree was clean before deployment.
+- Environment: [preview](https://kharidyar-preview.formahsa.workers.dev), Worker `kharidyar-preview`. Production was not migrated or deployed in this release.
+- Previous Worker version: `dd7ab70a-db7a-4c03-836a-d05507716f09`.
+- New Worker version: `0610503c-6972-4d3e-bc65-928e3de0e6e3`, confirmed at 100% traffic.
+- Pre-migration D1 bookmark: `0000000b-00000000-000050dd-46486ad7e484e695c969bc1a88ccbbc6`.
+- Migration applied: `0010_minor_leech.sql`; no pending preview migrations remain.
+- Integrity: existing aggregate counts preserved (1 User, 0 Workspaces, 0 Collections, 0 Items); 0 Concept Images after migration, 11 applied migrations, and no foreign-key violations.
+- Preflight: preview build and Wrangler dry run passed; all six required remote secret names were present. The preview R2 bucket was empty, with public `r2.dev` access disabled and no custom domains.
+- Live checks: release smoke passed for the document, public API, security headers, and session boundary. Anonymous Concept-image list, content, upload, and delete requests all returned private, non-cacheable JSON `401` responses.
+- Authenticated check: the product owner confirmed the preview sign-in and image upload/read/delete cycle on 2026-09-05 and approved the production release. This is user-reported validation, separate from the automated boundary checks above.
+- Provider research check: not repeated; this release changes Concept media, not research.
+- Recovery: migration 0010 is additive, so the previous Worker is schema-compatible for a code-only rollback. Retain the table and existing data when rolling back code; D1 restore requires the separate recovery procedure above. D1 Time Travel does not recover deleted R2 image bytes.
+
+## 2026-09-05: Concept-media production release
+
+- Deployed at `2026-09-05T11:44:26.411682Z` by Codex using the product owner's authorized Wrangler session, after the preview confirmation.
+- Git commit: `7fc8165dd8c36d06cc348be38f920ae9d61e3f07` (`feat: add private concept media foundation`), matching pushed `main` and the preview-tested application code. Only `PROJECT.md` and `RELEASE.md` release notes were uncommitted; no application, dependency, migration, or configuration changes were included beyond that commit.
+- Environment: [production](https://kharidyar.formahsa.workers.dev), Worker `kharidyar`.
+- Previous Worker version: `5938210e-5144-4bd7-8d0a-fec679d2d690`.
+- New Worker version: `c18f6d9d-0f55-44a6-ab2a-eecedae899bc`, confirmed at 100% traffic.
+- Pre-migration D1 bookmark: `0000004a-00000000-000050dd-251fd5da9f95b32cbf563b189b522b3d`.
+- Migration applied: `0010_minor_leech.sql`; no pending production migrations remain.
+- Integrity: aggregate counts preserved (1 User, 1 Workspace, 1 Collection, 1 Item); 0 Concept Images immediately after migration, 11 applied migrations, and no foreign-key violations.
+- Preflight: production TypeScript/build and Wrangler dry run passed; generated bindings explicitly matched the production D1, R2 bucket, Workflow, and Images binding. All six required remote secret names were present; their values were neither read nor changed. The production R2 bucket was empty, with public `r2.dev` access disabled and no custom domains.
+- Live checks: release smoke passed for the document, public API, security headers, and session boundary. Anonymous Concept-image list, content, upload, and delete requests all returned private, non-cacheable JSON `401` responses. Google sign-in initiation returned the expected Google destination with the production callback, without logging OAuth credentials.
+- Authenticated production check: the product owner confirmed the requested production sign-in, planning read, and image upload/read/delete test as done on 2026-09-05. This is user-reported validation, separate from the automated checks above. The Concept-media release is complete.
+- Provider research check: not repeated because research behavior was unchanged.
+- Recovery: the additive migration is compatible with the previous Worker for code-only rollback. Preserve the media table and any new records; use the separate D1 recovery procedure only for a confirmed data incident. D1 restore cannot recover deleted R2 bytes.
+
+### Next ordered steps
+
+1. Review and commit `PROJECT.md` and `RELEASE.md` through the repository's exact staged-tree approval gate; the production test confirmation is recorded.
+2. Begin the selected OpenAI research-adapter task after resolving its cost and retention/privacy approvals. The product owner's remaining order is recorded in `PROJECT.md`: OpenAI research, AI Concept visualization, ChatGPT MCP, then web UI revamp; Expo is deferred. No future feature has started.
+
 ## Release record template
 
 ```text
