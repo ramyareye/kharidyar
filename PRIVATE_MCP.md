@@ -1,6 +1,8 @@
 # Private MCP pilot
 
-Local implementation verified on 2026-09-05 and subsequently deployed to approved preview. **Preview is enabled only for the verified owner; production remains unchanged. The user confirmed a successful live ChatGPT Workspace read and subsequently reported Claude worked. After disconnect, Claude showed `invalid_client` / `client_id is required`; this reconnect UX needs improvement. Complete live revocation coverage remains independently unverified.** No public directory listing is needed for this pilot. See [HANDOFF.md](./HANDOFF.md) for the approval boundary and remaining work.
+**2026-09-06 local extension:** write consent, 49 mutation tools, approval receipts, supporting reads and friendly reconnect recovery are implemented but not deployed. The live preview remains the read-only release below. See [MCP_ACTIONS.md](./MCP_ACTIONS.md) for enabling writes after approval, exact coverage and manual gaps.
+
+Local implementation verified on 2026-09-05 and subsequently deployed to approved preview. **Preview is enabled only for the verified owner; production remains unchanged. The user confirmed a successful live ChatGPT Workspace read and subsequently reported Claude worked. After disconnect, Claude showed `invalid_client` / `client_id is required`; friendly recovery for this error is implemented locally, awaiting release. Complete live revocation coverage remains independently unverified.** No public directory listing is needed for this pilot. See [HANDOFF.md](./HANDOFF.md) for the approval boundary and remaining work.
 
 ## What this connects
 
@@ -8,7 +10,7 @@ Each person signs into their own ChatGPT or Claude through the provider's offici
 
 The assistant receives requested WantKit records. WantKit does not receive the person's assistant history or memories. The assistant may use personal context according to its own features and settings; this connector cannot guarantee it. Selected data is processed by that provider. Included subscription usage may avoid a separate model API bill, but eligibility, usage limits and hosting costs still apply.
 
-This pilot reads saved records. It does not launch research, replace Tavily, or run Codex. A local index can search saved material but cannot discover new web listings by itself. Findings can still be saved through the existing reviewable Import Draft workflow. Photos and automatic memory/history imports are excluded.
+The deployed read-only pilot reads saved records. It does not launch research or run Codex through MCP; the separately implemented local write extension can request research with explicit provider choice and approval. Neither is a general replacement for live web discovery. A local index can search saved material but cannot discover new web listings by itself. Findings can still be saved through the existing reviewable Import Draft workflow. Photos and automatic memory/history imports are excluded.
 
 ## Operator setup
 
@@ -41,7 +43,7 @@ During implementation the migration was exercised only in isolated test database
 
 No anonymous dynamic registration, client metadata URL registration, public publication, or assistant-side API key is used. Only the exact HTTPS callback registered for that client is accepted. Client availability and UI labels can change; use the official [ChatGPT connection guide](https://developers.openai.com/plugins/deploy/connect-chatgpt), [ChatGPT OAuth guide](https://developers.openai.com/plugins/build/auth), and [Claude connector authentication guide](https://claude.com/docs/connectors/building/authentication). These documents were checked on 2026-09-05; the user confirmed ChatGPT and Claude reads. Independent live revocation coverage remains incomplete.
 
-The 2026-09-06 request to add routine writes, with confirmation for deletion, sharing and purchase decisions, is the next connector task after the compact UI. It is not part of the current read-only implementation. See [UI_REDESIGN.md](./UI_REDESIGN.md) for the confirmed scope and order.
+The 2026-09-06 write extension is now implemented locally. Create new credentials with write access and reauthorize after its separately approved preview release; existing read-only credentials are not silently upgraded. See [MCP_ACTIONS.md](./MCP_ACTIONS.md).
 
 ## Disconnect and expiry
 
@@ -52,7 +54,7 @@ The 2026-09-06 request to add routine writes, with confirmation for deletion, sh
 - Setting `MCP_ENABLED=false` stops the MCP/OAuth endpoints. Removing a user from the allowlist stops token issuance and reads. While enabled, an authenticated removed user may still delete their own known registration through `DELETE /api/connectors/:clientId`; the disabled pilot screen does not offer new setup. Re-enabling the feature or re-adding the user may revive still-valid grants unless the registration was deleted. Use Disconnect for permanent revocation.
 - Token validation is local to the provider's D1 storage, with hashed opaque access/refresh tokens and provider-encrypted client secrets. No credentials or record contents are intentionally logged. This pilot accepts bearer tokens in the Authorization header only; DPoP-bound tokens fail closed. Do not enable a client that requires DPoP without adding resource-side proof verification.
 
-## Tool surface and limits
+## Deployed read-only tool surface and limits
 
 | Tools | Reads |
 | --- | --- |

@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { createAuth, type AuthBindings } from "../auth/server";
-import { mcpPath, mcpReadScope, mcpUserAllowed } from "../auth/mcp-options";
+import {
+	mcpPath,
+	mcpReadScope,
+	mcpWriteScope,
+	mcpUserAllowed,
+} from "../auth/mcp-options";
 import { forbidden, conflict, notFound } from "./api-errors";
 import { enforceCollaborationRateLimit } from "./collaboration-rate-limit";
 
@@ -8,6 +13,7 @@ export const connectorInputSchema = z
 	.object({
 		provider: z.enum(["chatgpt", "claude"]),
 		redirectUri: z.string().url().max(512),
+		allowWrites: z.boolean().default(false),
 	})
 	.strict()
 	.refine(
@@ -48,6 +54,7 @@ export async function listMcpConnections(
 			id: client.client_id,
 			name: client.client_name ?? "WantKit connector",
 			redirectUris: client.redirect_uris,
+			allowWrites: client.scope?.split(" ").includes(mcpWriteScope) ?? false,
 		})),
 	};
 }
@@ -79,7 +86,7 @@ export async function createMcpConnection(
 			token_endpoint_auth_method: "client_secret_post",
 			grant_types: ["authorization_code", "refresh_token"],
 			response_types: ["code"],
-			scope: `${mcpReadScope} offline_access`,
+			scope: `${mcpReadScope}${body.allowWrites ? ` ${mcpWriteScope}` : ""} offline_access`,
 			require_pkce: true,
 			skip_consent: false,
 			metadata: { wantkitOwner: userId },
@@ -111,10 +118,18 @@ export async function disconnectMcpConnection(
 	await auth.api.deleteOAuthClient({ headers, body: { client_id: clientId } });
 }
 
+export interface McpActor {
+	userId: string;
+	clientId: string;
+	sessionId: string;
+	accessTokenId: string;
+	scopes: string[];
+}
+
 export async function authenticateMcpRequest(
 	bindings: AuthBindings,
 	request: Request,
-): Promise<string | null> {
+): Promise<McpActor | null> {
 	const authorization = request.headers.get("authorization");
 	if (
 		!authorization ||
@@ -131,6 +146,7 @@ export async function authenticateMcpRequest(
 		if (
 			!claims.sub ||
 			typeof claims.sid !== "string" ||
+			typeof claims.client_id !== "string" ||
 			!mcpUserAllowed(bindings, claims.sub) ||
 			claims.iss !== `${bindings.BETTER_AUTH_URL}/api/auth` ||
 			!audiences.includes(resource) ||
@@ -139,7 +155,29 @@ export async function authenticateMcpRequest(
 			claims.cnf
 		)
 			return null;
-		return claims.sub;
+		// Better Auth 1.7.2 stores opaque token SHA-256 digests as base64url.
+		// Retain only the row ID to bind pending approvals to this exact grant.
+		const bytes = await crypto.subtle.digest(
+			"SHA-256",
+			new TextEncoder().encode(authorization.slice(7)),
+		);
+		const tokenHash = btoa(String.fromCharCode(...new Uint8Array(bytes)))
+			.replaceAll("+", "-")
+			.replaceAll("/", "_")
+			.replaceAll("=", "");
+		const token = await bindings.DB.prepare(
+			"select id from oauth_access_token where token = ? and client_id = ? and user_id = ? and session_id = ?",
+		)
+			.bind(tokenHash, claims.client_id, claims.sub, claims.sid)
+			.first<{ id: string }>();
+		if (!token) return null;
+		return {
+			userId: claims.sub,
+			clientId: claims.client_id,
+			sessionId: claims.sid,
+			accessTokenId: token.id,
+			scopes: claims.scope.split(" "),
+		};
 	} catch {
 		// Tokens, provider errors and stored record content never enter logs.
 		return null;

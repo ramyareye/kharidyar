@@ -1,28 +1,33 @@
-# Handoff: compact web UI ready for local review
+# Handoff: assistant write actions — local only
 
-Updated 2026-09-06. Current base is pushed MCP commit `8baa32b` on `main`. The user confirmed ChatGPT could read Workspace “Test 1” and later reported Claude worked. Claude then showed `invalid_client` / `client_id is required` after disconnect. These are user-reported results, not independent browser verification.
+Updated 2026-09-06. Base is `5a921a5` (`feat: add local Codex research and revamp dashboard UI`), which the user committed and pushed. The latest “go” authorized the ChatGPT/Claude write-tool and reconnect task. **This task is implemented locally, unstaged and uncommitted; it has not been deployed.** The live owner-only preview still has the read-only MCP connector and local Codex research runner. Paid OpenAI API stays deferred.
 
-The compact web UI task is implemented and verified locally. Workspaces/Collections now use sidebar navigation; Items, Brief & images and Budget have separate views. Readable controls, item search, action disclosures and mobile navigation replace the oversized layout. **No staging, commit, push or deployment during the UI task.** Current MCP remains read-only and local Codex remains research-only. Paid OpenAI API stays deferred.
+## Current outcome
 
-## Current UI outcome
+- Added 49 mutation tools and ten supporting read tools plus a private receipt reader over the existing MCP endpoint (70 tools total). Routine adds/edits use current account permissions; archive/deletion, sharing and purchase/decision actions require exact approval in WantKit. Research start also requires approval and an explicit provider. Existing OAuth registrations remain read-only unless replaced by a user-created connection with `wantkit:write` consent.
+- Pending approvals bind stored inputs and target snapshots to the requesting user, original OAuth client, session and exact access token. They cannot be approved with an MCP bearer or an extra `confirmed` argument. Permission, changed-target, expiry, revocation and duplicate-attempt checks run on the server. Execution is an at-most-once attempt, not a cross-service rollback guarantee. See [MCP_ACTIONS.md](./MCP_ACTIONS.md) for capabilities, manual gaps, retention and reconnect instructions.
+- Added a readable approval screen with currency formatting, localized sensitive-action titles, approve/decline states and expandable record IDs. New connections have an explicit write checkbox and consent text. `/api/auth/error` redirects to bounded reconnect guidance without reflecting provider error details or callback URLs. Standalone connector pages retain document scrolling despite the dashboard viewport shell.
+- Added `0013_mcp_actions.sql`, one action table and two indexes with generated Drizzle metadata. All migration execution so far is in disposable test databases. No persistent local/preview/production database was migrated, no provider was called, and no commit/push/deploy occurred.
+- Changed the MCP auth/options/server/routes, new action catalog/service/tool registration, new action contracts/schema/approval component, App/Connectors UI, English/Persian messages and MCP integration tests. Documentation includes this handoff, PROJECT, RELEASE, PRIVATE_MCP, UI_REDESIGN and new MCP_ACTIONS. No dependencies or Worker bindings changed.
 
-- Changed `PlanningDashboard.tsx`, `ui.tsx`, `planning-forms.tsx`, `App.tsx`, shared/page CSS and English/Persian messages; added `Dashboard.css` and [UI_REDESIGN.md](./UI_REDESIGN.md). No new dependency, schema or backend behavior in this task.
-- Review the running fictional sample at `http://127.0.0.1:4174/output/playwright/ui-revamp/index.html`. It uses real components with in-memory records; reload resets changes. The standalone Vite server is left running on port 4174. Harness/screenshots are ignored under `output/playwright/ui-revamp/`.
-- Full `bun run check` passed: 161 tests, lint, typecheck, schema metadata, production build and Wrangler dry-run. Final mobile changes passed repeated lint, typecheck, five localization tests and browser checks. Logs: `/tmp/wantkit-ui-revamp/`; `git diff --check` passed.
-- English/Persian desktop/mobile checks passed, including the Persian research dialog at 320 px without horizontal overflow. Sample creation/editing, filters, views, mobile navigation and menu/dialog focus return passed. This was a local component sample, not a live backend test or usability study with older participants.
-- Follow-up polish: header now keeps only the user's name beside the brand. Connected assistants, language, account identity and sign-out moved into bottom-of-sidebar Settings. Desktop content scrolls inside a viewport-sized shell; navigation lists scroll independently with the footer anchored, while mobile retains document scrolling. Removed global smooth scrolling and prevented dialog/menu focus restoration from moving the content. View/Collection changes reset desktop content to the top.
-- Follow-up validation: build/typecheck, lint, five localization tests, 16 UI-state tests and diff checks passed. Browser checks preserved exact pre/post-dialog scroll positions on desktop and mobile, confirmed language switching and connector link target, and checked a synthetic 30-entry sidebar plus settings in a 400 px-high desktop window. New screenshots: `settings-desktop.png` and `settings-fa-mobile.png`. No sign-out or connector navigation was performed against a live account. Ready for commit review before starting the AI write task; no commit/push/deploy was authorized or performed by this follow-up.
-- The working tree has 48 changed/new files, including the previous uncommitted runner work; nothing is staged. Keep those prior changes intact. The production build regenerated ignored deployment configuration with default disabled flags; it is not the private-preview deployment configuration.
+## Validation and release boundary
+
+**Full `bun run check` passed with 181 tests** (26 domain, 5 localization, 94 Worker, 33 MCP, 16 UI-state, 7 CLI), plus lint, typecheck, Drizzle metadata check, production build and Wrangler deployment dry-run. Log: `/tmp/wantkit-mcp-write-check.log`. `git diff --check` passed. The 33 OAuth/D1 tests cover routine edits, exact concurrent replay, actor/collection boundaries, approval/decline/expiry, token/client/session revocation, changed targets, purchases, comments, sharing/last-owner checks, media parent/cleanup permissions and receipt retention/access. Existing Workers cancellation/auth warnings and the bundle-size warning remain; all suites completed successfully.
+
+Browser approval/decline, write-consent, opt-in credential creation and reconnect checks passed on fictional local data at 1280 px English and 390 px Persian without horizontal overflow. Mobile scrolling reached the approval controls (390 px document width; final scroll 320 of a 1164 px document with an 844 px viewport). The write checkbox defaulted off and posted `allowWrites: true` only after checking it. Initial harness favicon/navigation 404s were recorded; final checked pages rendered and completed the flows. Screenshots and the harness are ignored under `output/playwright/ui-revamp/assistant*`. This is not live write verification in ChatGPT or Claude.
+
+Local sample: `http://127.0.0.1:4174/output/playwright/ui-revamp/assistant.html`; add `?mode=consent`, `?mode=recovery`, or `?locale=fa`. Reload from the sample URL to reset fictional records. The browser uses the working escalated Playwright `local-codex-live` session; Argent/CUA transport is unavailable. No live account connection was changed in this task.
+
+The quality gate generates production/default build artifacts with MCP/local Codex disabled. A separately approved preview release must record a D1 recovery bookmark, apply migration 0013, build preview afresh and preserve the reviewed private owner overrides. Then replace read-only connector credentials and independently verify writes/decline/revocation in both actual assistant clients. Production remains unchanged. The final tree has 28 modified/new files, including six documentation files and additive migration metadata; nothing is staged. No staging or deployment is implied by this handoff.
 
 ## Next ordered work
 
-1. Review/release the UI only when requested, using the existing commit/deployment approval boundaries.
-2. ChatGPT/Claude write tools and friendly reconnect recovery. User preference: routine adds/edits apply; deletion, sharing and purchase decisions require concrete confirmation. Map app capabilities and gaps before claiming complete chat control.
-3. Private floor plans: images or PDFs, with measurements when available, for room needs and research.
-4. Image generation using permitted floor plans, room photos and selected products.
-5. WantKit chat using the same tools and approval rules. User wants both surfaces, starting with ChatGPT/Claude.
+1. Commit review and owner-only preview release/live client checks, only when explicitly requested. Follow the exact staged-tree/message approval gate below before any commit.
+2. Private floor plans: images or PDFs, with measurements when available, for room needs and research.
+3. Image generation using permitted floor plans, room photos and selected products.
+4. WantKit chat using the same tools and approval rules. The user wants both chat surfaces, starting with ChatGPT/Claude.
 
-Start only the next explicitly requested task. Details and confirmed answers: [UI_REDESIGN.md](./UI_REDESIGN.md).
+One substantial task per session. Start the next product task only after a new request. The prior compact UI/Settings/scroll work is pushed as `5a921a5` but remains undeployed; its evidence is in [UI_REDESIGN.md](./UI_REDESIGN.md).
 
 ## Previous completed task: local Codex preview
 

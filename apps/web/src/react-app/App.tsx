@@ -4,6 +4,10 @@ import { authClient } from "./auth-client";
 import { useLocale } from "./locale-context";
 import { PlanningDashboard } from "./PlanningDashboard";
 import { ConnectorsPage } from "./ConnectorsPage";
+import {
+	AssistantActionPage,
+	ConnectorRecoveryPage,
+} from "./AssistantActionPage";
 import { BrandMark, LocaleSwitch } from "./ui";
 import "./App.css";
 import "./Dashboard.css";
@@ -61,7 +65,7 @@ function SignedOutScreen({ sessionError }: { sessionError: boolean }) {
 		try {
 			const result = await authClient.signIn.social({
 				provider: "google",
-				callbackURL: `${window.location.origin}${window.location.pathname.startsWith("/connectors") ? "/connectors" : "/"}`,
+				callbackURL: `${window.location.origin}${/^\/connectors\/actions\/[A-Za-z0-9_-]+$/.test(window.location.pathname) ? window.location.pathname : window.location.pathname.startsWith("/connectors") ? "/connectors" : "/"}`,
 			});
 
 			if (result.error) {
@@ -167,6 +171,8 @@ function SignedInShell({
 
 function App() {
 	const { data: session, isPending, error } = authClient.useSession();
+	if (window.location.pathname === "/connectors/error")
+		return <ConnectorRecoveryPage />;
 
 	if (isPending) {
 		return <LoadingScreen />;
@@ -176,6 +182,8 @@ function App() {
 		return <SignedOutScreen sessionError={Boolean(error)} />;
 	}
 
+	if (window.location.pathname.startsWith("/connectors/actions/"))
+		return <AssistantActionPage />;
 	if (window.location.pathname.startsWith("/connectors"))
 		return <ConnectorsPage email={session.user.email} />;
 	return <SignedInShell user={session.user} />;

@@ -1,6 +1,9 @@
 import { createMcpHandler } from "@modelcontextprotocol/server";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
+import { z } from "zod";
+import { decideMcpAction, reviewMcpAction } from "./mcp-action-service";
+import { mcpIdentifier } from "./mcp-action-catalog";
 import { mcpEnabled, mcpReadScope } from "../auth/mcp-options";
 import { createWantkitMcpServer } from "./mcp-server";
 import {
@@ -34,8 +37,8 @@ export const mcpRoutes = new Hono<WorkerAppEnv>()
 			`ip:${context.req.header("cf-connecting-ip") ?? "unknown"}`,
 			120,
 		);
-		const userId = await authenticateMcpRequest(context.env, context.req.raw);
-		if (!userId) {
+		const actor = await authenticateMcpRequest(context.env, context.req.raw);
+		if (!actor) {
 			context.header(
 				"WWW-Authenticate",
 				`Bearer resource_metadata="${context.env.BETTER_AUTH_URL}/.well-known/oauth-protected-resource/api/mcp", scope="${mcpReadScope}"`,
@@ -52,6 +55,7 @@ export const mcpRoutes = new Hono<WorkerAppEnv>()
 				401,
 			);
 		}
+		const userId = actor.userId;
 		context.set("actorId", userId);
 		await enforceMcpRequestLimit(context.env, `user:${userId}`);
 		return createMcpHandler(
@@ -59,11 +63,53 @@ export const mcpRoutes = new Hono<WorkerAppEnv>()
 				createWantkitMcpServer({
 					database: context.env.DB,
 					userId,
+					env: context.env,
+					actor,
 					rateLimitSecret: context.env.BETTER_AUTH_SECRET,
 				}),
 			{ legacy: "stateless" },
 		).fetch(context.req.raw);
 	})
+	.get("/connectors/actions/:actionId", requireSession, async (context) => {
+		const id = mcpIdentifier.safeParse(context.req.param("actionId"));
+		if (!id.success) return context.notFound();
+		return context.json(
+			await reviewMcpAction(
+				context.env,
+				context.get("session").user.id,
+				id.data,
+			),
+		);
+	})
+	.post(
+		"/connectors/actions/:actionId/decision",
+		bodyLimit({ maxSize: 1024 }),
+		requireTrustedOrigin,
+		requireSession,
+		async (context) => {
+			const id = mcpIdentifier.safeParse(context.req.param("actionId"));
+			const body = z
+				.object({ approve: z.boolean() })
+				.strict()
+				.safeParse(await context.req.json());
+			if (!id.success || !body.success)
+				return context.json(
+					{ error: { message: "Invalid approval request." } },
+					400,
+				);
+			const userId = context.get("session").user.id;
+			await enforceMcpRequestLimit(context.env, `user:${userId}`);
+			return context.json(
+				await decideMcpAction(
+					context.env,
+					userId,
+					id.data,
+					body.data.approve,
+					context.req.raw.headers,
+				),
+			);
+		},
+	)
 	.get("/connectors", requireSession, async (context) =>
 		context.json(
 			await listMcpConnections(

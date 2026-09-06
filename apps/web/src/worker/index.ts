@@ -3,7 +3,12 @@ import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
 
 import { createAuth } from "../auth/server";
-import { mcpEnabled, mcpPath, mcpReadScope } from "../auth/mcp-options";
+import {
+	mcpEnabled,
+	mcpPath,
+	mcpReadScope,
+	mcpWriteScope,
+} from "../auth/mcp-options";
 import {
 	protectApiResponse,
 	requestLogFields,
@@ -44,6 +49,13 @@ app.use(
 		onError: (c) => c.json({ error: "Request body too large." }, 413),
 	}),
 );
+app.get("/api/auth/error", (context) => {
+	// Never reflect callback URLs, credentials or provider error descriptions.
+	const code = context.req.query("error");
+	return context.redirect(
+		`/connectors/error?code=${code === "invalid_client" ? "invalid_client" : "connection_failed"}`,
+	);
+});
 app.all("/api/auth/*", (context) => {
 	const path = context.req.path.slice("/api/auth".length);
 	// Do not let alternate path encodings bypass the explicit endpoint allowlist.
@@ -73,7 +85,7 @@ app.all("/.well-known/*", (context) => {
 		return context.json({
 			resource: `${context.env.BETTER_AUTH_URL}${mcpPath}`,
 			authorization_servers: [`${context.env.BETTER_AUTH_URL}/api/auth`],
-			scopes_supported: [mcpReadScope],
+			scopes_supported: [mcpReadScope, mcpWriteScope],
 			bearer_methods_supported: ["header"],
 		});
 	}
@@ -100,7 +112,7 @@ app.get("/api/session", requireSession, (context) => {
 });
 
 const apiRoutes = new Hono<WorkerAppEnv>()
-  .route("/", localCodexRoutes)
+	.route("/", localCodexRoutes)
 	.route("/", mcpRoutes)
 	.route("/", collaborationExperienceRoutes)
 	.route("/", collaborationRoutes)

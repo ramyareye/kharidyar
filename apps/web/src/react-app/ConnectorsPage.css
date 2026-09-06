@@ -62,3 +62,58 @@
 	min-width: 0;
 	overflow-wrap: anywhere;
 }
+.studio-shell.connector-shell {
+	block-size: auto;
+	min-block-size: 100dvh;
+	overflow: visible;
+}
+.connector-shell .studio-header {
+	position: sticky;
+}
+.connector-card .connector-write-choice {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.75rem;
+}
+.connector-write-choice input[type="checkbox"] {
+	inline-size: 1.25rem;
+	min-block-size: 1.25rem;
+	flex-shrink: 0;
+	margin-block-start: 0.25rem;
+}
+.assistant-action-fields {
+	display: grid;
+	gap: 0.625rem;
+}
+.assistant-action-fields > div {
+	border-block-start: 1px solid var(--line);
+	padding-block-start: 0.5rem;
+}
+.assistant-action-fields dt {
+	font-weight: 650;
+	text-transform: capitalize;
+}
+.assistant-action-fields dd {
+	margin-inline-start: 1rem;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+.connector-shell .assistant-review-page {
+	inline-size: min(48rem, calc(100% - 2rem));
+}
+.assistant-action-fields > div:not([data-nested]) {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+	gap: 0.75rem;
+	align-items: baseline;
+}
+.assistant-action-fields dd {
+	margin-inline-start: 0;
+}
+.assistant-action-fields > div[data-nested] {
+	border: 0;
+	padding: 0;
+}
+.assistant-action-identifiers {
+	margin-block: 0.75rem;
+}

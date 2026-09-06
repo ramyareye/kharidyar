@@ -4,6 +4,7 @@ import { APIError, createAuthEndpoint } from "better-auth/api";
 import { z } from "zod";
 
 export const mcpReadScope = "wantkit:read";
+export const mcpWriteScope = "wantkit:write";
 export const mcpPath = "/api/mcp";
 
 export interface McpBindings {
@@ -31,7 +32,7 @@ export function createMcpAuthPlugins(baseURL: string, bindings: McpBindings) {
 		loginPage: "/connectors/login",
 		consentPage: "/connectors/consent",
 		disableJwtPlugin: true,
-		scopes: [mcpReadScope, "offline_access"],
+		scopes: [mcpReadScope, mcpWriteScope, "offline_access"],
 		grantTypes: ["authorization_code", "refresh_token"],
 		accessTokenExpiresIn: 600,
 		refreshTokenExpiresIn: 7 * 24 * 60 * 60,

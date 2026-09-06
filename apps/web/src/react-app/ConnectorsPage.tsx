@@ -14,6 +14,7 @@ const statusSchema = z.object({
 			id: z.string(),
 			name: z.string(),
 			redirectUris: z.array(z.string()).optional(),
+			allowWrites: z.boolean().default(false),
 		}),
 	),
 });
@@ -36,6 +37,7 @@ export function ConnectorsPage({ email }: { email: string }) {
 	const [credentials, setCredentials] = useState<z.infer<
 		typeof credentialsSchema
 	> | null>(null);
+	const [allowWrites, setAllowWrites] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const [failed, setFailed] = useState(false);
 	const consent = window.location.pathname === "/connectors/consent";
@@ -48,8 +50,9 @@ export function ConnectorsPage({ email }: { email: string }) {
 		client &&
 			scopes.includes("wantkit:read") &&
 			scopes.every((scope) =>
-				["wantkit:read", "offline_access"].includes(scope),
+				["wantkit:read", "wantkit:write", "offline_access"].includes(scope),
 			) &&
+			(!scopes.includes("wantkit:write") || client.allowWrites) &&
 			!query.has("claims") &&
 			client.redirectUris?.includes(query.get("redirect_uri") ?? ""),
 	);
@@ -79,7 +82,7 @@ export function ConnectorsPage({ email }: { email: string }) {
 			const response = await fetch("/api/connectors", {
 				method: "POST",
 				headers: { "content-type": "application/json" },
-				body: JSON.stringify({ provider, redirectUri }),
+				body: JSON.stringify({ provider, redirectUri, allowWrites }),
 			});
 			if (!response.ok) throw new Error("Registration failed");
 			setCredentials(credentialsSchema.parse(await response.json()));
@@ -134,7 +137,7 @@ export function ConnectorsPage({ email }: { email: string }) {
 		}
 	}
 	return (
-		<div className="studio-shell">
+		<div className="studio-shell connector-shell">
 			<header className="studio-header">
 				<BrandMark compact />
 				<LocaleSwitch />
@@ -146,7 +149,7 @@ export function ConnectorsPage({ email }: { email: string }) {
 				<p>{t("connectors.account", { email })}</p>
 				<p>{t("connectors.privacy")}</p>
 				<p>{t("connectors.cost")}</p>
-        {!consent && <LocalCodexPanel />}
+				{!consent && <LocalCodexPanel />}
 				{failed && (
 					<p role="alert" className="field-error">
 						{t("connectors.error")}
@@ -162,7 +165,13 @@ export function ConnectorsPage({ email }: { email: string }) {
 							<h2>{client?.name ?? t("connectors.invalidRequest")}</h2>
 							{validConsent ? (
 								<>
-									<p>{t("connectors.readAccess")}</p>
+									<p>
+										{t(
+											scopes.includes("wantkit:write")
+												? "connectors.writeAccess"
+												: "connectors.readAccess",
+										)}
+									</p>
 									<p>{t("connectors.refresh")}</p>
 									<p>
 										{t("connectors.returnTo")}{" "}
@@ -176,7 +185,11 @@ export function ConnectorsPage({ email }: { email: string }) {
 											disabled={busy}
 											onClick={() => void decide(true)}
 										>
-											{t("connectors.allow")}
+											{t(
+												scopes.includes("wantkit:write")
+													? "connectors.allowWrite"
+													: "connectors.allow",
+											)}
 										</button>
 										<button
 											className="button button--secondary"
@@ -196,6 +209,7 @@ export function ConnectorsPage({ email }: { email: string }) {
 							<section className="connector-card">
 								<h2>{t("connectors.add")}</h2>
 								<p>{t("connectors.setup")}</p>
+								<p>{t("connectors.writeReconnect")}</p>
 								<form
 									onSubmit={(event) => {
 										event.preventDefault();
@@ -235,6 +249,15 @@ export function ConnectorsPage({ email }: { email: string }) {
 											maxLength={512}
 											disabled={busy}
 										/>
+									</label>
+									<label className="connector-write-choice">
+										<input
+											type="checkbox"
+											checked={allowWrites}
+											disabled={busy}
+											onChange={(event) => setAllowWrites(event.target.checked)}
+										/>
+										<span>{t("connectors.enableWrites")}</span>
 									</label>
 									<button
 										className="button button--primary"
@@ -297,6 +320,13 @@ export function ConnectorsPage({ email }: { email: string }) {
 									<div className="connector-row" key={connection.id}>
 										<div>
 											<strong>{connection.name}</strong>
+											<span>
+												{t(
+													connection.allowWrites
+														? "connectors.modeWrite"
+														: "connectors.modeRead",
+												)}
+											</span>
 											<code dir="ltr">{connection.id}</code>
 										</div>
 										<button

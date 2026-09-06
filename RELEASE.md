@@ -196,9 +196,9 @@ R2 bytes and D1 metadata have deliberately different recovery behavior:
 
 ### Next ordered steps
 
-The Concept-media release documentation was committed/pushed as `a96aa4e`, and private MCP as `8baa32b`. The local Codex owner-only preview is now deployed and verified; its changes remain unstaged and uncommitted. See the latest release entry below.
+The Concept-media release documentation was committed/pushed as `a96aa4e`, and private MCP as `8baa32b`. The local Codex owner-only preview is deployed and verified. The user subsequently committed/pushed the local runner and compact UI as `5a921a5`; the new UI has not been deployed. See the latest entries below.
 
-1. The compact UI is now implemented locally alongside the uncommitted runner. Review/release only when requested, using the exact staged-tree/commit-message approval gate. See [HANDOFF.md](./HANDOFF.md).
+1. The compact UI and runner source checkpoint is pushed as `5a921a5`. Deploy the UI only after an explicit request; future commits retain the exact staged-tree/message approval gate. See [HANDOFF.md](./HANDOFF.md).
 2. Subsequent tasks: ChatGPT/Claude write tools and reconnect recovery; private floor plans; image generation; WantKit chat. Work on one at a time after a new request. Paid OpenAI API and Expo remain deferred.
 
 ### 2026-09-05: Private MCP implementation — local only
@@ -277,3 +277,12 @@ References: [Workers versions and deployments](https://developers.cloudflare.com
 - No staging, commit, push, deployment, persistent data change or model call. The previous runner changes remain unstaged alongside the UI. The quality gate replaced ignored build artifacts with production/default configuration; a future approved preview release needs a fresh preview build and reviewed private MCP/runner overrides. Existing deployments remain unchanged.
 - Confirmed next scope: ChatGPT/Claude actions first, routine adds/edits with confirmation for deletion, sharing and purchase decisions; then floor plans as images/PDFs with available measurements, image generation and in-app chat. Current MCP remains read-only. Paid API integration stays deferred.
 - Follow-up UI polish moved account/language/connector/sign-out controls to bottom-of-sidebar Settings and kept only the name in the header. Desktop now has one main content scroller, a separately scrollable navigation list and an anchored footer; mobile retains document scrolling. Dialog/menu focus return preserves position and view changes reset desktop content scroll. Build/typecheck, lint, localization/UI-state tests and local browser scroll/settings checks passed. No commit, push or deployment; ready for the exact staged-tree approval checkpoint before AI writes.
+
+
+## 2026-09-06: Private assistant actions — not released
+
+- The prior local runner/compact UI checkpoint was committed and pushed by the user as `5a921a5`; the UI remains undeployed. The new write extension is local, unstaged and uncommitted.
+- Adds explicit `wantkit:write` consent, 49 mutation tools, ten supporting reads and a receipt reader. Sensitive actions wait for exact WantKit browser approval, with original-grant, current-permission, target-snapshot and duplicate-attempt checks. Routine changes retain existing service rules. Reconnect errors get bounded, localized recovery guidance.
+- New additive migration `0013_mcp_actions.sql` adds one table and two indexes. It has only run in disposable test databases. No dependency/binding change, persistent migration, model call, commit, push or deployment belongs to this task.
+- Full `bun run check` passed: 181 tests including 33 OAuth/D1 MCP tests, lint, typecheck, schema metadata, production build and deployment dry-run. English/Persian local sample approval/decline, write consent/setup, recovery, width and scrolling checks passed. No actual-client write flow was exercised. Evidence and existing warnings: [HANDOFF.md](./HANDOFF.md); coverage and credential upgrade: [MCP_ACTIONS.md](./MCP_ACTIONS.md).
+- Before an approved owner-only preview release: record a fresh D1 bookmark and applied-migration state; review/apply 0013; rebuild preview; verify the established owner-only MCP/local-runner flags; review dry-run; deploy only with explicit approval. Production-check artifacts use disabled defaults and are not a ready preview configuration. Then reauthorize new write credentials and validate both actual assistant clients.
