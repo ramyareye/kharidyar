@@ -44,6 +44,8 @@ export const researchConstraintsSchema = z
 
 export const researchRequestCreateInputSchema = z
   .object({
+    provider: z.enum(["tavily-basic-v1", "local-codex-v1"]).optional(),
+    localPairingId: z.string().uuid().optional(),
     query: requiredText(1_000),
     itemId: z.string().trim().min(1).nullable(),
     constraints: researchConstraintsSchema,
@@ -139,7 +141,7 @@ export const researchRunResourceSchema = z
   .object({
     id: z.string(),
     status: z.enum(researchRunStatuses),
-    provider: z.literal("tavily-basic-v1"),
+    provider: z.enum(["tavily-basic-v1", "local-codex-v1"]),
     workflowInstanceId: z.string(),
     providerQuery: z.string(),
     errorCode: z.string().nullable(),

@@ -73,7 +73,7 @@ interface RunRow {
   id: string;
   request_id: string;
   status: ResearchRunStatus;
-  provider: typeof researchProviderId;
+  provider: "tavily-basic-v1" | "local-codex-v1";
   provider_query: string;
   workflow_instance_id: string;
   error_code: string | null;
@@ -511,6 +511,7 @@ async function launchWorkflow(input: {
 }
 
 async function insertRun(input: {
+  requestStatement?: D1PreparedStatement;
   collection: CollectionStateRow;
   database: D1Database;
   requestId: string;
@@ -524,34 +525,70 @@ async function insertRun(input: {
     constraints: input.requestValue.constraints,
     query: input.requestValue.query,
   });
-  await input.database
-    .prepare(
-      `insert into research_runs (
+  const statements: D1PreparedStatement[] = [
+    ...(input.requestStatement ? [input.requestStatement] : []),
+    input.database
+      .prepare(
+        `insert into research_runs (
 				id, request_id, workspace_id, collection_id, status, provider,
 				provider_query, workflow_instance_id, requested_by_user_id,
 				created_at, updated_at
 			) values (?1, ?2, ?3, ?4, 'queued', ?5, ?6, ?1, ?7, ?8, ?8)`,
+      )
+      .bind(
+        runId,
+        input.requestId,
+        input.collection.workspace_id,
+        input.collection.id,
+        input.requestValue.provider ?? researchProviderId,
+        query,
+        input.userId,
+        now,
+      ),
+  ];
+  if (input.requestValue.provider === "local-codex-v1") {
+    if (!input.requestValue.localPairingId)
+      throw conflict("Choose a paired local Codex runner.");
+    statements.push(
+      input.database
+        .prepare(
+          `insert into local_codex_jobs (run_id, pairing_id, expires_at) values (?1, (select p.id from local_codex_pairings p join session s on s.id=p.session_id and s.user_id=p.user_id where p.id=?2 and p.user_id=?4 and p.revoked_at is null and p.expires_at>?5 and s.expires_at>?5), ?3)`,
+        )
+        .bind(
+          runId,
+          input.requestValue.localPairingId,
+          now + 600_000,
+          input.userId,
+          now,
+        ),
+    );
+  }
+  try {
+    await input.database.batch(statements);
+  } catch (error) {
+    const detail =
+      error instanceof Error ? `${error.message} ${String(error.cause)}` : "";
+    if (
+      input.requestValue.provider === "local-codex-v1" &&
+      /(?:UNIQUE constraint failed: local_codex_jobs|NOT NULL constraint failed: local_codex_jobs.pairing_id)/.test(
+        detail,
+      )
     )
-    .bind(
+      throw conflict(
+        "This runner is busy or disconnected. Refresh its status before retrying.",
+      );
+    throw error;
+  }
+  if (input.requestValue.provider !== "local-codex-v1")
+    await launchWorkflow({
+      collectionId: input.collection.id,
+      database: input.database,
+      requestId: input.requestId,
       runId,
-      input.requestId,
-      input.collection.workspace_id,
-      input.collection.id,
-      researchProviderId,
-      query,
-      input.userId,
-      now,
-    )
-    .run();
-  await launchWorkflow({
-    collectionId: input.collection.id,
-    database: input.database,
-    requestId: input.requestId,
-    runId,
-    userId: input.userId,
-    workflow: input.workflow,
-    workspaceId: input.collection.workspace_id,
-  });
+      userId: input.userId,
+      workflow: input.workflow,
+      workspaceId: input.collection.workspace_id,
+    });
   return runId;
 }
 
@@ -580,7 +617,7 @@ export async function createResearchRequest(input: {
   });
   const requestId = crypto.randomUUID();
   const now = Date.now();
-  await input.database
+  const requestStatement = input.database
     .prepare(
       `insert into research_requests (
 				id, workspace_id, collection_id, item_id, query,
@@ -596,9 +633,9 @@ export async function createResearchRequest(input: {
       JSON.stringify(input.value.constraints),
       input.userId,
       now,
-    )
-    .run();
+    );
   await insertRun({
+    requestStatement,
     collection,
     database: input.database,
     requestId,
@@ -610,6 +647,7 @@ export async function createResearchRequest(input: {
 }
 
 export async function retryResearchRequest(input: {
+  runner?: Pick<ResearchRequestCreateInput, "provider" | "localPairingId">;
   collectionId: string;
   database: D1Database;
   rateLimitSecret: string;
@@ -661,6 +699,7 @@ export async function retryResearchRequest(input: {
     database: input.database,
     requestId: request.id,
     requestValue: {
+      ...input.runner,
       query: request.query,
       itemId: request.item_id,
       constraints: researchConstraintsSchema.parse(
@@ -685,7 +724,7 @@ export async function cancelResearchRun(input: {
   requireMutableCollection(collection);
   const run = await input.database
     .prepare(
-      `select id, status, workflow_instance_id
+      `select id, status, workflow_instance_id, provider
 			from research_runs
 			where id = ?1 and collection_id = ?2 and workspace_id = ?3`,
     )
@@ -694,6 +733,7 @@ export async function cancelResearchRun(input: {
       id: string;
       status: ResearchRunStatus;
       workflow_instance_id: string;
+      provider: string;
     }>();
   if (run === null) throw notFound();
   if (isResearchRunTerminal(run.status)) {
@@ -708,6 +748,15 @@ export async function cancelResearchRun(input: {
     )
     .bind(now, run.id)
     .run();
+  if (run.provider === "local-codex-v1") {
+    await input.database
+      .prepare(
+        "update local_codex_jobs set finished_at = ? where run_id = ? and finished_at is null",
+      )
+      .bind(now, run.id)
+      .run();
+    return readResearchDesk(input);
+  }
   try {
     const instance = await input.workflow.get(run.workflow_instance_id);
     await instance.terminate();
@@ -1084,21 +1133,39 @@ function inferredSuggestion(input: {
   });
 }
 
-export async function persistResearchSearchResults(input: {
+interface SearchPersistenceInput {
   allowedOrigin: string;
   database: D1Database;
   execution: ResearchExecution;
   output: ResearchProviderSearchOutput;
-}): Promise<StoredResearchResult[]> {
+  provider?: "tavily-basic-v1" | "local-codex-v1";
+  metadata?: Record<string, string | boolean | number | null>;
+  commitGuard?: { hash: string; at: number };
+}
+export async function persistResearchSearchResults(
+  input: SearchPersistenceInput,
+): Promise<StoredResearchResult[]> {
   const active = await input.database
     .prepare(
-      `select id from research_runs
-			where id = ?1 and status in ('running', 'partial')`,
+      "select id from research_runs where id=? and status in ('running','partial')",
     )
     .bind(input.execution.runId)
     .first();
-  if (active === null) return [];
-  const retrievedAt = Date.now();
+  if (!active) return [];
+  const prepared = prepareResearchSearchResults(input);
+  await input.database.batch(prepared.statements);
+  return prepared.stored;
+}
+
+export function prepareResearchSearchResults(input: SearchPersistenceInput) {
+  const retrievedAt = input.commitGuard?.at ?? Date.now();
+  const guard = (start: number) =>
+    input.commitGuard
+      ? ` and exists (select 1 from local_codex_jobs where run_id = ?${start} and completion_hash = ?${start + 1} and finished_at = ?${start + 2})`
+      : "";
+  const guardValues = input.commitGuard
+    ? [input.execution.runId, input.commitGuard.hash, input.commitGuard.at]
+    : [];
   const expiresAt = researchSnapshotExpiresAt(retrievedAt);
   const stored: StoredResearchResult[] = [];
   const statements: D1PreparedStatement[] = [];
@@ -1106,10 +1173,9 @@ export async function persistResearchSearchResults(input: {
     const position = String(index + 1).padStart(2, "0");
     const sourceId = `${input.execution.runId}-source-${position}`;
     const resultId = `${input.execution.runId}-result-${position}`;
-    const allowed = isResearchBrowserUrlAllowed(
-      result.url,
-      input.allowedOrigin,
-    );
+    const allowed =
+      input.provider !== "local-codex-v1" &&
+      isResearchBrowserUrlAllowed(result.url, input.allowedOrigin);
     const suggestion = inferredSuggestion(result);
     statements.push(
       input.database
@@ -1119,7 +1185,7 @@ export async function persistResearchSearchResults(input: {
 						title, provider, retrieved_at, extraction_status,
 						extraction_method, extraction_metadata_json, snapshot_json,
 						snapshot_expires_at, created_at, updated_at
-					) values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 'search', ?11, ?12, ?13, ?9, ?9)`,
+					) select ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 'search', ?11, ?12, ?13, ?9, ?9 where exists (select 1 from research_runs where id = ?2 and status in ('running','partial'))${guard(14)}`,
         )
         .bind(
           sourceId,
@@ -1129,22 +1195,24 @@ export async function persistResearchSearchResults(input: {
           input.execution.collectionId,
           result.url,
           result.title,
-          researchProviderId,
+          input.provider ?? researchProviderId,
           retrievedAt,
           allowed ? "not_requested" : "not_allowed",
           JSON.stringify({
             providerRequestId: input.output.providerRequestId,
             rank: index + 1,
+            ...input.metadata,
           }),
           JSON.stringify({ search: result }),
           expiresAt,
+          ...guardValues,
         ),
       input.database
         .prepare(
           `insert or ignore into research_results (
 						id, run_id, source_id, title, summary, score, status,
 						suggestion_json, snapshot_expires_at, created_at, updated_at
-					) values (?1, ?2, ?3, ?4, ?5, ?6, 'active', ?7, ?8, ?9, ?9)`,
+					) select ?1, ?2, ?3, ?4, ?5, ?6, 'active', ?7, ?8, ?9, ?9 where exists (select 1 from research_runs where id = ?2 and status in ('running','partial'))${guard(10)}`,
         )
         .bind(
           resultId,
@@ -1156,6 +1224,7 @@ export async function persistResearchSearchResults(input: {
           JSON.stringify(suggestion),
           expiresAt,
           retrievedAt,
+          ...guardValues,
         ),
     );
     stored.push({
@@ -1171,12 +1240,11 @@ export async function persistResearchSearchResults(input: {
       .prepare(
         `update research_runs
 				set status = 'partial', updated_at = ?1
-				where id = ?2 and status = 'running'`,
+				where id = ?2 and status = 'running'${guard(3)}`,
       )
-      .bind(retrievedAt, input.execution.runId),
+      .bind(retrievedAt, input.execution.runId, ...guardValues),
   );
-  await input.database.batch(statements);
-  return stored;
+  return { statements, stored };
 }
 
 export async function persistResearchExtractions(input: {
@@ -1264,4 +1332,17 @@ export async function failResearchRun(input: {
       input.runId,
     )
     .run();
+}
+
+export async function requireLocalResearchAccess(input: {
+  database: D1Database;
+  userId: string;
+  collectionId: string;
+  itemId?: string | null;
+}) {
+  const { access, collection } = await researchAccess(input);
+  requireCapability(access, "research_manage");
+  requireMutableCollection(collection);
+  if (input.itemId)
+    await itemInCollection(input.database, collection, input.itemId);
 }

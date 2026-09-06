@@ -1,39 +1,40 @@
 :root {
 	font-family:
 		"Avenir Next", Avenir, "Noto Sans Arabic", "Noto Sans", sans-serif;
-	color: #20241f;
-	background: #ebe7dc;
+	color: #182520;
+	background: #f5f7f6;
 	font-synthesis: none;
 	text-rendering: optimizeLegibility;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 
-	--font-display: "Iowan Old Style", Baskerville, "Noto Naskh Arabic", Georgia,
-		serif;
-	--paper: #ebe7dc;
-	--paper-deep: #dfdacd;
-	--paper-light: #f8f5ec;
-	--paper-white: #fcfaf4;
-	--ink: #20241f;
-	--ink-soft: #3d423a;
-	--ink-muted: #5c5f56;
-	--line: #c7c1b3;
-	--line-soft: #d9d4c8;
-	--control-line: #7e8077;
-	--moss: #59634f;
-	--moss-dark: #313a2e;
-	--moss-wash: #dfe3d7;
-	--clay: #b85f43;
-	--clay-dark: #8c422d;
-	--clay-wash: #ead8cd;
-	--danger: #8b3d2d;
-	--success: #466446;
-	--shadow-soft: 0 1.5rem 5rem rgba(33, 36, 31, 0.12);
+	--font-display:
+		"Avenir Next", Avenir, "Noto Sans Arabic", "Noto Sans", sans-serif;
+	--paper: #f5f7f6;
+	--paper-deep: #edf1ef;
+	--paper-light: #f8faf9;
+	--paper-white: #ffffff;
+	--ink: #182520;
+	--ink-soft: #35443d;
+	--ink-muted: #59665f;
+	--line: #d8dfdb;
+	--line-soft: #e8eeea;
+	--control-line: #8b9891;
+	--moss: #257357;
+	--moss-dark: #155a42;
+	--moss-wash: #e5f2eb;
+	--clay: #257357;
+	--clay-dark: #155a42;
+	--clay-wash: #e5f2eb;
+	--danger: #a72e31;
+	--success: #176443;
+	--shadow-soft: 0 12px 36px rgb(24 37 32 / 12%);
+	line-height: 1.5;
 }
 
 :root:lang(fa) {
 	font-family: "Noto Sans Arabic", Tahoma, sans-serif;
-	--font-display: "Noto Naskh Arabic", "Geeza Pro", serif;
+	--font-display: "Noto Sans Arabic", Tahoma, sans-serif;
 }
 
 * {
@@ -43,7 +44,7 @@
 html {
 	min-inline-size: 320px;
 	background: var(--paper);
-	scroll-behavior: smooth;
+	scroll-behavior: auto;
 }
 
 body {
@@ -94,4 +95,15 @@ select:focus-visible {
 		animation-iteration-count: 1 !important;
 		transition-duration: 0.01ms !important;
 	}
+}
+
+[hidden] {
+	display: none !important;
+}
+summary:focus-visible {
+	outline: 3px solid var(--moss);
+	outline-offset: 3px;
+}
+a {
+	color: var(--moss-dark);
 }

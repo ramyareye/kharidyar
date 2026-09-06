@@ -56,7 +56,7 @@
 
 .context-export__register span {
 	color: var(--ink-muted);
-	font-size: 0.7rem;
+	font-size: 0.875rem;
 	letter-spacing: 0.12em;
 	text-transform: uppercase;
 }
@@ -90,7 +90,7 @@
 	background: #1c211d;
 	color: #f3f0e7;
 	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-	font-size: 0.76rem;
+	font-size: 0.875rem;
 	line-height: 1.65;
 	margin: 0;
 	max-block-size: min(48vh, 34rem);

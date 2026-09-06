@@ -29,7 +29,7 @@
 	min-block-size: 12rem;
 	resize: vertical;
 	font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
-	font-size: 0.66rem;
+	font-size: 0.875rem;
 	line-height: 1.6;
 }
 
@@ -43,7 +43,7 @@
 .import-history > p:not(.eyebrow) {
 	margin: 0;
 	color: var(--ink-muted);
-	font-size: 0.68rem;
+	font-size: 0.875rem;
 }
 
 .import-history ol,
@@ -83,12 +83,12 @@
 }
 
 .import-history__button strong {
-	font-size: 0.66rem;
+	font-size: 0.875rem;
 	font-weight: 700;
 }
 
 .import-history__button small {
-	font-size: 0.55rem;
+	font-size: 0.875rem;
 }
 
 .import-proof {
@@ -127,7 +127,7 @@
 .import-proof__empty p {
 	max-inline-size: 30rem;
 	color: var(--ink-muted);
-	font-size: 0.75rem;
+	font-size: 0.875rem;
 	line-height: 1.65;
 }
 
@@ -148,7 +148,7 @@
 	padding-block: 0.28rem;
 	padding-inline: 0.55rem;
 	border: 1px solid var(--line);
-	font-size: 0.56rem;
+	font-size: 0.875rem;
 	font-weight: 750;
 	letter-spacing: 0.07em;
 	text-transform: uppercase;
@@ -171,7 +171,7 @@
 	padding-block: 0.75rem;
 	border-block-end: 1px solid var(--line);
 	color: var(--ink-muted);
-	font-size: 0.58rem;
+	font-size: 0.875rem;
 }
 
 .import-warnings,
@@ -209,7 +209,7 @@
 	border: 1px solid currentColor;
 	border-radius: 50%;
 	color: var(--ink-muted);
-	font-size: 0.55rem;
+	font-size: 0.875rem;
 }
 
 .import-warning--error > span,
@@ -221,14 +221,14 @@
 	display: grid;
 	gap: 0.25rem;
 	margin: 0;
-	font-size: 0.64rem;
+	font-size: 0.875rem;
 	line-height: 1.45;
 }
 
 .import-warning small {
 	overflow-wrap: anywhere;
 	color: var(--ink-muted);
-	font-size: 0.58rem;
+	font-size: 0.875rem;
 	font-weight: 400;
 }
 
@@ -250,7 +250,7 @@
 .import-groups > section > header span {
 	color: var(--clay-dark);
 	font-family: var(--font-display);
-	font-size: 0.72rem;
+	font-size: 0.875rem;
 }
 
 .import-groups h4 {
@@ -277,7 +277,7 @@
 .import-line__title span {
 	color: var(--ink-muted);
 	font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
-	font-size: 0.52rem;
+	font-size: 0.875rem;
 }
 
 .import-line h5 {
@@ -308,27 +308,27 @@
 
 .import-line dt {
 	color: var(--ink-muted);
-	font-size: 0.52rem;
+	font-size: 0.875rem;
 	font-weight: 700;
 	text-transform: uppercase;
 }
 
 .import-line dd {
 	margin: 0;
-	font-size: 0.63rem;
+	font-size: 0.875rem;
 }
 
 .import-line dd small {
 	display: block;
 	margin-block-start: 0.15rem;
 	color: var(--clay-dark);
-	font-size: 0.5rem;
+	font-size: 0.875rem;
 }
 
 .import-line > p {
 	margin: 0;
 	color: var(--ink-muted);
-	font-size: 0.65rem;
+	font-size: 0.875rem;
 	line-height: 1.55;
 }
 
@@ -341,7 +341,7 @@
 .import-line > a {
 	justify-self: start;
 	color: var(--clay-dark);
-	font-size: 0.6rem;
+	font-size: 0.875rem;
 	font-weight: 700;
 }
 
@@ -351,7 +351,7 @@
 	gap: 0.2rem 0.8rem;
 	padding-block-start: 0.55rem;
 	border-block-start: 1px solid var(--line-soft);
-	font-size: 0.62rem;
+	font-size: 0.875rem;
 }
 
 .import-reconciliation small {
@@ -370,7 +370,7 @@
 	padding-block: 0.75rem;
 	padding-inline: 0.9rem;
 	cursor: pointer;
-	font-size: 0.64rem;
+	font-size: 0.875rem;
 	font-weight: 700;
 }
 
@@ -383,7 +383,7 @@
 	border-block-start: 1px solid var(--line);
 	white-space: pre-wrap;
 	word-break: break-word;
-	font-size: 0.58rem;
+	font-size: 0.875rem;
 	line-height: 1.6;
 }
 
@@ -402,7 +402,7 @@
 .import-correction > p {
 	margin-block: 0;
 	color: var(--ink-muted);
-	font-size: 0.62rem;
+	font-size: 0.875rem;
 	line-height: 1.5;
 }
 
@@ -410,7 +410,7 @@
 	min-block-size: 18rem;
 	resize: vertical;
 	font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
-	font-size: 0.58rem;
+	font-size: 0.875rem;
 	line-height: 1.55;
 }
 
@@ -425,7 +425,7 @@
 	border-inline-start: 3px solid var(--moss);
 	color: var(--ink-muted);
 	background: rgba(78, 91, 67, 0.08);
-	font-size: 0.64rem;
+	font-size: 0.875rem;
 }
 
 .import-actions {

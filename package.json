@@ -9,6 +9,7 @@
 		"packages/*"
 	],
 	"scripts": {
+		"local:codex": "bun run apps/web/scripts/local-codex.mjs",
 		"build": "bun run --filter @kharidyar/web build",
 		"build:preview": "bun run --filter @kharidyar/web build:preview",
 		"cf-typegen": "bun run --filter @kharidyar/web cf-typegen",
@@ -32,7 +33,7 @@
 		"lint": "eslint . --max-warnings 0",
 		"preview": "bun run --filter @kharidyar/web preview",
 		"release:smoke": "bun run --filter @kharidyar/web release:smoke",
-		"test": "bun run --sequential --filter '@kharidyar/*' --if-present test",
+		"test": "bun run --sequential --filter '@kharidyar/*' --if-present test && bun test apps/web/scripts/local-codex.test.mjs",
 		"typecheck": "tsc -b",
 		"versions:production": "bun run --filter @kharidyar/web versions:production"
 	},

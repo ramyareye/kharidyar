@@ -31,6 +31,8 @@
 		]
 	},
 	"vars": {
+		"LOCAL_CODEX_ENABLED": "false",
+		"LOCAL_CODEX_ALLOWED_USER_IDS": "",
 		"MCP_ENABLED": "false",
 		"MCP_ALLOWED_USER_IDS": "",
 		"RESEARCH_BROWSER_ALLOWED_ORIGIN": "https://kharidyar.formahsa.workers.dev",
@@ -91,6 +93,8 @@
 				]
 			},
 			"vars": {
+				"LOCAL_CODEX_ENABLED": "false",
+				"LOCAL_CODEX_ALLOWED_USER_IDS": "",
 				"MCP_ENABLED": "false",
 				"MCP_ALLOWED_USER_IDS": "",
 				"RESEARCH_BROWSER_ALLOWED_ORIGIN": "https://kharidyar-preview.formahsa.workers.dev",
@@ -151,6 +155,8 @@
 				]
 			},
 			"vars": {
+				"LOCAL_CODEX_ENABLED": "false",
+				"LOCAL_CODEX_ALLOWED_USER_IDS": "",
 				"MCP_ENABLED": "false",
 				"MCP_ALLOWED_USER_IDS": "",
 				"RESEARCH_BROWSER_ALLOWED_ORIGIN": "https://kharidyar.formahsa.workers.dev",

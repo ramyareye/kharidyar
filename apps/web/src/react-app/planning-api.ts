@@ -195,6 +195,7 @@ export interface PlanningApi {
 	retryResearchRequest: (
 		collectionId: string,
 		requestId: string,
+    runner?: Pick<ResearchRequestCreateInput, "provider" | "localPairingId">,
 	) => Promise<ResearchDeskResponse>;
 	cancelResearchRun: (
 		collectionId: string,
@@ -448,9 +449,12 @@ export const planningApi: PlanningApi = {
 		);
 	},
 
-	async retryResearchRequest(collectionId, requestId) {
+	async retryResearchRequest(collectionId, requestId, runner) {
+    const query = new URLSearchParams();
+    if (runner?.provider) query.set("provider", runner.provider);
+    if (runner?.localPairingId) query.set("localPairingId", runner.localPairingId);
 		return commerceRequest(
-			`/collections/${encodeURIComponent(collectionId)}/research-requests/${encodeURIComponent(requestId)}/runs`,
+			`/collections/${encodeURIComponent(collectionId)}/research-requests/${encodeURIComponent(requestId)}/runs${query.size ? `?${query}` : ""}`,
 			"POST",
 			researchDeskResponseSchema,
 		);

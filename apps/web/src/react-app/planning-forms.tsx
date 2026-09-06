@@ -20,10 +20,7 @@ import {
 	euroInputFromMinor,
 	parseEuroAmount,
 } from "./collection-direction-state";
-import {
-	deadlineInputValue,
-	deadlineIsoValue,
-} from "./item-workflow-state";
+import { deadlineInputValue, deadlineIsoValue } from "./item-workflow-state";
 
 const dialogFocusableSelector = [
 	"a[href]",
@@ -59,6 +56,7 @@ export function EditorDialog({
 	size?: "default" | "wide";
 	title: string;
 }) {
+	const { t } = useLocale();
 	const dialogRef = useRef<HTMLElement>(null);
 	const returnFocusRef = useRef<HTMLElement | null>(
 		typeof document !== "undefined" &&
@@ -78,13 +76,15 @@ export function EditorDialog({
 			const dialog = dialogRef.current;
 			if (!dialog || dialog.contains(document.activeElement)) return;
 
-			(dialogFocusableElements(dialog)[0] ?? dialog).focus();
+			(dialogFocusableElements(dialog)[0] ?? dialog).focus({
+				preventScroll: true,
+			});
 		});
 
 		return () => {
 			window.cancelAnimationFrame(focusFrame);
 			document.body.style.overflow = previousOverflow;
-			if (returnFocus?.isConnected) returnFocus.focus();
+			if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
 		};
 	}, []);
 
@@ -128,8 +128,7 @@ export function EditorDialog({
 		}
 
 		document.addEventListener("keydown", manageDialogKeyboard);
-		return () =>
-			document.removeEventListener("keydown", manageDialogKeyboard);
+		return () => document.removeEventListener("keydown", manageDialogKeyboard);
 	}, [busy, onClose]);
 
 	return (
@@ -153,10 +152,15 @@ export function EditorDialog({
 				aria-busy={busy || undefined}
 				tabIndex={-1}
 			>
-				<div className="editor-dialog__index" aria-hidden="true">
-					<span>FORM</span>
-					<span>— 01</span>
-				</div>
+				<button
+					type="button"
+					className="dialog-close"
+					onClick={onClose}
+					disabled={busy}
+					aria-label={t("common.close")}
+				>
+					<span aria-hidden="true">×</span>
+				</button>
 				<div className="editor-dialog__heading">
 					<h2 id={titleId}>{title}</h2>
 					<p id={descriptionId}>{description}</p>
@@ -460,9 +464,7 @@ export function ItemForm({
 						>
 							<option value="essential">{t("priority.essential")}</option>
 							<option value="soon">{t("priority.soon")}</option>
-							<option value="nice_to_have">
-								{t("priority.nice_to_have")}
-							</option>
+							<option value="nice_to_have">{t("priority.nice_to_have")}</option>
 						</select>
 					</label>
 					<label className="field">

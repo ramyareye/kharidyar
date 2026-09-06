@@ -1,8 +1,7 @@
-import {
-	cloudflareTest,
-	readD1Migrations,
-} from "@cloudflare/vitest-plugin";
+import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-plugin";
 import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
+import { unstable_splitSqlQuery } from "wrangler";
 import { defineConfig } from "vitest/config";
 
 const migrationsPath = fileURLToPath(new URL("./migrations", import.meta.url));
@@ -25,9 +24,16 @@ export default defineConfig({
 			return {
 				wrangler: { configPath: "./wrangler.json" },
 				miniflare: {
+					d1Databases: { MIGRATION_DB: "local-codex-migration-test" },
 					bindings: {
 						...testAuthBindings,
 						TEST_MIGRATIONS: await readD1Migrations(migrationsPath),
+						TEST_SEED_QUERIES: unstable_splitSqlQuery(
+							readFileSync(
+								new URL("./seed/development.sql", import.meta.url),
+								"utf8",
+							),
+						),
 					},
 				},
 			};

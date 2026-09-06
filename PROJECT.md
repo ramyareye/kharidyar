@@ -1,7 +1,7 @@
 # Kharidyar Project Specification
 
 - Status: Approved by the product owner
-- Last updated: 2026-09-05
+- Last updated: 2026-09-06
 - Implementation status: Tasks 1 through 11 and the post-MVP Concept media foundation are complete and validated locally
 - Release status: Concept media is deployed to preview and production, with authenticated image checks confirmed by the product owner in both environments (see [RELEASE.md](./RELEASE.md#2026-09-05-concept-media-production-release)).
 
@@ -1135,16 +1135,17 @@ The future visualization task must add tests for:
 
 Repository policy requires one ordered task per substantial work session. Start the next task only after the previous task meets its completion criteria and the product owner explicitly requests continuation.
 
-### Remaining delivery order (product-owner decision, 2026-09-05)
+### Remaining delivery order (product-owner decision, 2026-09-06)
 
-The release documentation was committed and pushed as `a96aa4e`. After deferring API-first research and reconciling the interrupted API draft, the product owner prioritized a private MCP integration so each person can use WantKit from their own ChatGPT or Claude account. The selected sequence is:
+The private MCP and local Codex research pilots are available on the owner-only preview. On 2026-09-06 the product owner moved the UI revamp ahead of image generation and requested broader chat actions and floor-plan context. The selected remaining sequence is:
 
-1. Private MCP integration for ChatGPT and Claude, initially a read-only personal-use pilot.
-2. Private local Codex research connector for research initiated inside WantKit.
-3. AI Concept visualization from uploaded base photos.
-4. Web UI revamp after those integrations are complete.
+1. Compact SaaS-style web UI revamp, with readable text and straightforward navigation for older users. Implemented locally; review/release pending.
+2. ChatGPT/Claude write tools covering existing application features: routine requested adds/edits apply directly; deletion, sharing and purchase/decision actions require confirmation. Include reconnect guidance.
+3. Private floor-plan images/PDFs and optional measurements for room needs and product research.
+4. AI Concept visualization using explicitly selected floor plans, room photos and products.
+5. WantKit chat using the same application tools and approval rules. Both chat surfaces are desired, starting with the user's existing ChatGPT/Claude chats.
 
-The paid OpenAI API research adapter and Expo are deferred outside this delivery sequence. This order supersedes the API-first and local-Codex-first plans and the earlier placement of MCP after image visualization or Expo. It does not approve live provider spending, deployment, public directory publication, or image-subject scope. Read [HANDOFF.md](./HANDOFF.md) before implementation: the baseline passes, and the interrupted API draft is preserved locally outside active source and migration paths.
+The paid OpenAI API research adapter and Expo remain deferred. This order supersedes the earlier placement of the UI revamp after image generation. New tasks do not authorize deployment, provider calls or public rollout. Work on one task per session; read [HANDOFF.md](./HANDOFF.md) and the confirmed decisions in [UI_REDESIGN.md](./UI_REDESIGN.md). The interrupted API draft remains preserved outside active source and migration paths.
 
 ### Task 1: Monorepo foundation
 
@@ -1391,11 +1392,11 @@ Completion criteria:
 - Deployment and rollback/recovery procedures are exercised.
 - The release checklist has no unresolved critical findings.
 
-### Next task: Private MCP integration for ChatGPT and Claude
+### Completed initial pilot: Private MCP integration for ChatGPT and Claude
 
-Status: Implemented and verified locally on 2026-09-05, then deployed to approved preview for the verified owner account. Production remains unchanged; no commit. Ten read-only tools, per-user OAuth, consent/disconnect screens, and an additive seven-table OAuth migration are ready for review. Full `bun run check` passed with 140 tests. Local browser checks used fake accounts. After restarting an expired consent flow, the user confirmed ChatGPT successfully read Workspace “Test 1.” Browser control remains disconnected; other live tool reads and disconnect/revocation are unverified. Claude is pending because the user signed in only to ChatGPT. Live-test approval is already granted; the full pilot is not yet complete. See [PRIVATE_MCP.md](./PRIVATE_MCP.md) for setup, limits and verification, and [HANDOFF.md](./HANDOFF.md) for the next step.
+Status: Implemented and locally verified, committed/pushed as `8baa32b`, and deployed to approved preview for the verified owner. Production remains unchanged. Full checks passed with 140 tests. The user confirmed ChatGPT read Workspace “Test 1” and subsequently reported Claude worked. These are user-reported live outcomes. After disconnect, Claude showed `invalid_client` / `client_id is required`; friendly reconnect guidance is a follow-up, and complete live revocation coverage is not independently verified. See [PRIVATE_MCP.md](./PRIVATE_MCP.md).
 
-The person opens their own ChatGPT or Claude, connects their WantKit account, and asks the assistant to use authorized WantKit records alongside whatever personal context that assistant makes available. Task 10's permission-filtered Context Builder and Task 11's production hardening are complete. MCP adds clients to the existing backend; it needs no paid model API integration or local research runner.
+The person opens their own ChatGPT or Claude, connects their WantKit account, and asks the assistant to use authorized WantKit records alongside whatever personal context that assistant makes available. Task 10's permission-filtered Context Builder and Task 11's production hardening are complete. MCP adds clients to the existing backend; it needs no paid model API integration or local research runner. The boundaries below describe the shipped read-only pilot. The separately requested write extension and its approval rules are recorded in [UI_REDESIGN.md](./UI_REDESIGN.md); they are not implemented yet.
 
 - Expose one versioned MCP adapter over existing permission-checked application services, with explicit input/output schemas and bounded responses. Prefer authenticated streamable HTTP for browser clients; validate any local transport or supported private tunnel against the chosen client before relying on it. A reachable authenticated endpoint does not imply public data or public directory publication.
 - Each person signs into their assistant through the provider's own interface and separately authorizes access to their own WantKit account. Map the connector authorization to one Kharidyar User; use supported OAuth, narrow read scopes, expiry, revocation, and a fresh capability check on every tool call. Never collect provider passwords, browser cookies, Codex credential files, or Claude subscription tokens.
@@ -1415,16 +1416,16 @@ Completion criteria:
 
 References checked on 2026-09-05: [ChatGPT developer mode](https://developers.openai.com/api/docs/guides/developer-mode), [ChatGPT connection and tunnel options](https://developers.openai.com/plugins/deploy/connect-chatgpt), [Claude custom connectors](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp), [ChatGPT memory](https://help.openai.com/en/articles/8590148-memory-faq), and [Claude memory](https://support.claude.com/en/articles/11817273-use-claude-s-chat-search-and-memory-to-build-on-previous-context). Account eligibility and live memory behavior have not been validated for this app. The implemented static-client OAuth setup and current authentication references are documented in [PRIVATE_MCP.md](./PRIVATE_MCP.md).
 
-### Later task: Private local Codex research connector
+### Completed private pilot: Local Codex research connector
 
-Status: Follows the private MCP pilot. Baseline reconciliation removed the interrupted API-only draft from active paths and preserved it locally; the local companion has not been implemented. This remains a private personal-use pilot with pairing and authorization per user. See [HANDOFF.md](./HANDOFF.md) for baseline validation and recovery details.
+Status: Owner-only preview deployed and verified on 2026-09-06; changes remain uncommitted and unstaged on pushed base `8baa32b`. User-owned pairing, outbound job polling, restricted ChatGPT-login CLI execution, Research persistence/provenance, explicit provider selection and cancellation are implemented. Full `bun run check` passed with 161 tests, including populated D1 preservation/rollback. After explicit approval, preview migration/deployment and one live `gpt-6-astra` research call passed, saving one cited unverified result in about 24 seconds. Offline expiry, cancellation, revoked-token rejection and English desktop/Persian mobile checks also passed. “This Mac” is paired; no runner loop remains running. Production is unchanged, and further rollout is not approved. Setup and exact limits are in [LOCAL_CODEX.md](./LOCAL_CODEX.md); current handoff is [HANDOFF.md](./HANDOFF.md).
 
 - Each user runs their own local companion with their own supported Codex login. Codex credentials remain on that user's machine; the app never shares the project owner's account or accepts uploaded Codex credential files. Arbitrary AI providers and fully offline models are later extensions, not part of this task.
 - Limit the connector to explicit Research queries and structured filters initiated inside WantKit. It complements the preceding MCP integration, which lets ChatGPT and Claude read the app. Codex web search can supply alternative research results after normalization and validation; a local index of saved material alone cannot discover fresh listings or prices. Keep Tavily available without automatic fallback or background AI requests.
-- Prefer an outbound, authenticated job-pull connection from the companion to the app. Keep Codex local via a supported CLI/SDK interface; do not publicly expose an unrestricted agent, shell, or development session. This transport is a proposed implementation starting point, not an implemented design.
+- Prefer an outbound, authenticated job-pull connection from the companion to the app. Keep Codex local via a supported CLI/SDK interface; do not publicly expose an unrestricted agent, shell, or development session. This outbound transport is implemented; no public agent listener is added.
 - Pair each connector to an authenticated app user using revocable, narrowly scoped credentials. Recheck current Collection permissions when accepting, claiming, and submitting work; prevent cross-user jobs, result replay, and access after revocation. Run each job in an isolated context with bounded tools, runtime, and output.
 - Return schema-validated advisory results and source provenance through the existing Research services. Treat local output as untrusted, preserve human-confirmed promotion, and make offline, expired-login, quota, cancellation, and failure states explicit. Record the actual provider/model/configuration without claiming that locally reported sources were independently verified by the server.
-- Explain the data path before dispatch: local orchestration still sends prompts to OpenAI, and submitted results are stored by this app under its normal access rules. ChatGPT-login use consumes the user's plan allowance; API-key login incurs API charges. Neither offline privacy nor unlimited free usage is promised. The API-specific retention settings below do not apply automatically to Codex-login use.
+- Explain the data path before dispatch: local orchestration still sends prompts to OpenAI, and submitted results are stored by this app under its normal access rules. ChatGPT-login use consumes the user's plan allowance; this runner rejects API-key login. Neither offline privacy nor unlimited free usage is promised. The API-specific retention settings below do not apply automatically to Codex-login use.
 
 Completion criteria:
 
@@ -1492,16 +1493,16 @@ Completion criteria:
 
 This starts only after the Concept media foundation and Task 10's access-filtered context are stable, and after the product owner approves an image-edit provider and its privacy terms. It:
 
-- Requires an active user-provided base photo; it does not offer text-to-image generation without one.
+- Uses explicit uploaded visual inputs. A room photo supports edits to the existing appearance; an uploaded floor plan supports layout context or an illustrative plan-based proposal. Confirm the supported input combination and provider before implementation. Plan-only output must not be represented as a verified reconstruction.
 - Accepts an explicit set of permitted Candidate or Product inputs rather than silently using every Collection choice.
 - Allows an ordinary authorized actor to request an edit of a `space` base. Only the uploader may request an edit of a `person` base, and every provider transmission requires fresh explicit confirmation.
 - Edits a space or person image through a provider adapter and stores each result as a separate private Concept Image.
 - Preserves the original, records provider/input provenance, labels edits as illustrative, and lets an authorized human keep, reject, or choose the cover.
 - Tests cross-Collection isolation, provider failure, cancellation, deletion, cost limits, and the guarantee that Item changes never trigger generation automatically.
 
-### Future task: Web UI revamp
+### Current task: Web UI revamp
 
-This follows private MCP integration for ChatGPT and Claude, the local Codex research connector, and AI Concept visualization. The deferred OpenAI API adapter is not a prerequisite. Agree the visual direction and screen scope with the product owner before implementation. Preserve the established domain behavior, permission checks, English/Persian support, accessibility, and responsive layouts; this is a web-interface task, not an Expo migration.
+Moved first by the product owner on 2026-09-06 and implemented locally: compact sidebar navigation, Items/Brief & images/Budget views, item search/group selection, labelled action menus, mobile navigation disclosure, readable shared controls and dialog close buttons. The direction is a simple SaaS application inspired by Tailwind/shadcn conventions, using the existing React components. Existing services, permissions and research behavior are retained. Full quality gate passed with 161 tests; final mobile adjustments passed focused checks. English/Persian sample UI verification passed. Not committed or deployed. See [UI_REDESIGN.md](./UI_REDESIGN.md) for validation boundaries and the following chat/floor-plan tasks.
 
 ### Deferred task: Expo mobile application
 
@@ -1749,4 +1750,4 @@ The product owner explicitly authorized the post-MVP Concept media foundation on
 
 On 2026-09-05, after baseline reconciliation, the product owner approved prioritizing private MCP integration for ChatGPT and Claude ahead of the local Codex research runner. Each person uses their own assistant account and separately authorizes their own WantKit account; personal memories stay under the assistant's controls. The first pilot is read-only and does not require public directory publication. Selected findings retain the existing human-reviewed Import Draft path; MCP writes are a later scoped extension. The approved order is private MCP → local Codex research → AI Concept visualization → web UI revamp, with paid OpenAI API research and Expo deferred. This planning update changed documentation only; it did not implement, connect, publish, commit, or deploy a feature.
 
-Later on 2026-09-05, the authorized private MCP implementation passed local validation: ten tools, personal OAuth/consent/disconnect, additive OAuth tables and English/Persian screens; all 140 tests and the full quality check passed. The uncommitted connector was subsequently deployed to approved preview for the verified owner only. The user confirmed a successful ChatGPT read of Workspace “Test 1” after restarting expired consent. Live disconnect/revocation and Claude validation remain pending; see [PRIVATE_MCP.md](./PRIVATE_MCP.md).
+Later on 2026-09-05, the authorized private MCP implementation passed local validation: ten tools, personal OAuth/consent/disconnect, additive OAuth tables and English/Persian screens; all 140 tests and the full quality check passed. The uncommitted connector was subsequently deployed to approved preview for the verified owner only. The user confirmed a successful ChatGPT read of Workspace “Test 1” after restarting expired consent. The user subsequently confirmed Claude worked and reported a reconnect error after disconnect; independent MCP revocation coverage remains incomplete. MCP was committed/pushed as `8baa32b`. The next authorized local Codex implementation passed all 161 tests and the quality gate, then the explicitly approved preview deployment and live pilot verification completed on 2026-09-06. Preview version is `4e4a4724-efdf-47c0-9638-d302bfac186e`; one real research call passed, alongside no-model cancellation/revocation checks and English/Persian visual checks. Local changes remain unstaged/uncommitted; production is unchanged. See [LOCAL_CODEX.md](./LOCAL_CODEX.md) and [RELEASE.md](./RELEASE.md).

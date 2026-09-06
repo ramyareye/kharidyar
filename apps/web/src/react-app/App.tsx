@@ -6,6 +6,7 @@ import { PlanningDashboard } from "./PlanningDashboard";
 import { ConnectorsPage } from "./ConnectorsPage";
 import { BrandMark, LocaleSwitch } from "./ui";
 import "./App.css";
+import "./Dashboard.css";
 
 function GoogleIcon() {
 	return (
@@ -34,7 +35,11 @@ function LoadingScreen() {
 	const { t } = useLocale();
 
 	return (
-		<main className="loading-screen" aria-busy="true" aria-label={t("auth.loading")}>
+		<main
+			className="loading-screen"
+			aria-busy="true"
+			aria-label={t("auth.loading")}
+		>
 			<BrandMark compact />
 			<span className="loading-line" aria-hidden="true" />
 		</main>
@@ -45,7 +50,9 @@ function SignedOutScreen({ sessionError }: { sessionError: boolean }) {
 	const { t } = useLocale();
 	const [isSigningIn, setIsSigningIn] = useState(false);
 	const [actionError, setActionError] = useState<string | null>(null);
-	const callbackError = new URLSearchParams(window.location.search).has("error");
+	const callbackError = new URLSearchParams(window.location.search).has(
+		"error",
+	);
 
 	async function signInWithGoogle() {
 		setIsSigningIn(true);
@@ -169,7 +176,8 @@ function App() {
 		return <SignedOutScreen sessionError={Boolean(error)} />;
 	}
 
-	if (window.location.pathname.startsWith("/connectors")) return <ConnectorsPage email={session.user.email} />;
+	if (window.location.pathname.startsWith("/connectors"))
+		return <ConnectorsPage email={session.user.email} />;
 	return <SignedInShell user={session.user} />;
 }
 

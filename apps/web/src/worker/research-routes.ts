@@ -4,6 +4,10 @@ import {
   researchResultPromotionInputSchema,
 } from "@kharidyar/contracts";
 import { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
+import { z } from "zod";
+import { badRequest } from "./api-errors";
+import { prepareLocalRun, expireLocalJobs } from "./local-codex-jobs";
 
 import { jsonContractValidator } from "./contract-validation";
 import { requireTrustedOrigin } from "./origin-middleware";
@@ -33,6 +37,7 @@ export const researchRoutes = new Hono<WorkerAppEnv>()
     requireSession,
     async (context) => {
       const current = context.get("session");
+      await expireLocalJobs(context.env.DB);
       return context.json(
         await readResearchDesk({
           collectionId: identifier(
@@ -49,9 +54,15 @@ export const researchRoutes = new Hono<WorkerAppEnv>()
     "/collections/:collectionId/research-requests",
     requireTrustedOrigin,
     requireSession,
+    bodyLimit({ maxSize: 16_384 }),
     jsonContractValidator(researchRequestCreateInputSchema),
     async (context) => {
       const current = context.get("session");
+      await prepareLocalRun(
+        context.env,
+        current.user.id,
+        context.req.valid("json"),
+      );
       return context.json(
         await createResearchRequest({
           collectionId: identifier(
@@ -74,8 +85,34 @@ export const researchRoutes = new Hono<WorkerAppEnv>()
     requireSession,
     async (context) => {
       const current = context.get("session");
+      const parsedRunner = z
+        .object({
+          provider: z.enum(["tavily-basic-v1", "local-codex-v1"]).optional(),
+          localPairingId: z.string().uuid().optional(),
+        })
+        .safeParse({
+          provider: context.req.query("provider"),
+          localPairingId: context.req.query("localPairingId"),
+        });
+      if (!parsedRunner.success)
+        throw badRequest("Choose a valid research provider and pairing.");
+      const runner = parsedRunner.data;
+      if (!runner.provider) {
+        const latest = await context.env.DB.prepare(
+          "select provider from research_runs where request_id=? and collection_id=? order by created_at desc limit 1",
+        )
+          .bind(
+            context.req.param("requestId"),
+            context.req.param("collectionId"),
+          )
+          .first<{ provider: string }>();
+        if (latest?.provider === "local-codex-v1")
+          runner.provider = "local-codex-v1";
+      }
+      await prepareLocalRun(context.env, current.user.id, runner);
       return context.json(
         await retryResearchRequest({
+          runner,
           collectionId: identifier(
             context.req.param("collectionId"),
             "collectionId",

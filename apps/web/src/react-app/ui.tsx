@@ -1,6 +1,68 @@
-import { useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { useLocale } from "./locale-context";
+
+/** A native disclosure keeps secondary actions reachable by keyboard and touch. */
+export function ActionMenu({
+	children,
+	label,
+	name,
+}: {
+	children: ReactNode;
+	label: string;
+	name?: string;
+}) {
+	const ref = useRef<HTMLDetailsElement>(null);
+	useEffect(() => {
+		function closeOutside(event: PointerEvent) {
+			if (
+				event.target instanceof Node &&
+				!ref.current?.contains(event.target) &&
+				ref.current
+			) {
+				ref.current.open = false;
+			}
+		}
+		document.addEventListener("pointerdown", closeOutside);
+		return () => document.removeEventListener("pointerdown", closeOutside);
+	}, []);
+	return (
+		<details
+			className="action-menu"
+			ref={ref}
+			onKeyDown={(event) => {
+				if (event.key === "Escape" && ref.current?.open) {
+					event.stopPropagation();
+					ref.current.open = false;
+					ref.current.querySelector("summary")?.focus({ preventScroll: true });
+				}
+			}}
+		>
+			<summary aria-label={name ? `${label}: ${name}` : label}>
+				{label}
+				<span aria-hidden="true">⌄</span>
+			</summary>
+			<div
+				className="action-menu__content"
+				onClick={(event) => {
+					if (
+						event.target instanceof Element &&
+						event.target.closest("button:not(:disabled), a")
+					) {
+						if (ref.current) {
+							ref.current.open = false;
+							ref.current
+								.querySelector("summary")
+								?.focus({ preventScroll: true });
+						}
+					}
+				}}
+			>
+				{children}
+			</div>
+		</details>
+	);
+}
 
 export function BrandMark({ compact = false }: { compact?: boolean }) {
 	const { t } = useLocale();

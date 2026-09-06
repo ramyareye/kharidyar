@@ -3,6 +3,7 @@ import { z } from "zod";
 import { authClient } from "./auth-client";
 import { useLocale } from "./locale-context";
 import { BrandMark, LocaleSwitch } from "./ui";
+import { LocalCodexPanel } from "./LocalCodexPanel";
 import "./ConnectorsPage.css";
 
 const statusSchema = z.object({
@@ -145,6 +146,7 @@ export function ConnectorsPage({ email }: { email: string }) {
 				<p>{t("connectors.account", { email })}</p>
 				<p>{t("connectors.privacy")}</p>
 				<p>{t("connectors.cost")}</p>
+        {!consent && <LocalCodexPanel />}
 				{failed && (
 					<p role="alert" className="field-error">
 						{t("connectors.error")}

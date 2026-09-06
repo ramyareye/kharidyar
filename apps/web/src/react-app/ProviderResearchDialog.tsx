@@ -1,3 +1,5 @@
+import { localCodexStatusSchema } from "@kharidyar/contracts";
+import { z } from "zod";
 import type {
   CollectionResource,
   ItemResource,
@@ -219,6 +221,9 @@ function ResultCard({
         </div>
         <span className="research-result__price">{price}</span>
       </header>
+      {result.source.provider === "local-codex-v1" && (
+        <p className="research-note">{t("localCodex.sourceNotice")}</p>
+      )}
       {result.summary ? <p dir="auto">{result.summary}</p> : null}
       <div className="research-result__source">
         <a href={result.source.url} rel="noreferrer" target="_blank">
@@ -298,6 +303,11 @@ function RunPanel({
             {t(runStatusKey[run.status])}
           </span>
           <small>{formatDateTime(locale, run.createdAt)}</small>
+          <small>
+            {run.provider === "local-codex-v1"
+              ? t("localCodex.provider")
+              : "Tavily"}
+          </small>
         </div>
         {activeStatuses.has(run.status) ? (
           <button
@@ -352,6 +362,37 @@ export function ProviderResearchDialog({
   const { locale, t } = useLocale();
   const [desk, setDesk] = useState<ResearchDeskResponse | null>(null);
   const [query, setQuery] = useState("");
+  const [provider, setProvider] = useState<
+    "tavily-basic-v1" | "local-codex-v1"
+  >("tavily-basic-v1");
+  const [localStatus, setLocalStatus] = useState<z.infer<
+    typeof localCodexStatusSchema
+  > | null>(null);
+  const [pairingId, setPairingId] = useState("");
+  const selectedPairing =
+    localStatus?.pairings.find((pairing) => pairing.id === pairingId) ??
+    localStatus?.pairings[0];
+  useEffect(() => {
+    const controller = new AbortController();
+    const refresh = () => {
+      void fetch("/api/local-codex/pairings", {
+        cache: "no-store",
+        signal: controller.signal,
+      })
+        .then(async (response) => {
+          if (!response.ok) return;
+          const value = localCodexStatusSchema.parse(await response.json());
+          if (!controller.signal.aborted) setLocalStatus(value);
+        })
+        .catch(() => undefined);
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 10_000);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+    };
+  }, []);
   const [itemId, setItemId] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [preferredDomains, setPreferredDomains] = useState("");
@@ -427,6 +468,10 @@ export function ProviderResearchDialog({
     await mutate(
       () =>
         api.createResearchRequest(collection.id, {
+          provider,
+          ...(provider === "local-codex-v1"
+            ? { localPairingId: selectedPairing?.id }
+            : {}),
           constraints: {
             currency: "EUR",
             excludedTerms: separatedValues(excludedTerms),
@@ -458,6 +503,60 @@ export function ProviderResearchDialog({
             <h3>{t("research.newTitle")}</h3>
           </header>
           <form onSubmit={submit} noValidate>
+            {localStatus?.enabled && (
+              <label className="field">
+                <span className="field__label">
+                  {t("localCodex.chooseProvider")}
+                </span>
+                <select
+                  value={provider}
+                  onChange={(event) =>
+                    setProvider(
+                      event.target.value === "local-codex-v1"
+                        ? "local-codex-v1"
+                        : "tavily-basic-v1",
+                    )
+                  }
+                  disabled={busy}
+                >
+                  <option value="tavily-basic-v1">Tavily</option>
+                  <option value="local-codex-v1">
+                    {t("localCodex.provider")}
+                  </option>
+                </select>
+              </label>
+            )}
+            {provider === "local-codex-v1" && (
+              <>
+                <p className="research-note">{t("localCodex.privacy")}</p>
+                {localStatus?.pairings.length ? (
+                  <label className="field">
+                    <span className="field__label">
+                      {t("localCodex.runner")}
+                    </span>
+                    <select
+                      value={selectedPairing?.id ?? ""}
+                      onChange={(event) => setPairingId(event.target.value)}
+                      disabled={busy}
+                    >
+                      {localStatus.pairings.map((pairing) => (
+                        <option key={pairing.id} value={pairing.id}>
+                          {pairing.name} ·{" "}
+                          {t(
+                            pairing.online
+                              ? "localCodex.online"
+                              : "localCodex.offline",
+                          )}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <a href="/connectors">{t("localCodex.setupLink")}</a>
+                )}
+                <p className="research-note">{t("localCodex.waitNote")}</p>
+              </>
+            )}
             <label className="field">
               <span className="field__label">{t("research.query")}</span>
               <textarea
@@ -525,11 +624,20 @@ export function ProviderResearchDialog({
                 />
               </label>
             </div>
-            <p className="research-note">{t("research.providerNote")}</p>
+            <p className="research-note">
+              {t(
+                provider === "local-codex-v1"
+                  ? "localCodex.sourceNotice"
+                  : "research.providerNote",
+              )}
+            </p>
             <button
               className="button button--primary"
               disabled={
-                busy || !query.trim() || desk?.permissions.canCreate === false
+                busy ||
+                !query.trim() ||
+                desk?.permissions.canCreate === false ||
+                (provider === "local-codex-v1" && !selectedPairing)
               }
               type="submit"
             >
@@ -587,13 +695,24 @@ export function ProviderResearchDialog({
                                 api.retryResearchRequest(
                                   collection.id,
                                   request.id,
+                                  {
+                                    provider,
+                                    ...(provider === "local-codex-v1"
+                                      ? { localPairingId: selectedPairing?.id }
+                                      : {}),
+                                  },
                                 ),
                               "research.created",
                             )
                           }
                           type="button"
                         >
-                          {t("common.retry")}
+                          {t("localCodex.retrySelected", {
+                            provider:
+                              provider === "local-codex-v1"
+                                ? t("localCodex.provider")
+                                : "Tavily",
+                          })}
                         </button>
                       ) : null}
                     </header>

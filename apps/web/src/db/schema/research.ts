@@ -104,7 +104,7 @@ export const researchRuns = sqliteTable(
     ),
     check(
       "research_runs_provider_check",
-      sql`${table.provider} = 'tavily-basic-v1'`,
+      sql`${table.provider} in ('tavily-basic-v1', 'local-codex-v1')`,
     ),
     check(
       "research_runs_query_check",

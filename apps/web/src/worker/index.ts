@@ -22,6 +22,7 @@ import { importDraftRoutes } from "./import-draft-routes";
 import { researchFixtureRoutes } from "./research-fixture-routes";
 import { researchRoutes } from "./research-routes";
 import { mcpRoutes } from "./mcp-routes";
+import { localCodexRoutes } from "./local-codex-routes";
 import { requireSession, type WorkerAppEnv } from "./session-middleware";
 
 const app = new Hono<WorkerAppEnv>();
@@ -99,6 +100,7 @@ app.get("/api/session", requireSession, (context) => {
 });
 
 const apiRoutes = new Hono<WorkerAppEnv>()
+  .route("/", localCodexRoutes)
 	.route("/", mcpRoutes)
 	.route("/", collaborationExperienceRoutes)
 	.route("/", collaborationRoutes)

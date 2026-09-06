@@ -1,8 +1,8 @@
 import type {
 	ApiErrorCode,
-  CollectionRollupResponse,
-  CollectionBriefInput,
-  CollectionBriefResource,
+	CollectionRollupResponse,
+	CollectionBriefInput,
+	CollectionBriefResource,
 	CollectionCreateInput,
 	CollectionResource,
 	DecisionEventResource,
@@ -11,11 +11,11 @@ import type {
 	ItemPermissions,
 	ItemResource,
 	ItemStatusChangeInput,
-  ConceptInput,
+	ConceptInput,
 	ConceptImageResource,
 	ConceptImageUpdateInput,
 	ConceptMediaResponse,
-  ConceptResource,
+	ConceptResource,
 	WorkspaceCreateInput,
 	WorkspaceResource,
 	WorkspaceSummary,
@@ -26,7 +26,7 @@ import {
 	formatNumber,
 	type MessageKey,
 } from "@kharidyar/i18n";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { useLocale } from "./locale-context";
 import { CollaborationAdminDialog } from "./CollaborationAdminDialog";
@@ -49,10 +49,10 @@ import {
 	resolvePlanningViewState,
 	type LoadPhase,
 } from "./planning-view-state";
-import { BrandMark, LocaleSwitch, UserAvatar } from "./ui";
+import { ActionMenu, BrandMark, LocaleSwitch, UserAvatar } from "./ui";
 
 type EditorState =
-  | { kind: "brief-edit" }
+	| { kind: "brief-edit" }
 	| { kind: "collection-create" }
 	| { kind: "collection-edit"; resource: CollectionResource }
 	| { kind: "context-export"; resource: CollectionResource }
@@ -237,6 +237,7 @@ function ResourceActions({
 	busy,
 	canArchive = true,
 	canEdit = true,
+	inline = false,
 	onArchive,
 	onCompare,
 	onDiscuss,
@@ -249,6 +250,7 @@ function ResourceActions({
 	busy: boolean;
 	canArchive?: boolean;
 	canEdit?: boolean;
+	inline?: boolean;
 	onArchive: () => void;
 	onCompare?: () => void;
 	onDiscuss?: () => void;
@@ -259,8 +261,8 @@ function ResourceActions({
 }) {
 	const { t } = useLocale();
 
-	return (
-		<div className="resource-actions">
+	const actions = (
+		<>
 			{onDiscuss ? (
 				<button
 					type="button"
@@ -272,17 +274,7 @@ function ResourceActions({
 					{t("discussion.open")}
 				</button>
 			) : null}
-			{onCompare ? (
-				<button
-					type="button"
-				className="text-action"
-				onClick={onCompare}
-				disabled={busy}
-				aria-label={t("commerce.open") + `: ${resourceName}`}
-			>
-				{t("commerce.open")}
-			</button>
-		) : null}
+
 			{onOpen ? (
 				<button
 					type="button"
@@ -331,6 +323,28 @@ function ResourceActions({
 						</button>
 					) : null}
 				</>
+			)}
+		</>
+	);
+	return (
+		<div className="resource-actions">
+			{onCompare ? (
+				<button
+					type="button"
+					className="text-action"
+					onClick={onCompare}
+					disabled={busy}
+					aria-label={t("commerce.open") + `: ${resourceName}`}
+				>
+					{t("commerce.open")}
+				</button>
+			) : null}
+			{inline ? (
+				actions
+			) : (
+				<ActionMenu label={t("common.more")} name={resourceName}>
+					{actions}
+				</ActionMenu>
 			)}
 		</div>
 	);
@@ -518,7 +532,17 @@ function ItemLedger({
 											<span>{t("common.archived")}</span>
 										) : null}
 									</div>
-									<h4 dir="auto">{item.title}</h4>
+									<h4>
+										<button
+											type="button"
+											className="item-title-button"
+											dir="auto"
+											onClick={() => onOpen(item)}
+											disabled={busy}
+										>
+											{item.title}
+										</button>
+									</h4>
 									{item.description ? (
 										<p dir="auto">{item.description}</p>
 									) : null}
@@ -553,10 +577,10 @@ function ItemLedger({
 										) : null}
 									</div>
 								</div>
-				<ResourceActions
-					archived={Boolean(item.archivedAt)}
-					busy={busy}
-					canArchive={permissions.canArchive}
+								<ResourceActions
+									archived={Boolean(item.archivedAt)}
+									busy={busy}
+									canArchive={permissions.canArchive}
 									canEdit={permissions.canEdit}
 									onArchive={() => onArchive(item)}
 									onCompare={() => onCompare(item)}
@@ -623,6 +647,22 @@ export function PlanningDashboard({
 		null | string
 	>(() => selectionFromLocation("collection"));
 	const [showArchived, setShowArchived] = useState(false);
+	const [collectionView, setCollectionView] = useState<
+		"items" | "direction" | "budget"
+	>("items");
+	const [itemQuery, setItemQuery] = useState("");
+	const [navigationOpen, setNavigationOpen] = useState(false);
+	const navigationToggleRef = useRef<HTMLButtonElement>(null);
+	const mainRef = useRef<HTMLElement>(null);
+	useEffect(() => {
+		mainRef.current?.scrollTo({ top: 0, behavior: "instant" });
+	}, [selectedWorkspaceId, selectedCollectionId, collectionView]);
+	function closeNavigation() {
+		if (navigationOpen) {
+			setNavigationOpen(false);
+			navigationToggleRef.current?.focus();
+		}
+	}
 	const [selectedGroup, setSelectedGroup] = useState<string>("all");
 	const [loadError, setLoadError] = useState<ApiErrorCode | null>(null);
 	const [actionError, setActionError] = useState<string | null>(null);
@@ -685,16 +725,16 @@ export function PlanningDashboard({
 		setItems([]);
 		setItemPermissions(noItemPermissions);
 		setCollectionRollup(null);
-    setBrief(null);
-    setConcept(null);
-    setConceptMedia(null);
-    setCanEditBrief(false);
-    setCanEditConcept(false);
+		setBrief(null);
+		setConcept(null);
+		setConceptMedia(null);
+		setCanEditBrief(false);
+		setCanEditConcept(false);
 		setSelectedGroup("all");
 		if (!selectedWorkspaceId) {
 			setCollectionPhase("ready");
 			setItemPhase("ready");
-      setDirectionPhase("ready");
+			setDirectionPhase("ready");
 			return () => {
 				current = false;
 			};
@@ -747,48 +787,56 @@ export function PlanningDashboard({
 		setItems([]);
 		setItemPermissions(noItemPermissions);
 		setCollectionRollup(null);
-    setBrief(null);
-    setConcept(null);
-    setConceptMedia(null);
-    setCanEditBrief(false);
-    setCanEditConcept(false);
+		setBrief(null);
+		setConcept(null);
+		setConceptMedia(null);
+		setCanEditBrief(false);
+		setCanEditConcept(false);
 		setSelectedGroup("all");
 		if (!selectedCollectionId) {
 			setItemPhase("ready");
-      setDirectionPhase("ready");
+			setDirectionPhase("ready");
 			return () => {
 				current = false;
 			};
 		}
 
 		setItemPhase("loading");
-    setDirectionPhase("loading");
+		setDirectionPhase("loading");
 		setLoadError(null);
-    void Promise.all([
-      api.listItems(selectedCollectionId),
-      api.readCollectionBrief(selectedCollectionId),
-      api.readConcept(selectedCollectionId),
-      api.readConceptMedia(selectedCollectionId),
+		void Promise.all([
+			api.listItems(selectedCollectionId),
+			api.readCollectionBrief(selectedCollectionId),
+			api.readConcept(selectedCollectionId),
+			api.readConceptMedia(selectedCollectionId),
 			api.readCollectionRollup(selectedCollectionId),
-    ])
-			.then(([itemResult, briefResult, conceptResult, mediaResult, rollupResult]) => {
-				if (!current) return;
-				setItems(itemResult.items);
-				setItemPermissions(itemResult.permissions);
-        setBrief(briefResult.resource);
-        setCanEditBrief(briefResult.canEdit);
-        setConcept(conceptResult.resource);
-        setCanEditConcept(conceptResult.canEdit);
-        setConceptMedia(mediaResult);
-				setCollectionRollup(rollupResult);
-				setItemPhase("ready");
-        setDirectionPhase("ready");
-			})
+		])
+			.then(
+				([
+					itemResult,
+					briefResult,
+					conceptResult,
+					mediaResult,
+					rollupResult,
+				]) => {
+					if (!current) return;
+					setItems(itemResult.items);
+					setItemPermissions(itemResult.permissions);
+					setBrief(briefResult.resource);
+					setCanEditBrief(briefResult.canEdit);
+					setConcept(conceptResult.resource);
+					setCanEditConcept(conceptResult.canEdit);
+					setConceptMedia(mediaResult);
+					setCollectionRollup(rollupResult);
+					setItemPhase("ready");
+					setDirectionPhase("ready");
+				},
+			)
 			.catch((error: unknown) => {
 				if (!current) return;
 				setLoadError(apiErrorCode(error));
 				setItemPhase("ready");
-        setDirectionPhase("ready");
+				setDirectionPhase("ready");
 			});
 
 		return () => {
@@ -895,15 +943,14 @@ export function PlanningDashboard({
 				.sort((a, b) => a.localeCompare(b, locale)),
 		[locale, visibleItems],
 	);
-	const filteredItems =
-		selectedGroup === "all"
-			? visibleItems
-			: visibleItems.filter((item) => item.groupLabel === selectedGroup);
-	const activeItems = items.filter((item) => !item.archivedAt);
-	const activeUnits = activeItems.reduce(
-		(total, item) => total + item.quantityNeeded,
-		0,
+	const filteredItems = visibleItems.filter(
+		(item) =>
+			(selectedGroup === "all" || item.groupLabel === selectedGroup) &&
+			`${item.title} ${item.description ?? ""} ${item.groupLabel ?? ""}`
+				.toLocaleLowerCase(locale)
+				.includes(itemQuery.trim().toLocaleLowerCase(locale)),
 	);
+	const activeItems = items.filter((item) => !item.archivedAt);
 
 	useEffect(() => {
 		if (
@@ -1019,6 +1066,7 @@ export function PlanningDashboard({
 			() => api.createCollection(selectedWorkspaceId, value),
 			(collection) => {
 				setCollections((current) => [...current, collection]);
+				closeNavigation();
 				setSelectedCollectionId(collection.id);
 			},
 			"toast.collectionCreated",
@@ -1061,89 +1109,89 @@ export function PlanningDashboard({
 		);
 	}
 
-  async function saveBrief(value: CollectionBriefInput) {
-    if (!selectedCollectionId) return false;
-    return mutate(
-      () => api.saveCollectionBrief(selectedCollectionId, value),
-      (result) => {
-        setBrief(result.resource);
-        setCanEditBrief(result.canEdit);
-      },
-      "toast.briefSaved",
-    );
-  }
+	async function saveBrief(value: CollectionBriefInput) {
+		if (!selectedCollectionId) return false;
+		return mutate(
+			() => api.saveCollectionBrief(selectedCollectionId, value),
+			(result) => {
+				setBrief(result.resource);
+				setCanEditBrief(result.canEdit);
+			},
+			"toast.briefSaved",
+		);
+	}
 
-  async function saveTextConcept(value: ConceptInput) {
-    if (!selectedCollectionId) return false;
-    return mutate(
-      async () => {
-        const result = await api.saveConcept(selectedCollectionId, value);
-        const media = await api.readConceptMedia(selectedCollectionId);
-        return { media, result };
-      },
-      ({ media, result }) => {
-        setConcept(result.resource);
-        setCanEditConcept(result.canEdit);
-        setConceptMedia(media);
-      },
-      "toast.conceptSaved",
-    );
-  }
+	async function saveTextConcept(value: ConceptInput) {
+		if (!selectedCollectionId) return false;
+		return mutate(
+			async () => {
+				const result = await api.saveConcept(selectedCollectionId, value);
+				const media = await api.readConceptMedia(selectedCollectionId);
+				return { media, result };
+			},
+			({ media, result }) => {
+				setConcept(result.resource);
+				setCanEditConcept(result.canEdit);
+				setConceptMedia(media);
+			},
+			"toast.conceptSaved",
+		);
+	}
 
-  async function removeTextConcept() {
-    if (!selectedCollectionId) return;
-    if (!window.confirm(t("concept.removeConfirm"))) return;
-    await mutate(
-      () => api.removeConcept(selectedCollectionId),
-      (result) => {
-        setConcept(result.resource);
-        setCanEditConcept(result.canEdit);
-        setConceptMedia(null);
-      },
-      "toast.conceptRemoved",
-    );
-  }
+	async function removeTextConcept() {
+		if (!selectedCollectionId) return;
+		if (!window.confirm(t("concept.removeConfirm"))) return;
+		await mutate(
+			() => api.removeConcept(selectedCollectionId),
+			(result) => {
+				setConcept(result.resource);
+				setCanEditConcept(result.canEdit);
+				setConceptMedia(null);
+			},
+			"toast.conceptRemoved",
+		);
+	}
 
-  async function uploadConceptImage(value: ConceptImageUploadValue) {
-    if (!selectedCollectionId) return false;
-    return mutate(
-      () => api.uploadConceptImage(selectedCollectionId, value),
-      setConceptMedia,
-      "toast.mediaUploaded",
-      false,
-    );
-  }
+	async function uploadConceptImage(value: ConceptImageUploadValue) {
+		if (!selectedCollectionId) return false;
+		return mutate(
+			() => api.uploadConceptImage(selectedCollectionId, value),
+			setConceptMedia,
+			"toast.mediaUploaded",
+			false,
+		);
+	}
 
-  async function updateConceptImage(
-    imageId: string,
-    value: ConceptImageUpdateInput,
-  ) {
-    return mutate(
-      () => api.updateConceptImage(imageId, value),
-      setConceptMedia,
-      "toast.mediaUpdated",
-      false,
-    );
-  }
+	async function updateConceptImage(
+		imageId: string,
+		value: ConceptImageUpdateInput,
+	) {
+		return mutate(
+			() => api.updateConceptImage(imageId, value),
+			setConceptMedia,
+			"toast.mediaUpdated",
+			false,
+		);
+	}
 
-  async function reorderConceptImages(imageIds: string[]) {
-    if (!selectedCollectionId) return false;
-    return mutate(
-      () => api.reorderConceptReferences(selectedCollectionId, { imageIds }),
-      setConceptMedia,
-      "toast.mediaReordered",
-      false,
-    );
-  }
+	async function reorderConceptImages(imageIds: string[]) {
+		if (!selectedCollectionId) return false;
+		return mutate(
+			() => api.reorderConceptReferences(selectedCollectionId, { imageIds }),
+			setConceptMedia,
+			"toast.mediaReordered",
+			false,
+		);
+	}
 
-  async function deleteConceptImage(image: ConceptImageResource) {
-    await mutate(
-      () => api.deleteConceptImage(image.id),
-      setConceptMedia,
-      "toast.mediaDeleted",
-      false,
-    );
-  }
+	async function deleteConceptImage(image: ConceptImageResource) {
+		await mutate(
+			() => api.deleteConceptImage(image.id),
+			setConceptMedia,
+			"toast.mediaDeleted",
+			false,
+		);
+	}
 
 	async function updateItem(value: ItemCreateInput) {
 		if (!editor || editor.kind !== "item-edit") return false;
@@ -1227,82 +1275,186 @@ export function PlanningDashboard({
 			</a>
 			<header className="studio-header">
 				<BrandMark compact />
-				<div className="studio-header__actions">
-					<a className="text-button" href="/connectors">{t("connectors.title")}</a>
-					<LocaleSwitch />
-					<div className="account-chip">
-						<UserAvatar name={user.name} image={user.image} />
-						<div className="account-chip__identity">
-							<strong dir="auto">{user.name}</strong>
-							<span>{user.email}</span>
-						</div>
-					</div>
-					<button
-						type="button"
-						className="text-button"
-						onClick={() => void onSignOut()}
-						disabled={isSigningOut}
-					>
-						{isSigningOut ? t("account.signingOut") : t("account.signOut")}
-					</button>
-				</div>
+				<strong className="studio-header__name" dir="auto" title={user.name}>
+					{user.name}
+				</strong>
 			</header>
 
 			<div className="studio-grid">
-				<aside className="workspace-rail">
-					<div className="workspace-rail__heading">
-						<div>
-							<p className="rail-index" aria-hidden="true">
-								01
-							</p>
-							<h2>{t("workspace.label")}</h2>
+				<button
+					type="button"
+					className="mobile-navigation-toggle"
+					ref={navigationToggleRef}
+					aria-expanded={navigationOpen}
+					aria-controls="workspace-navigation"
+					onClick={() => setNavigationOpen((open) => !open)}
+				>
+					{t("nav.browseWorkspaces")}
+					<span aria-hidden="true">{navigationOpen ? "−" : "+"}</span>
+				</button>
+				<aside
+					id="workspace-navigation"
+					className={
+						navigationOpen
+							? "workspace-rail workspace-rail--open"
+							: "workspace-rail"
+					}
+				>
+					<div className="workspace-rail__body">
+						<div className="workspace-rail__heading">
+							<div>
+								<p className="rail-index" aria-hidden="true">
+									01
+								</p>
+								<h2>{t("workspace.label")}</h2>
+							</div>
+							<button
+								type="button"
+								className="icon-button"
+								onClick={() => setEditor({ kind: "workspace-create" })}
+								aria-label={t("workspace.new")}
+								title={t("workspace.new")}
+							>
+								+
+							</button>
 						</div>
-						<button
-							type="button"
-							className="icon-button"
-							onClick={() => setEditor({ kind: "workspace-create" })}
-							aria-label={t("workspace.new")}
-							title={t("workspace.new")}
-						>
-							+
-						</button>
+						<nav aria-label={t("nav.workspaceMenu")}>
+							<ul className="workspace-list">
+								{visibleWorkspaces.map((workspace, index) => (
+									<li key={workspace.id}>
+										<button
+											type="button"
+											className={
+												workspace.id === selectedWorkspaceId
+													? "workspace-link workspace-link--active"
+													: "workspace-link"
+											}
+											onClick={() => {
+												closeNavigation();
+												setSelectedWorkspaceId(workspace.id);
+												setItemQuery("");
+												setCollectionView("items");
+												setSelectedCollectionId(null);
+											}}
+											aria-current={
+												workspace.id === selectedWorkspaceId
+													? "page"
+													: undefined
+											}
+										>
+											<span
+												className="workspace-link__number"
+												aria-hidden="true"
+											>
+												{String(index + 1).padStart(2, "0")}
+											</span>
+											<span className="workspace-link__name" dir="auto">
+												{workspace.name}
+											</span>
+											{workspace.archivedAt ? (
+												<span className="workspace-link__archived">
+													{t("common.archived")}
+												</span>
+											) : null}
+										</button>
+									</li>
+								))}
+							</ul>
+						</nav>
+						{selectedWorkspace &&
+						collectionPhase === "ready" &&
+						visibleCollections.length > 0 ? (
+							<div className="rail-collections">
+								<p className="rail-section-label">{t("collection.label")}</p>{" "}
+								<nav
+									className="collection-strip"
+									aria-label={t("nav.collectionMenu")}
+								>
+									{visibleCollections.map((collection) => (
+										<button
+											type="button"
+											key={collection.id}
+											className={
+												collection.id === selectedCollectionId
+													? "collection-tab collection-tab--active"
+													: "collection-tab"
+											}
+											onClick={() => {
+												closeNavigation();
+												setSelectedCollectionId(collection.id);
+												setCollectionView("items");
+												setItemQuery("");
+											}}
+											aria-label={t("collection.select", {
+												name: collection.name,
+											})}
+											aria-current={
+												collection.id === selectedCollectionId
+													? "page"
+													: undefined
+											}
+										>
+											<span aria-hidden="true">▤</span>
+											<strong dir="auto">{collection.name}</strong>
+											{collection.archivedAt ? (
+												<small>{t("common.archived")}</small>
+											) : null}
+										</button>
+									))}
+								</nav>
+							</div>
+						) : null}
 					</div>
-					<nav aria-label={t("nav.workspaceMenu")}>
-						<ul className="workspace-list">
-							{visibleWorkspaces.map((workspace, index) => (
-								<li key={workspace.id}>
+					<div className="workspace-rail__footer">
+						{selectedWorkspace ? (
+							<ActionMenu
+								label={t("nav.workspaceSettings")}
+								name={selectedWorkspace.name}
+							>
+								{!selectedWorkspace.archivedAt ? (
 									<button
 										type="button"
-										className={
-											workspace.id === selectedWorkspaceId
-												? "workspace-link workspace-link--active"
-												: "workspace-link"
-										}
-										onClick={() => {
-											setSelectedWorkspaceId(workspace.id);
-											setSelectedCollectionId(null);
-										}}
-										aria-current={
-											workspace.id === selectedWorkspaceId ? "page" : undefined
+										className="button button--quiet"
+										onClick={() =>
+											setEditor({
+												kind: "workspace-collaboration",
+												resource: selectedWorkspace,
+											})
 										}
 									>
-										<span className="workspace-link__number" aria-hidden="true">
-											{String(index + 1).padStart(2, "0")}
-										</span>
-										<span className="workspace-link__name" dir="auto">
-											{workspace.name}
-										</span>
-										{workspace.archivedAt ? (
-											<span className="workspace-link__archived">
-												{t("common.archived")}
-											</span>
-										) : null}
+										<InlineIcon>◎</InlineIcon>
+										{t("collaboration.open")}
 									</button>
-								</li>
-							))}
-						</ul>
-					</nav>
-					<div className="workspace-rail__footer">
+								) : null}
+								{selectedWorkspace.accessScope === "workspace" ? (
+									<ResourceActions
+										inline
+										archived={Boolean(selectedWorkspace.archivedAt)}
+										busy={busy}
+										onArchive={() => void archiveWorkspace(selectedWorkspace)}
+										onEdit={() =>
+											setEditor({
+												kind: "workspace-edit",
+												resource: selectedWorkspace,
+											})
+										}
+										onRestore={() => void restoreWorkspace(selectedWorkspace)}
+										resourceName={selectedWorkspace.name}
+									/>
+								) : null}
+								{!selectedWorkspace.archivedAt &&
+								selectedWorkspace.accessScope === "workspace" ? (
+									<button
+										type="button"
+										className="button button--secondary"
+										onClick={() => setEditor({ kind: "collection-create" })}
+									>
+										<InlineIcon>＋</InlineIcon>
+										{t("collection.new")}
+									</button>
+								) : null}
+							</ActionMenu>
+						) : null}
 						<button
 							type="button"
 							className="archive-toggle"
@@ -1314,19 +1466,45 @@ export function PlanningDashboard({
 								? t("dashboard.hideArchived")
 								: t("dashboard.showArchived")}
 						</button>
-						<p>{t("account.signedInAs", { email: user.email })}</p>
+						<ActionMenu label={t("account.settings")}>
+							<div className="settings-account">
+								<UserAvatar name={user.name} image={user.image} />
+								<div>
+									<strong dir="auto">{user.name}</strong>
+									<span dir="ltr">{user.email}</span>
+								</div>
+							</div>
+							<a className="text-button" href="/connectors">
+								{t("connectors.title")}
+							</a>
+							<LocaleSwitch />
+							<button
+								type="button"
+								className="text-button"
+								onClick={() => void onSignOut()}
+								disabled={isSigningOut}
+							>
+								{isSigningOut ? t("account.signingOut") : t("account.signOut")}
+							</button>
+						</ActionMenu>
 					</div>
 				</aside>
 
-				<main className="studio-main" id="main-content" tabIndex={-1}>
-					<section className="studio-intro">
-						<div>
-							<p className="eyebrow">{t("dashboard.privateWorkspace")}</p>
-							<h1>{t("dashboard.greeting", { name: firstName })}</h1>
-							<p>{t("dashboard.description")}</p>
-						</div>
-						<p className="studio-intro__workflow">{t("dashboard.workflow")}</p>
-					</section>
+				<main
+					className="studio-main"
+					id="main-content"
+					ref={mainRef}
+					tabIndex={-1}
+				>
+					{!selectedWorkspace ? (
+						<section className="studio-intro">
+							<div>
+								<p className="eyebrow">{t("dashboard.privateWorkspace")}</p>
+								<h1>{t("dashboard.greeting", { name: firstName })}</h1>
+								<p>{t("dashboard.description")}</p>
+							</div>
+						</section>
+					) : null}
 
 					{viewState === "loading-workspaces" ? (
 						<StatusPanel
@@ -1360,55 +1538,11 @@ export function PlanningDashboard({
 						/>
 					) : selectedWorkspace ? (
 						<section className="workspace-folio">
-							<header className="workspace-folio__header">
-								<div>
-									<p className="eyebrow">{t("workspace.singular")}</p>
-									<h2 dir="auto">{selectedWorkspace.name}</h2>
-								</div>
-								<div className="workspace-folio__controls">
-									{!selectedWorkspace.archivedAt ? (
-										<button
-											type="button"
-											className="button button--quiet"
-											onClick={() =>
-												setEditor({
-													kind: "workspace-collaboration",
-													resource: selectedWorkspace,
-												})
-											}
-										>
-											<InlineIcon>◎</InlineIcon>
-											{t("collaboration.open")}
-										</button>
-									) : null}
-									{selectedWorkspace.accessScope === "workspace" ? (
-										<ResourceActions
-											archived={Boolean(selectedWorkspace.archivedAt)}
-											busy={busy}
-											onArchive={() => void archiveWorkspace(selectedWorkspace)}
-											onEdit={() =>
-												setEditor({
-													kind: "workspace-edit",
-													resource: selectedWorkspace,
-												})
-											}
-											onRestore={() => void restoreWorkspace(selectedWorkspace)}
-											resourceName={selectedWorkspace.name}
-										/>
-									) : null}
-									{!selectedWorkspace.archivedAt &&
-									selectedWorkspace.accessScope === "workspace" ? (
-										<button
-											type="button"
-											className="button button--secondary"
-											onClick={() => setEditor({ kind: "collection-create" })}
-										>
-											<InlineIcon>＋</InlineIcon>
-											{t("collection.new")}
-										</button>
-									) : null}
-								</div>
-							</header>
+							{!selectedCollection ? (
+								<h1 className="workspace-title" dir="auto">
+									{selectedWorkspace.name}
+								</h1>
+							) : null}
 
 							{viewState === "loading-collections" ? (
 								<StatusPanel
@@ -1426,51 +1560,17 @@ export function PlanningDashboard({
 								/>
 							) : (
 								<>
-									<nav
-										className="collection-strip"
-										aria-label={t("nav.collectionMenu")}
-									>
-										{visibleCollections.map((collection, index) => (
-											<button
-												type="button"
-												key={collection.id}
-												className={
-													collection.id === selectedCollectionId
-														? "collection-tab collection-tab--active"
-														: "collection-tab"
-												}
-												onClick={() => setSelectedCollectionId(collection.id)}
-												aria-label={t("collection.select", {
-													name: collection.name,
-												})}
-												aria-current={
-													collection.id === selectedCollectionId
-														? "page"
-														: undefined
-												}
-											>
-												<span aria-hidden="true">
-													{String(index + 1).padStart(2, "0")}
-												</span>
-												<strong dir="auto">{collection.name}</strong>
-												{collection.archivedAt ? (
-													<small>{t("common.archived")}</small>
-												) : null}
-											</button>
-										))}
-									</nav>
-
 									{selectedCollection ? (
 										<section className="collection-folio">
 											<header className="collection-folio__header">
 												<div>
 													<p className="eyebrow">{t("collection.singular")}</p>
-													<h2 dir="auto">{selectedCollection.name}</h2>
+													<h1 dir="auto">{selectedCollection.name}</h1>
 													{selectedCollection.description ? (
 														<p dir="auto">{selectedCollection.description}</p>
 													) : null}
 												</div>
-								<div className="collection-folio__actions">
+												<div className="collection-folio__actions">
 													<ResourceActions
 														archived={Boolean(selectedCollection.archivedAt)}
 														busy={busy}
@@ -1487,54 +1587,56 @@ export function PlanningDashboard({
 															void restoreCollection(selectedCollection)
 														}
 														resourceName={selectedCollection.name}
-									/>
-									<button
-										type="button"
-										className="button button--quiet"
-										onClick={() =>
-											setEditor({
-												kind: "context-export",
-												resource: selectedCollection,
-											})
-										}
-									>
-										<InlineIcon>{`{ }`}</InlineIcon>
-										{t("context.open")}
-									</button>
-							{!selectedCollection.archivedAt &&
-											itemPermissions.canCreate ? (
-												<button
-													type="button"
-													className="button button--secondary"
-													onClick={() =>
-														setEditor({
-															kind: "research-import",
-															resource: selectedCollection,
-														})
-													}
-												>
-													<InlineIcon>⇲</InlineIcon>
-													{t("import.open")}
-												</button>
-											) : null}
-											{!selectedCollection.archivedAt ? (
-												<button
-													type="button"
-													className="button button--secondary"
-													onClick={() =>
-														setEditor({
-															kind: "provider-research",
-															resource: selectedCollection,
-														})
-													}
-												>
-													<InlineIcon>⌕</InlineIcon>
-													{t("research.open")}
-												</button>
-											) : null}
-											{!selectedCollection.archivedAt &&
-											itemPermissions.canCreate ? (
-												<button
+													/>
+													<ActionMenu label={t("nav.researchTools")}>
+														<button
+															type="button"
+															className="button button--quiet"
+															onClick={() =>
+																setEditor({
+																	kind: "context-export",
+																	resource: selectedCollection,
+																})
+															}
+														>
+															<InlineIcon>{`{ }`}</InlineIcon>
+															{t("context.open")}
+														</button>
+														{!selectedCollection.archivedAt &&
+														itemPermissions.canCreate ? (
+															<button
+																type="button"
+																className="button button--secondary"
+																onClick={() =>
+																	setEditor({
+																		kind: "research-import",
+																		resource: selectedCollection,
+																	})
+																}
+															>
+																<InlineIcon>⇲</InlineIcon>
+																{t("import.open")}
+															</button>
+														) : null}
+													</ActionMenu>
+													{!selectedCollection.archivedAt ? (
+														<button
+															type="button"
+															className="button button--secondary"
+															onClick={() =>
+																setEditor({
+																	kind: "provider-research",
+																	resource: selectedCollection,
+																})
+															}
+														>
+															<InlineIcon>⌕</InlineIcon>
+															{t("research.open")}
+														</button>
+													) : null}
+													{!selectedCollection.archivedAt &&
+													itemPermissions.canCreate ? (
+														<button
 															type="button"
 															className="button button--primary"
 															onClick={() => setEditor({ kind: "item-create" })}
@@ -1546,129 +1648,167 @@ export function PlanningDashboard({
 												</div>
 											</header>
 
-                      <CollectionDirection
-                        brief={brief}
-                        busy={busy}
-                        canEditBrief={
-                          canEditBrief && !selectedCollection.archivedAt
-                        }
-                        canEditConcept={
-                          canEditConcept && !selectedCollection.archivedAt
-                        }
-                        concept={concept}
-                        media={conceptMedia}
-                        loading={directionPhase !== "ready"}
-                        onEditBrief={() => setEditor({ kind: "brief-edit" })}
-                        onEditConcept={() =>
-                          setEditor({ kind: "concept-edit" })
-                        }
-                        onRemoveConcept={() => void removeTextConcept()}
-                        onDeleteImage={deleteConceptImage}
-                        onReorderImages={reorderConceptImages}
-                        onUpdateImage={updateConceptImage}
-                        onUploadImage={uploadConceptImage}
-                      />
-
-											{collectionRollup && activeItems.length > 0 ? (
-												<CollectionCostSummary rollup={collectionRollup} />
-											) : null}
-
-											{viewState === "loading-items" ? (
-												<StatusPanel
-													eyebrow={t("common.loading")}
-													title={t("status.loadingItems")}
-													body={t("item.createDescription")}
-												/>
-											) : viewState === "empty-items" ? (
-												<EmptyPanel
-													eyebrow={t("item.emptyEyebrow")}
-													title={t("item.emptyTitle")}
-													body={t("item.emptyBody")}
-												action={
-													itemPermissions.canCreate
-														? t("item.emptyAction")
-														: undefined
-												}
-												onAction={
-													itemPermissions.canCreate
-														? () => setEditor({ kind: "item-create" })
-														: undefined
-												}
-												/>
-											) : (
-												<>
-													<div className="collection-metrics">
-														<div>
-															<strong>
-																{formatNumber(locale, activeItems.length)}
-															</strong>
-															<span>{t("metric.items")}</span>
-														</div>
-														<div>
-															<strong>
-																{formatNumber(locale, groupLabels.length)}
-															</strong>
-															<span>{t("metric.groups")}</span>
-														</div>
-														<div>
-															<strong>
-																{formatNumber(locale, activeUnits)}
-															</strong>
-															<span>{t("metric.units")}</span>
-														</div>
-													</div>
-
-													{groupLabels.length > 0 ? (
-														<nav
-															className="group-filter"
-															aria-label={t("nav.itemGroups")}
+											<nav
+												className="collection-views"
+												aria-label={t("nav.collectionViews")}
+											>
+												{(["items", "direction", "budget"] as const).map(
+													(view) => (
+														<button
+															key={view}
+															type="button"
+															aria-pressed={collectionView === view}
+															aria-controls={`collection-panel-${view}`}
+															onClick={() => setCollectionView(view)}
 														>
-															<button
-																type="button"
-																className={
-																	selectedGroup === "all"
-																		? "group-chip group-chip--active"
-																		: "group-chip"
-																}
-																onClick={() => setSelectedGroup("all")}
-																aria-pressed={selectedGroup === "all"}
-															>
-																{t("item.groupAll")}
-															</button>
-															{groupLabels.map((group) => (
-																<button
-																	type="button"
-																	className={
-																		selectedGroup === group
-																			? "group-chip group-chip--active"
-																			: "group-chip"
-																	}
-																	onClick={() => setSelectedGroup(group)}
-																	aria-pressed={selectedGroup === group}
-																	key={group}
-																	dir="auto"
-																>
-																	{group}
-																</button>
-															))}
-														</nav>
-													) : null}
-
-												<ItemLedger
+															{t(`nav.view.${view}`)}
+															{view === "items" ? (
+																<span>
+																	{formatNumber(locale, activeItems.length)}
+																</span>
+															) : null}
+														</button>
+													),
+												)}
+											</nav>
+											<section
+												id="collection-panel-direction"
+												hidden={collectionView !== "direction"}
+												aria-label={t("nav.view.direction")}
+											>
+												<CollectionDirection
+													brief={brief}
 													busy={busy}
-														items={filteredItems}
-														onArchive={(item) => void archiveItem(item)}
-														onCompare={openItemComparison}
-														onDiscuss={openItemDiscussion}
-														onEdit={(item) =>
-															setEditor({ kind: "item-edit", resource: item })
-														}
-													onOpen={openItemWorkflow}
-													onRestore={(item) => void restoreItem(item)}
-													permissions={itemPermissions}
+													canEditBrief={
+														canEditBrief && !selectedCollection.archivedAt
+													}
+													canEditConcept={
+														canEditConcept && !selectedCollection.archivedAt
+													}
+													concept={concept}
+													media={conceptMedia}
+													loading={directionPhase !== "ready"}
+													onEditBrief={() => setEditor({ kind: "brief-edit" })}
+													onEditConcept={() =>
+														setEditor({ kind: "concept-edit" })
+													}
+													onRemoveConcept={() => void removeTextConcept()}
+													onDeleteImage={deleteConceptImage}
+													onReorderImages={reorderConceptImages}
+													onUpdateImage={updateConceptImage}
+													onUploadImage={uploadConceptImage}
 												/>
-												</>
-											)}
+											</section>
+											<section
+												id="collection-panel-budget"
+												hidden={collectionView !== "budget"}
+												aria-label={t("nav.view.budget")}
+											>
+												{collectionRollup ? (
+													<CollectionCostSummary rollup={collectionRollup} />
+												) : (
+													<p className="section-empty">
+														{t("nav.budgetEmpty")}
+													</p>
+												)}
+											</section>
+											<section
+												id="collection-panel-items"
+												hidden={collectionView !== "items"}
+												aria-label={t("nav.view.items")}
+											>
+												{viewState === "loading-items" ? (
+													<StatusPanel
+														eyebrow={t("common.loading")}
+														title={t("status.loadingItems")}
+														body={t("item.createDescription")}
+													/>
+												) : viewState === "empty-items" ? (
+													<EmptyPanel
+														eyebrow={t("item.emptyEyebrow")}
+														title={t("item.emptyTitle")}
+														body={t("item.emptyBody")}
+														action={
+															itemPermissions.canCreate
+																? t("item.emptyAction")
+																: undefined
+														}
+														onAction={
+															itemPermissions.canCreate
+																? () => setEditor({ kind: "item-create" })
+																: undefined
+														}
+													/>
+												) : (
+													<>
+														<div className="item-toolbar">
+															<div className="item-search">
+																<label htmlFor="item-search">
+																	{t("nav.findItems")}
+																</label>
+																<div>
+																	<input
+																		id="item-search"
+																		type="search"
+																		value={itemQuery}
+																		onChange={(event) =>
+																			setItemQuery(event.target.value)
+																		}
+																		placeholder={t("nav.findItemsPlaceholder")}
+																	/>
+																	{itemQuery ? (
+																		<button
+																			type="button"
+																			className="text-action"
+																			onClick={() => setItemQuery("")}
+																		>
+																			{t("nav.clearSearch")}
+																		</button>
+																	) : null}
+																</div>
+															</div>
+															{groupLabels.length > 0 ? (
+																<label className="item-group-select">
+																	{t("nav.itemGroups")}
+																	<select
+																		value={selectedGroup}
+																		onChange={(event) =>
+																			setSelectedGroup(event.target.value)
+																		}
+																	>
+																		<option value="all">
+																			{t("item.groupAll")}
+																		</option>
+																		{groupLabels.map((group) => (
+																			<option key={group} value={group}>
+																				{group}
+																			</option>
+																		))}
+																	</select>
+																</label>
+															) : null}
+														</div>
+														{filteredItems.length === 0 ? (
+															<p className="section-empty" role="status">
+																{t("nav.noMatchingItems")}
+															</p>
+														) : null}
+														<ItemLedger
+															busy={busy}
+															items={filteredItems}
+															onArchive={(item) => void archiveItem(item)}
+															onCompare={openItemComparison}
+															onDiscuss={openItemDiscussion}
+															onEdit={(item) =>
+																setEditor({ kind: "item-edit", resource: item })
+															}
+															onOpen={openItemWorkflow}
+															onRestore={(item) => void restoreItem(item)}
+															permissions={itemPermissions}
+														/>
+													</>
+												)}
+											</section>
 										</section>
 									) : null}
 								</>
@@ -1798,20 +1938,20 @@ export function PlanningDashboard({
 					onClose={() => setEditor(null)}
 					onSubmit={updateItem}
 				/>
-      ) : editor?.kind === "brief-edit" ? (
-        <CollectionBriefForm
-          busy={busy}
-          initial={brief}
-          onClose={() => setEditor(null)}
-          onSubmit={saveBrief}
-        />
-      ) : editor?.kind === "concept-edit" ? (
-        <ConceptForm
-          busy={busy}
-          initial={concept}
-          onClose={() => setEditor(null)}
-          onSubmit={saveTextConcept}
-        />
+			) : editor?.kind === "brief-edit" ? (
+				<CollectionBriefForm
+					busy={busy}
+					initial={brief}
+					onClose={() => setEditor(null)}
+					onSubmit={saveBrief}
+				/>
+			) : editor?.kind === "concept-edit" ? (
+				<ConceptForm
+					busy={busy}
+					initial={concept}
+					onClose={() => setEditor(null)}
+					onSubmit={saveTextConcept}
+				/>
 			) : null}
 		</div>
 	);
