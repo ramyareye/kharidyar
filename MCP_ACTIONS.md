@@ -1,6 +1,6 @@
 # Private assistant actions
 
-Implemented locally on 2026-09-06 on top of `5a921a5`. Not committed or deployed. The currently deployed ChatGPT/Claude connector remains read-only. The local Codex runner remains a research runner; this extension uses the existing authenticated remote MCP endpoint.
+Implemented on 2026-09-06 on top of `5a921a5`; the user committed and pushed it as `9a65b41`. Deployed to the owner-only preview as `c8bbf5a1-771a-45b3-b643-535fe76851af` with migration 0013 applied. ChatGPT's new private **WantKit** plugin passed live add/edit, approval/decline and receipt replay checks on 2026-09-07 (Amsterdam). Old registrations remain read-only unless replaced with opt-in write credentials. Claude is deferred at the user's request. The local Codex runner remains a research runner; this extension uses the existing authenticated remote MCP endpoint. Production is unchanged.
 
 ## What chat can do
 
@@ -20,13 +20,13 @@ All operations retain existing account capabilities, ownership, collection bound
 
 Read tools expose the data needed for edits: brief, concept, image metadata, item workflow/discussion, budget, permitted catalog choices, import drafts, membership details and receipts. Lists can include archived records. Inputs and outputs have explicit schemas and tool annotations; record text remains untrusted data. Photos and avatar URLs are not sent as image bytes.
 
-## Enable after an approved preview release
+## Enable write access
 
-1. Apply the additive `0013_mcp_actions.sql` migration to the intended preview after recording a D1 recovery bookmark. It adds one table and two indexes, and does not alter planning tables. It has only been exercised in disposable test databases during this task.
-2. Build the preview anew and preserve the existing reviewed owner-only MCP/local-Codex flags. Production remains disabled. A production quality-check build does not preserve private preview overrides. Deploy only after explicit approval.
+1. Preview prerequisite is complete: additive migration `0013_mcp_actions.sql` is applied, with a pre-migration recovery bookmark recorded. It adds one table and two indexes without altering planning tables.
+2. Preview deployment is complete with the existing owner-only MCP/local-Codex settings preserved. Production remains disabled. Future releases need a fresh preview build and reviewed private overrides; a production quality-check build does not preserve them.
 3. In WantKit → Settings → Connected assistants, create new credentials with **Allow routine additions and edits** enabled. Existing registrations and grants remain read-only by default.
-4. Replace the client ID and secret in the assistant's connector settings, restart connection, and approve the new consent containing `wantkit:write`. Never paste a client secret into chat. Refresh the assistant's tool list if needed.
-5. In a disposable Collection, ask the assistant to add and edit an Item, then archive it. The archive must return an approval link without changing the Item. Open the link yourself, check the details and approve or decline. Ask the assistant to check the receipt. Repeat independently in ChatGPT and Claude; local tests do not establish actual client UI behavior.
+4. In ChatGPT → Plugins → Create app, set the MCP endpoint to the preview `/api/mcp` URL and choose OAuth. In Advanced OAuth settings, use **User-Defined OAuth Client**, enter the new ID/secret, choose `client_secret_post`, keep `wantkit:read` and `wantkit:write` selected, and set base scopes to `offline_access`. The tested callback is `https://chatgpt.com/connector_platform_oauth_redirect`. Create, select **Sign in with WantKit**, and approve the fresh write consent promptly; signed consent URLs expire after ten minutes. Never paste a secret into chat. Select **Refresh** in plugin settings to load all 70 actions if the initial list is empty. The current ChatGPT UI does not offer credential editing on the old plugin; the replacement is named **WantKit**.
+5. In a disposable Collection, ask ChatGPT to add and edit an Item, then archive it. The archive returns an approval link without changing the Item. ChatGPT may first show **External site** → **Open link**. In WantKit, review and approve or decline, then ask ChatGPT to check the receipt. Both decisions and exact replay passed in the live test. Claude needs its own verification when the user resumes that provider.
 
 ChatGPT/Claude may still ask for their own tool confirmation. WantKit's policy cannot suppress provider UI prompts. No public directory listing or paid OpenAI API integration is added. Each person retains their own assistant account; this does not import chats or memories into WantKit or make cloud AI offline/free of all limits.
 
@@ -53,4 +53,6 @@ This is broad planning coverage, not complete feature parity. The next product t
 
 ## Verification
 
-Full `bun run check` passed with 181 tests, including 33 OAuth/D1 MCP tests, plus lint, typecheck, migration metadata, production build and Wrangler dry-run. English/Persian sample approval, decline, write consent/setup, recovery and scroll checks passed. Validation evidence and release state are recorded in [HANDOFF.md](./HANDOFF.md). Backend tests use real OAuth/PKCE/consent and disposable D1 databases. Browser screenshots use fictional records and mocked responses, not a live assistant account or live planning data. No provider calls, persistent migrations, commit, push or deployment were performed during this task.
+Full `bun run check` passed with 181 tests, including 33 OAuth/D1 MCP tests, plus lint, typecheck, migration metadata, production build and Wrangler dry-run. English/Persian sample approval, decline, write consent/setup, recovery and scroll checks passed. Backend tests use real OAuth/PKCE/consent and disposable D1 databases; sample screenshots use fictional records. The approved preview release passed its fresh build/dry-run, migration integrity checks, release smoke, OAuth/authentication/recovery checks and deployed asset hash comparison.
+
+Subsequent live ChatGPT checks passed with the owner's subscription: write consent, 70-tool discovery, a disposable Collection/Item create, quantity edit/readback, pending archive, browser decline, denied replay, fresh browser approval, successful replay and receipt reads. Independent authenticated reads confirmed the archived Item's quantity and timestamps did not change on replay. No application changes or redeployment were needed. Claude read access worked, but its read-only grant rejected the test write; that provider is now deferred. No new research or paid API call ran. Evidence and current state: [HANDOFF.md](./HANDOFF.md).

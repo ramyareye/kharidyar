@@ -1,13 +1,13 @@
-# Handoff: assistant write actions — local only
+# Handoff: ChatGPT write actions verified on private preview
 
-Updated 2026-09-06. Base is `5a921a5` (`feat: add local Codex research and revamp dashboard UI`), which the user committed and pushed. The latest “go” authorized the ChatGPT/Claude write-tool and reconnect task. **This task is implemented locally, unstaged and uncommitted; it has not been deployed.** The live owner-only preview still has the read-only MCP connector and local Codex research runner. Paid OpenAI API stays deferred.
+Updated 2026-09-07. The authorized owner-only preview release of pushed `9a65b41` (`feat: add MCP write actions with approvals and reconnect recovery`), including UI checkpoint `5a921a5`, is complete. **Preview remains `c8bbf5a1-771a-45b3-b643-535fe76851af`; migration 0013 is applied. ChatGPT read/write and approval checks now pass.** The user explicitly deferred Claude. Production is unchanged; paid OpenAI API stays deferred. Only HANDOFF, MCP_ACTIONS and RELEASE documentation is dirty; nothing is staged or committed. No application code or deployment changed during client verification.
 
 ## Current outcome
 
 - Added 49 mutation tools and ten supporting read tools plus a private receipt reader over the existing MCP endpoint (70 tools total). Routine adds/edits use current account permissions; archive/deletion, sharing and purchase/decision actions require exact approval in WantKit. Research start also requires approval and an explicit provider. Existing OAuth registrations remain read-only unless replaced by a user-created connection with `wantkit:write` consent.
 - Pending approvals bind stored inputs and target snapshots to the requesting user, original OAuth client, session and exact access token. They cannot be approved with an MCP bearer or an extra `confirmed` argument. Permission, changed-target, expiry, revocation and duplicate-attempt checks run on the server. Execution is an at-most-once attempt, not a cross-service rollback guarantee. See [MCP_ACTIONS.md](./MCP_ACTIONS.md) for capabilities, manual gaps, retention and reconnect instructions.
 - Added a readable approval screen with currency formatting, localized sensitive-action titles, approve/decline states and expandable record IDs. New connections have an explicit write checkbox and consent text. `/api/auth/error` redirects to bounded reconnect guidance without reflecting provider error details or callback URLs. Standalone connector pages retain document scrolling despite the dashboard viewport shell.
-- Added `0013_mcp_actions.sql`, one action table and two indexes with generated Drizzle metadata. All migration execution so far is in disposable test databases. No persistent local/preview/production database was migrated, no provider was called, and no commit/push/deploy occurred.
+- Added `0013_mcp_actions.sql`, one action table and two indexes with generated Drizzle metadata. The approved preview release applied it successfully; 14 migrations are now recorded. User/Workspace/Collection/Item counts stayed 1/1/1/0 and foreign-key checks passed. No persistent local or production migration and no model call ran during this release.
 - Changed the MCP auth/options/server/routes, new action catalog/service/tool registration, new action contracts/schema/approval component, App/Connectors UI, English/Persian messages and MCP integration tests. Documentation includes this handoff, PROJECT, RELEASE, PRIVATE_MCP, UI_REDESIGN and new MCP_ACTIONS. No dependencies or Worker bindings changed.
 
 ## Validation and release boundary
@@ -16,18 +16,30 @@ Updated 2026-09-06. Base is `5a921a5` (`feat: add local Codex research and revam
 
 Browser approval/decline, write-consent, opt-in credential creation and reconnect checks passed on fictional local data at 1280 px English and 390 px Persian without horizontal overflow. Mobile scrolling reached the approval controls (390 px document width; final scroll 320 of a 1164 px document with an 844 px viewport). The write checkbox defaulted off and posted `allowWrites: true` only after checking it. Initial harness favicon/navigation 404s were recorded; final checked pages rendered and completed the flows. Screenshots and the harness are ignored under `output/playwright/ui-revamp/assistant*`. This is not live write verification in ChatGPT or Claude.
 
-Local sample: `http://127.0.0.1:4174/output/playwright/ui-revamp/assistant.html`; add `?mode=consent`, `?mode=recovery`, or `?locale=fa`. Reload from the sample URL to reset fictional records. The browser uses the working escalated Playwright `local-codex-live` session; Argent/CUA transport is unavailable. No live account connection was changed in this task.
+Local sample: `http://127.0.0.1:4174/output/playwright/ui-revamp/assistant.html`; add `?mode=consent`, `?mode=recovery`, or `?locale=fa`. Reload from the sample URL to reset fictional records. Browser automation uses the working escalated Playwright `local-codex-live` session; Argent/CUA transport is unavailable. Live account changes from subsequent client verification are recorded below.
 
-The quality gate generates production/default build artifacts with MCP/local Codex disabled. A separately approved preview release must record a D1 recovery bookmark, apply migration 0013, build preview afresh and preserve the reviewed private owner overrides. Then replace read-only connector credentials and independently verify writes/decline/revocation in both actual assistant clients. Production remains unchanged. The final tree has 28 modified/new files, including six documentation files and additive migration metadata; nothing is staged. No staging or deployment is implied by this handoff.
+The fresh preview build and exact-config dry-run passed. Its reviewed artifacts were deployed without rebuilding; all live bindings and plain-text settings match the previous release, including the same sole owner's MCP/local-Codex allowlists. All six existing secret names remain provisioned; values were not read or changed. Release smoke and six additional public checks passed: read/write discovery, OAuth issuer/PKCE/private registration, missing/invalid bearer rejection, bounded reconnect redirects, session-protected connector/approval routes and exact deployed JS/CSS hashes. Artifact manifest SHA-256: `a475890301791b642b43394fee4a9af3220ee009154566183f88f70105dd58e7`. Private release evidence is under `/tmp/wantkit-mcp-preview-release/`; never commit it. The ignored generated build currently contains reviewed private preview overrides; a normal build will overwrite them.
+
+## Live client checkpoint — complete for ChatGPT
+
+- The missing “test browser” was a headless Chrome session. It was reopened headed; WantKit and ChatGPT are now signed in. Keep using `local-codex-live` with the approved escalated Playwright CLI. Do not ask the user to sign in again without checking current state.
+- Created the private ChatGPT plugin **WantKit**, with new **My ChatGPT** credentials and explicit write opt-in. OAuth consent succeeded for `offline_access wantkit:read wantkit:write`; refreshed discovery shows all 70 tools. The older **WantKit Preview** plugin definition remains in ChatGPT with obsolete read-only credentials; use **WantKit**. No credentials were pasted into chat or committed.
+- In “Test 1,” ChatGPT created one disposable Collection, **Connector check ChatGPT 2026-09-06**, and one Item, **Connector test lamp**. It created quantity 1, edited to 2 and read it back. The first archive stayed pending; declining through WantKit returned `denied` and left the Item active. Exact replay returned the same denied receipt. A fresh archive request stayed pending until approved through WantKit, then returned `succeeded`. ChatGPT replayed that exact operation once and received the same receipt; independent authenticated reads confirmed quantity 2 and unchanged archive/update timestamps. The test Collection remains active with its one archived Item. No pre-existing planning record, research, sharing or purchase was part of the test.
+- ChatGPT's approval link opens an **External site** confirmation; choose **Open link** to reach WantKit. The temporary absence of an HTML `href` was ChatGPT's confirmation behavior, not a broken WantKit route. The completed test conversation is **Create Test Collection** in the visible browser.
+- Before the user paused Claude, its replacement connector completed read authorization and read “Test 1,” but its initial grant requested read scope only. A test create was rejected before mutation. Claude's write-scope upgrade handling remains unverified/unfixed and is explicitly deferred; do not resume it as part of this checkpoint.
+- The reported local pairing `EEXIST` means this Mac already has a saved config. Its private mode-600 config was checked without printing the token; `/api/local-codex/check` returned 200 for **This Mac**. Reuse it with the runner command below. The new, unused **Reza’s MacBook Pro** pairing remains; no config was replaced and no new local research ran.
+
+Three bounded ChatGPT turns exercised this flow using the owner's subscription. A prior bounded Claude test stopped at the missing write scope. These client calls followed the deployment-only checks above; no paid API, Tavily fallback, local runner loop or additional deployment was started. This verifies the tested ChatGPT paths, not every tool or future provider UI behavior.
 
 ## Next ordered work
 
-1. Commit review and owner-only preview release/live client checks, only when explicitly requested. Follow the exact staged-tree/message approval gate below before any commit.
-2. Private floor plans: images or PDFs, with measurements when available, for room needs and research.
-3. Image generation using permitted floor plans, room photos and selected products.
-4. WantKit chat using the same tools and approval rules. The user wants both chat surfaces, starting with ChatGPT/Claude.
+1. Private floor plans: images or PDFs, with measurements when available, for room needs and research.
+2. Image generation using permitted floor plans, room photos and selected products.
+3. WantKit chat using the same tools and approval rules. Start with ChatGPT/OpenAI; paid API remains deferred.
 
-One substantial task per session. Start the next product task only after a new request. The prior compact UI/Settings/scroll work is pushed as `5a921a5` but remains undeployed; its evidence is in [UI_REDESIGN.md](./UI_REDESIGN.md).
+Claude compatibility is parked until the user explicitly resumes it. The ChatGPT connector checkpoint is complete; documentation can be committed using the approval gate below. Suggested message: `docs: record verified ChatGPT write connector`.
+
+One substantial task per session. Start the next product task only after a new request. The compact UI/Settings/scroll work from `5a921a5` is included in the new preview; its local evidence is in [UI_REDESIGN.md](./UI_REDESIGN.md).
 
 ## Previous completed task: local Codex preview
 
@@ -61,7 +73,7 @@ bun run local:codex run --model gpt-6-astra
 
 Then select **My local Codex** and **This Mac** in Collection → Live research. Keep the terminal running. Signing out of the original WantKit session invalidates the pairing. Do not expose or commit the config.
 
-Preview is `4e4a4724-efdf-47c0-9638-d302bfac186e` at `https://kharidyar-preview.formahsa.workers.dev`; previous version was `b51b0cd5-d575-4d39-8d8f-e24ef2232677`. Production is unchanged. The deployed preview enables MCP/local Codex for the sole approved owner; checked-in defaults remain disabled. Current ignored build artifacts were regenerated for production with disabled defaults. A future approved preview deployment requires a fresh preview build and deliberate restoration of the reviewed private flags. Recovery bookmark, manifest and test IDs are in [RELEASE.md](./RELEASE.md).
+The earlier local-Codex preview version was `4e4a4724-efdf-47c0-9638-d302bfac186e`; it is now the previous version for release `c8bbf5a1-771a-45b3-b643-535fe76851af` at `https://kharidyar-preview.formahsa.workers.dev`. Pre-0013 recovery bookmark: `0000003e-00000000-000050de-4e9272088f0bc1355436ce173b41f119`. Production is unchanged. The deployed preview enables MCP/local Codex for the sole approved owner; checked-in defaults remain disabled. Recovery details and prior test IDs are in [RELEASE.md](./RELEASE.md).
 
 ## Recoverable API draft — reference only
 
@@ -69,6 +81,6 @@ Ignored local archive: [`.local-backups/openai-api-draft-2026-09-05.tgz`](./.loc
 
 ## Workflow constraints
 
-One substantial task per session; no subagents or parallel audits without explicit request. The approved preview deployment and single live call are complete; no further deployment or model call is authorized by this checkpoint. Keep credentials, auth files, cookies, account IDs, test artifacts and logs out of commits.
+One substantial task per session; no subagents or parallel audits without explicit request. The approved preview release and bounded ChatGPT client checks are complete. Start further product work or deployment only after a new request. Keep credentials, auth files, cookies, account IDs, test artifacts and logs out of commits.
 
 Before any commit, inspect `git status --short`, `git diff --cached --name-status`, `git diff --cached`, and `git diff --cached --check`. Review every staged file, show the complete staged tree, summary, validation and proposed message, then ask **“Proceed with this exact staged tree and commit message?”** Wait for approval, recheck unchanged staged content, and commit only that tree. Never use blanket add/reset/restore/checkout/clean, amend, force, or hook bypass.
