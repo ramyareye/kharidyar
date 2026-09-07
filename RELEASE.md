@@ -4,11 +4,15 @@ This runbook covers the Cloudflare Worker, static assets, D1 migrations, private
 
 Cloudflare Worker versions do not include D1 state. A Worker rollback changes code and bindings only, while D1 Time Travel overwrites the database in place. Treat them as separate recovery controls.
 
-## 2026-09-07 private floor plans — local only
+## 2026-09-07 private floor plans — preview deployed
 
-The private floor-plan foundation passes the full 191-test quality gate, migration metadata checks, production build and deployment dry-run, plus English/Persian sample UI checks. It adds migration `0014_floor_plans.sql` (one table, two indexes), reuses the existing private `CONCEPT_MEDIA` R2 bucket and `IMAGES` binding, and adds three MCP tools. No dependencies, bindings, secrets, remote data or deployments changed. Migration 0014 has only been applied to disposable test databases.
+The user pushed `d065bd3` and approved the prepared preview release after refreshing Cloudflare login. Migration `0014_floor_plans.sql` applied successfully and the exact reviewed artifact deployed as **`ac5a87e9-e712-4a1c-a625-8b54bbfe4354`**. Previous version: `c8bbf5a1-771a-45b3-b643-535fe76851af`. No rebuild ran between artifact verification and deployment.
 
-After commit/push and explicit approval, record preview recovery state and aggregate counts, apply 0014 before deploying this source, verify migration/foreign-key integrity, build preview and review its owner-only MCP/local-Codex settings, then deploy the exact reviewed artifact. The quality gate overwrote the ignored build with production defaults. Verify private upload/download, denied access, edit/delete and ChatGPT's refreshed 73-tool discovery. Do not claim floor-plan interpretation or generation: this release sends saved labels/notes only. Production release needs separate approval. Details and rollback boundary: [FLOOR_PLANS.md](./FLOOR_PLANS.md).
+Pre-migration recovery bookmark: `0000005b-00000000-000050df-f8275c4e127bd5bcdceca28ca8363f5e`. Preview now has fifteen migrations. User/Workspace/Collection/Item counts stayed 1/1/2/1; the new floor_plans table was empty and foreign-key checks passed. The initial six-term aggregate query hit D1's compound SELECT limit; the split read-only check succeeded. Existing R2/Images/D1/Workflow/Browser bindings, runtime settings, sole-owner MCP/local-Codex allowlists and six secret names matched before and after. No credentials or secret values changed.
+
+The 191-test implementation gate and fresh preview build/dry-run passed before release. Live release smoke plus seven public checks passed, including exact JS/CSS asset hashes and anonymous floor-plan access rejection. Evidence is private under `/tmp/wantkit-floor-preview-release/`; manifest SHA-256 is `8f7d4050ea4d8cca14bcc02e28aebcdae51057b6981ee9aa5de81647aaea90e1`. After the user signed into the Codex browser, the synthetic **Preview upload check 2026-09-07** was uploaded into **Connector check ChatGPT 2026-09-06**. PNG-to-WebP normalization, private thumbnail loading, note editing and persistence after reload passed. The single test plan remains for ChatGPT verification. Live PDF upload, deletion and ChatGPT floor-plan calls have not run. Do not conflate local integration coverage with live-client verification.
+
+Production is unchanged and requires separate approval. The released server exposes 73 MCP tools after client refresh. This release sends saved plan labels/notes only; drawing interpretation and image generation remain deferred. Details and additive rollback boundary: [FLOOR_PLANS.md](./FLOOR_PLANS.md). Current next step: [HANDOFF.md](./HANDOFF.md).
 
 ## Environments
 

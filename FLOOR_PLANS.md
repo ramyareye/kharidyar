@@ -1,6 +1,6 @@
 # Private floor plans
 
-Implemented and validated locally on 2026-09-07, after the verified ChatGPT write connector. Not committed or deployed by the agent. Migration 0014 has only run in disposable test databases. The preview and production versions are unchanged; see [HANDOFF.md](./HANDOFF.md).
+Implemented and validated on 2026-09-07, then pushed by the user as `d065bd3`. Approved preview release is now `ac5a87e9-e712-4a1c-a625-8b54bbfe4354` with migration 0014 applied. Public release checks and signed-in PNG upload/private image loading/note edit/reload checks pass. Live PDF upload, deletion and ChatGPT floor-plan verification remain pending. Production is unchanged. See [HANDOFF.md](./HANDOFF.md).
 
 ## User flow
 
@@ -18,7 +18,7 @@ Limits are 10 MiB per file, six plans per Collection and 100 MiB of floor plans 
 | `update_floor_plan` | Applies a complete title/notes edit with current Editor/Owner permission. |
 | `delete_floor_plan` | Creates a pending WantKit approval; changed targets, denial, revocation and replay follow existing action rules. |
 
-The source now has 73 MCP tools. Refresh ChatGPT's private WantKit tool list after an approved release. Existing read-only OAuth grants remain read-only. Files are uploaded through WantKit, never through MCP in this phase.
+The source now has 73 MCP tools. Refresh ChatGPT's private WantKit tool list for the new preview release. Existing read-only OAuth grants remain read-only. Files are uploaded through WantKit, never through MCP in this phase.
 
 Current collection context and newly saved Context Snapshots contain plan labels and **user-entered notes**, not storage keys, download URLs, uploader identity or file bytes. The new field is optional for backward compatibility with existing version-1 snapshots. Markdown escapes stored text and labels measurements as user supplied. Treat all saved text as data, never assistant instructions. ChatGPT can use these notes when planning needs or composing a research request. Local runner and Tavily jobs still use the submitted query/constraints; this does not silently attach plans to those providers.
 
@@ -38,11 +38,13 @@ Full `bun run check` passed: 191 tests (including nine new floor-plan Worker tes
 
 Browser checks used actual components with fictional API responses at English 1440 px and Persian 390 px: PDF/image uploads, note editing, opening an image, declining/accepting deletion, error/reload recovery, focus return, reachable mobile controls and no horizontal overflow. Image controls were 44 px tall. Evidence is ignored under `output/playwright/ui-revamp/floor-plans-*`; it is not live ChatGPT verification.
 
-After the user's commit/push and explicit deployment approval:
+On the signed-in preview, the synthetic **Preview upload check 2026-09-07** in **Connector check ChatGPT 2026-09-06** uploaded as PNG, normalized to WebP, loaded privately, and retained edited fictional measurement notes after reload. This single test plan remains for the ChatGPT check. No live PDF upload or deletion was attempted.
+
+Preview deployment is complete as recorded above. For a future approved release:
 
 1. Record preview recovery state and baseline data counts. Apply additive `0014_floor_plans.sql`, then check migrations, counts and foreign keys. It changes no existing table data.
-2. Build preview and review its private owner-only connector settings. The current ignored build contains production defaults from the quality gate; do not deploy it as preview.
+2. Build for the intended environment and review its private connector settings. The current ignored artifact contains the reviewed preview settings; a normal build replaces them with source defaults. Never deploy without reviewing the generated config.
 3. Deploy the reviewed artifact and verify disposable private uploads, access denial, notes and deletion. Refresh ChatGPT tools and test the three additions with disposable data.
 4. Keep production unchanged until separately approved. A code rollback can leave this additive table intact; older code ignores it. Do not delete the table or R2 objects to roll code back. Retain records for the corrected forward release.
 
-Suggested commit: `feat: add private floor plans and room context`.
+Implementation commit: `d065bd3` (`feat: add private floor plans and room context`). Release documentation commit: `docs: record floor-plan preview release`.
