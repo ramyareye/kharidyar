@@ -1,8 +1,28 @@
-# Handoff: ChatGPT write actions verified on private preview
+# Handoff: private floor plans ready for review
 
-Updated 2026-09-07. The authorized owner-only preview release of pushed `9a65b41` (`feat: add MCP write actions with approvals and reconnect recovery`), including UI checkpoint `5a921a5`, is complete. **Preview remains `c8bbf5a1-771a-45b3-b643-535fe76851af`; migration 0013 is applied. ChatGPT read/write and approval checks now pass.** The user explicitly deferred Claude. Production is unchanged; paid OpenAI API stays deferred. Only HANDOFF, MCP_ACTIONS and RELEASE documentation is dirty; nothing is staged or committed. No application code or deployment changed during client verification.
+Updated 2026-09-07. The user pushed the ChatGPT verification checkpoint and authorized the next task. **Private floor-plan uploads and saved room context are implemented and validated locally.** Preview remains `c8bbf5a1-771a-45b3-b643-535fe76851af` with migration 0013; production is unchanged. No commit, staging, remote mutation or deployment ran in this task. Claude and paid OpenAI API remain deferred.
 
-## Current outcome
+## Current outcome and validation
+
+- Added a compact **Floor plans** collection tab in English/Persian. Owners/Editors can upload JPG/PNG/WebP/PDF, edit labels and optional measurement/room notes, and confirm deletion. Readers can open permitted files. Phone navigation uses two rows to keep all four collection tabs readable.
+- Files use private R2 storage, the existing Images normalization pipeline, authenticated downloads and current collection permissions. PDFs are opaque originals served as attachments; they are not sanitized or interpreted. Limits: 10 MiB/file, six plans/collection, 100 MiB of floor plans/workspace, ten upload attempts/minute. Additive migration `0014_floor_plans.sql` is generated and tested only in disposable databases; apply it before releasing this source.
+- ChatGPT gets `read_floor_plans`, routine `update_floor_plan`, and approval-gated `delete_floor_plan` (73 total MCP tools after release/refresh). Current collection context and new snapshots include saved labels/notes only. Old snapshots remain compatible. **Drawing interpretation, OCR, sending file bytes and image generation are not implemented.** No model or paid search call ran. [FLOOR_PLANS.md](./FLOOR_PLANS.md) records the boundary and release sequence.
+- Full `bun run check` passed: **191 tests** (26 domain, 5 localization, 103 Worker, 34 MCP, 16 UI-state, 7 CLI), lint, typecheck, Drizzle metadata, production build and deployment dry-run. Drizzle generation reports no further schema changes; `git diff --check` passes. Existing Workers cancellation/auth warnings, missing deployment-secret warning and frontend chunk-size warning remain; the checks exited successfully. Log: `/tmp/wantkit-floor-check-output.log`.
+- Browser checks use real components with fictional API responses: PDF/image upload, image opening, routine note edit, decline/accept deletion, failed edit then explicit reload, restored keyboard focus, English 1440 px and Persian 390 px, no horizontal overflow and 44 px file controls. Actual Worker/D1/R2 tests cover byte handling and access boundaries. Screenshots are ignored under `output/playwright/ui-revamp/floor-plans-*`. No live ChatGPT floor-plan check has run yet.
+
+## Changed areas and next ordered work
+
+Source: floor-plan contracts, D1 schema/migration and metadata, private-image helper, Worker routes/service/context/MCP tools, React tab/form/API/styles, approval title and English/Persian copy. Tests: new floor-plan API suite and extended MCP suite. Docs: this handoff, PROJECT, RELEASE, MCP_ACTIONS, PRIVATE_MCP and FLOOR_PLANS. All current changes are unstaged; no secrets, private plans, QA artifacts or dependency changes belong in the commit.
+
+Suggested commit message: `feat: add private floor plans and room context`.
+
+1. After the user's commit/push and explicit deployment approval: record preview recovery state, apply 0014, rebuild preview, preserve/review the owner-only connector settings, deploy and verify a disposable upload plus the three new ChatGPT tools. **The ignored build currently contains production defaults from the quality gate; do not deploy it as preview.** Production needs separate approval.
+2. On a new product-task request: floor-plan interpretation and image generation using permitted plans, room photos and selected products.
+3. WantKit chat using the same tools and approval rules. Start with ChatGPT/OpenAI; paid API remains deferred.
+
+One substantial task per session. The local floor-plan task is complete; do not begin generation until requested. Preview ChatGPT setup and prior verification details follow.
+
+## Previous checkpoint: ChatGPT write connector
 
 - Added 49 mutation tools and ten supporting read tools plus a private receipt reader over the existing MCP endpoint (70 tools total). Routine adds/edits use current account permissions; archive/deletion, sharing and purchase/decision actions require exact approval in WantKit. Research start also requires approval and an explicit provider. Existing OAuth registrations remain read-only unless replaced by a user-created connection with `wantkit:write` consent.
 - Pending approvals bind stored inputs and target snapshots to the requesting user, original OAuth client, session and exact access token. They cannot be approved with an MCP bearer or an extra `confirmed` argument. Permission, changed-target, expiry, revocation and duplicate-attempt checks run on the server. Execution is an at-most-once attempt, not a cross-service rollback guarantee. See [MCP_ACTIONS.md](./MCP_ACTIONS.md) for capabilities, manual gaps, retention and reconnect instructions.
@@ -18,7 +38,7 @@ Browser approval/decline, write-consent, opt-in credential creation and reconnec
 
 Local sample: `http://127.0.0.1:4174/output/playwright/ui-revamp/assistant.html`; add `?mode=consent`, `?mode=recovery`, or `?locale=fa`. Reload from the sample URL to reset fictional records. Browser automation uses the working escalated Playwright `local-codex-live` session; Argent/CUA transport is unavailable. Live account changes from subsequent client verification are recorded below.
 
-The fresh preview build and exact-config dry-run passed. Its reviewed artifacts were deployed without rebuilding; all live bindings and plain-text settings match the previous release, including the same sole owner's MCP/local-Codex allowlists. All six existing secret names remain provisioned; values were not read or changed. Release smoke and six additional public checks passed: read/write discovery, OAuth issuer/PKCE/private registration, missing/invalid bearer rejection, bounded reconnect redirects, session-protected connector/approval routes and exact deployed JS/CSS hashes. Artifact manifest SHA-256: `a475890301791b642b43394fee4a9af3220ee009154566183f88f70105dd58e7`. Private release evidence is under `/tmp/wantkit-mcp-preview-release/`; never commit it. The ignored generated build currently contains reviewed private preview overrides; a normal build will overwrite them.
+The fresh preview build and exact-config dry-run passed. Its reviewed artifacts were deployed without rebuilding; all live bindings and plain-text settings match the previous release, including the same sole owner's MCP/local-Codex allowlists. All six existing secret names remain provisioned; values were not read or changed. Release smoke and six additional public checks passed: read/write discovery, OAuth issuer/PKCE/private registration, missing/invalid bearer rejection, bounded reconnect redirects, session-protected connector/approval routes and exact deployed JS/CSS hashes. Artifact manifest SHA-256: `a475890301791b642b43394fee4a9af3220ee009154566183f88f70105dd58e7`. Private release evidence is under `/tmp/wantkit-mcp-preview-release/`; never commit it. That release used reviewed private preview overrides. The current ignored build was overwritten by the 2026-09-07 production quality check; rebuild preview and review its private settings before any release.
 
 ## Live client checkpoint — complete for ChatGPT
 
@@ -30,16 +50,6 @@ The fresh preview build and exact-config dry-run passed. Its reviewed artifacts 
 - The reported local pairing `EEXIST` means this Mac already has a saved config. Its private mode-600 config was checked without printing the token; `/api/local-codex/check` returned 200 for **This Mac**. Reuse it with the runner command below. The new, unused **Reza’s MacBook Pro** pairing remains; no config was replaced and no new local research ran.
 
 Three bounded ChatGPT turns exercised this flow using the owner's subscription. A prior bounded Claude test stopped at the missing write scope. These client calls followed the deployment-only checks above; no paid API, Tavily fallback, local runner loop or additional deployment was started. This verifies the tested ChatGPT paths, not every tool or future provider UI behavior.
-
-## Next ordered work
-
-1. Private floor plans: images or PDFs, with measurements when available, for room needs and research.
-2. Image generation using permitted floor plans, room photos and selected products.
-3. WantKit chat using the same tools and approval rules. Start with ChatGPT/OpenAI; paid API remains deferred.
-
-Claude compatibility is parked until the user explicitly resumes it. The ChatGPT connector checkpoint is complete; documentation can be committed using the approval gate below. Suggested message: `docs: record verified ChatGPT write connector`.
-
-One substantial task per session. Start the next product task only after a new request. The compact UI/Settings/scroll work from `5a921a5` is included in the new preview; its local evidence is in [UI_REDESIGN.md](./UI_REDESIGN.md).
 
 ## Previous completed task: local Codex preview
 

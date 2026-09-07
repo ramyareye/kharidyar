@@ -19,6 +19,7 @@ import { collaborationExperienceRoutes } from "./collaboration-experience-routes
 import { collaborationRoutes } from "./collaboration-routes";
 import { collectionDirectionRoutes } from "./collection-direction-routes";
 import { conceptMediaRoutes } from "./concept-media-routes";
+import { floorPlanRoutes } from "./floor-plan-routes";
 import { commerceRoutes } from "./commerce-routes";
 import { coreWorkspaceRoutes } from "./core-workspace-routes";
 import { contextRoutes } from "./context-routes";
@@ -121,6 +122,7 @@ const apiRoutes = new Hono<WorkerAppEnv>()
 	.route("/", itemWorkflowRoutes)
 	.route("/", collectionDirectionRoutes)
 	.route("/", conceptMediaRoutes)
+	.route("/", floorPlanRoutes)
 	.route("/", commerceRoutes)
 	.route("/", importDraftRoutes)
 	.route("/", researchFixtureRoutes)

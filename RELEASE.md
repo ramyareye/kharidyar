@@ -4,6 +4,12 @@ This runbook covers the Cloudflare Worker, static assets, D1 migrations, private
 
 Cloudflare Worker versions do not include D1 state. A Worker rollback changes code and bindings only, while D1 Time Travel overwrites the database in place. Treat them as separate recovery controls.
 
+## 2026-09-07 private floor plans — local only
+
+The private floor-plan foundation passes the full 191-test quality gate, migration metadata checks, production build and deployment dry-run, plus English/Persian sample UI checks. It adds migration `0014_floor_plans.sql` (one table, two indexes), reuses the existing private `CONCEPT_MEDIA` R2 bucket and `IMAGES` binding, and adds three MCP tools. No dependencies, bindings, secrets, remote data or deployments changed. Migration 0014 has only been applied to disposable test databases.
+
+After commit/push and explicit approval, record preview recovery state and aggregate counts, apply 0014 before deploying this source, verify migration/foreign-key integrity, build preview and review its owner-only MCP/local-Codex settings, then deploy the exact reviewed artifact. The quality gate overwrote the ignored build with production defaults. Verify private upload/download, denied access, edit/delete and ChatGPT's refreshed 73-tool discovery. Do not claim floor-plan interpretation or generation: this release sends saved labels/notes only. Production release needs separate approval. Details and rollback boundary: [FLOOR_PLANS.md](./FLOOR_PLANS.md).
+
 ## Environments
 
 | Environment | Worker | D1 database | private R2 bucket | Workflow | Application origin |

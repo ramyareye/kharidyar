@@ -2,6 +2,8 @@
 
 Implemented on 2026-09-06 on top of `5a921a5`; the user committed and pushed it as `9a65b41`. Deployed to the owner-only preview as `c8bbf5a1-771a-45b3-b643-535fe76851af` with migration 0013 applied. ChatGPT's new private **WantKit** plugin passed live add/edit, approval/decline and receipt replay checks on 2026-09-07 (Amsterdam). Old registrations remain read-only unless replaced with opt-in write credentials. Claude is deferred at the user's request. The local Codex runner remains a research runner; this extension uses the existing authenticated remote MCP endpoint. Production is unchanged.
 
+**2026-09-07 local addition:** floor-plan metadata read/edit and approval-gated deletion are validated locally. They require migration 0014, an approved preview release and a ChatGPT tool refresh; the live connector still has the previously verified 70 tools. See [FLOOR_PLANS.md](./FLOOR_PLANS.md).
+
 ## What chat can do
 
 | Area | Routine actions | Requires approval in WantKit |
@@ -14,6 +16,7 @@ Implemented on 2026-09-06 on top of `5a921a5`; the user committed and pushed it 
 | Research import | Create/read/correct/apply an Import Draft | Discard a draft |
 | Research runs | Read saved findings, cancel a run, promote a finding, restore a dismissed finding | Start with an explicit provider; dismiss a finding |
 | Existing Concept images | Read metadata, edit caption/cover, reorder references | Delete an image |
+| Floor plans (local, unreleased) | Read labels/measurement notes; edit title/notes | Delete a plan and its current notes |
 | Sharing | Read permitted membership/invitation details | Create/revoke invitation links; change/remove membership |
 
 All operations retain existing account capabilities, ownership, collection boundaries, archived-resource rules and service validation. An OAuth write scope does not make a Viewer an Editor. Creating an invitation returns a link; it sends no email or message. Offers and price checks record supplied observations, not automatic verification. A purchase action is bookkeeping, never checkout or a transfer of money.
@@ -44,12 +47,12 @@ Receipts are private to their original user/client and recheck resource access b
 
 ## Manual or deferred steps
 
-- File upload, floor-plan images/PDFs, and passing private image bytes to an assistant or generator. Existing images can be managed by metadata, but generation and floor-plan interpretation are separate tasks.
+- Upload files in WantKit: the new floor-plan tab accepts images/PDFs after its release. MCP exposes saved labels/notes, not file bytes. Floor-plan interpretation and generation remain separate tasks.
 - Starting/retrying source refresh, retrying an existing research request, creating a saved Context Snapshot and accepting invitation links remain app workflows. New research can be started with an explicitly chosen provider; local pairing/setup and runner startup remain on the user's computer.
 - Assistant provider credentials, connector registration/disconnection, session/account controls and app sign-in remain in their official UI.
 - WantKit's own chat interface, automatic access to ChatGPT/Claude memories, a local search index, paid OpenAI API and other provider adapters are not implemented by this extension.
 
-This is broad planning coverage, not complete feature parity. The next product task is private floor plans, after a separate request.
+This is broad planning coverage, not complete feature parity. The private floor-plan foundation is locally complete. The next separate product task is drawing interpretation and image generation.
 
 ## Verification
 

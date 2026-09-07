@@ -1,7 +1,7 @@
 # Kharidyar Project Specification
 
 - Status: Approved by the product owner
-- Last updated: 2026-09-06
+- Last updated: 2026-09-07
 - Implementation status: Tasks 1 through 11 and the post-MVP Concept media foundation are complete and validated locally
 - Release status: Concept media is deployed to preview and production, with authenticated image checks confirmed by the product owner in both environments (see [RELEASE.md](./RELEASE.md#2026-09-05-concept-media-production-release)).
 
@@ -1756,3 +1756,8 @@ Later on 2026-09-05, the authorized private MCP implementation passed local vali
 ### 2026-09-06 assistant action checkpoint
 
 The user pushed the local runner/compact UI checkpoint as `5a921a5`, then authorized the assistant write task. Source now supports routine planning edits through ChatGPT/Claude MCP and server-enforced WantKit approval for archive/deletion, sharing and purchase decisions. Research dispatch requires explicit provider selection and approval. Additive migration 0013 stores private pending actions, receipts and durable operation IDs; it has not been applied to persistent databases. Existing registrations stay read-only. Reconnect recovery and approval UI are implemented locally; actual-client write verification follows a separately approved preview release. Floor plans, generation and WantKit chat remain separate ordered tasks; paid OpenAI API remains deferred. See [MCP_ACTIONS.md](./MCP_ACTIONS.md).
+
+
+### 2026-09-07 private floor-plan checkpoint
+
+The prior assistant-action release and live ChatGPT add/edit/approval/replay checks are complete on the owner-only preview; see HANDOFF for its exact version and client setup. The user then authorized the private floor-plan task. Images/PDF uploads, optional measurement and room notes, compact English/Persian UI, permission-filtered context, routine MCP note edits and approval-gated deletion now pass the local quality gate (191 tests). Additive migration 0014 has been tested in disposable databases only. The current source is not deployed. Uploads do not interpret drawings: PDF originals are private attachments, image uploads are normalized, and assistant/context output contains saved text only. Historical snapshots retain their copied notes. Floor-plan interpretation and generation are the next separate product task; in-app chat follows. Claude and paid OpenAI API remain deferred. See [FLOOR_PLANS.md](./FLOOR_PLANS.md) and [HANDOFF.md](./HANDOFF.md).

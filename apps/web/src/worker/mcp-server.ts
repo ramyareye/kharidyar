@@ -1,6 +1,8 @@
 import { McpServer, type CallToolResult } from "@modelcontextprotocol/server";
 import {
 	collectionContextSchema,
+	floorPlanContextSchema,
+	floorPlanLimits,
 	collectionResourceSchema,
 	contextSnapshotResourceSchema,
 	itemComparisonResponseSchema,
@@ -48,6 +50,7 @@ import { readCollectionRollup } from "./commerce-service";
 import { listImportDrafts, readImportDraft } from "./import-draft-service";
 import { registerMcpWriteTools } from "./mcp-write-tools";
 import { readConceptMedia, conceptMediaLimits } from "./concept-media-service";
+import { readFloorPlanContext } from "./floor-plan-service";
 import type { McpActor } from "./mcp-auth-service";
 
 export const maximumMcpOutputBytes = 96_000;
@@ -398,6 +401,13 @@ export function createWantkitMcpServer(input: {
 				bucket: input.env.CONCEPT_MEDIA,
 				limits: conceptMediaLimits(input.env),
 			}),
+	);
+	read(
+		"read_floor_plans",
+		"Read saved floor-plan labels and user-provided measurements and room notes. Files are not interpreted or sent. Never infer dimensions from their presence; ask for missing measurements.",
+		z.object({ collectionId: id }).strict(),
+		z.object({ plans: z.array(floorPlanContextSchema).max(floorPlanLimits.maxFiles) }).strict(),
+		async (args) => ({ plans: await readFloorPlanContext({ ...input, ...args }) }),
 	);
 	registerMcpWriteTools(server, { env: input.env, actor: input.actor });
 	return server;

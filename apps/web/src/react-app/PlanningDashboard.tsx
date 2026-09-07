@@ -30,6 +30,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { useLocale } from "./locale-context";
 import { CollaborationAdminDialog } from "./CollaborationAdminDialog";
+import { FloorPlans } from "./FloorPlans";
 import { CollectionDirection } from "./CollectionDirection";
 import { ContextExportDialog } from "./ContextExportDialog";
 import { ItemDiscussionDialog } from "./ItemDiscussionDialog";
@@ -648,7 +649,7 @@ export function PlanningDashboard({
 	>(() => selectionFromLocation("collection"));
 	const [showArchived, setShowArchived] = useState(false);
 	const [collectionView, setCollectionView] = useState<
-		"items" | "direction" | "budget"
+		"items" | "direction" | "floorPlans" | "budget"
 	>("items");
 	const [itemQuery, setItemQuery] = useState("");
 	const [navigationOpen, setNavigationOpen] = useState(false);
@@ -1652,7 +1653,7 @@ export function PlanningDashboard({
 												className="collection-views"
 												aria-label={t("nav.collectionViews")}
 											>
-												{(["items", "direction", "budget"] as const).map(
+												{(["items", "direction", "floorPlans", "budget"] as const).map(
 													(view) => (
 														<button
 															key={view}
@@ -1671,6 +1672,9 @@ export function PlanningDashboard({
 													),
 												)}
 											</nav>
+											<section id="collection-panel-floorPlans" hidden={collectionView !== "floorPlans"} aria-label={t("nav.view.floorPlans")}>
+												{collectionView === "floorPlans" ? <FloorPlans key={selectedCollection.id} collectionId={selectedCollection.id} /> : null}
+											</section>
 											<section
 												id="collection-panel-direction"
 												hidden={collectionView !== "direction"}

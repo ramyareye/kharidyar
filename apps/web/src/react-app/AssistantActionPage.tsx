@@ -10,6 +10,7 @@ import { useLocale } from "./locale-context";
 import "./ConnectorsPage.css";
 
 const actionTitles: Partial<Record<string, MessageKey>> = {
+	delete_floor_plan: "assistantAction.operation.delete_floor_plan",
 	archive_workspace: "assistantAction.operation.archive_workspace",
 	archive_collection: "assistantAction.operation.archive_collection",
 	archive_item: "assistantAction.operation.archive_item",

@@ -6,6 +6,7 @@ import * as commerce from "./commerce-service";
 import * as discussion from "./collaboration-experience-service";
 import * as research from "./research-service";
 import * as imports from "./import-draft-service";
+import * as floorPlans from "./floor-plan-service";
 import * as media from "./concept-media-service";
 import { prepareLocalRun } from "./local-codex-jobs";
 import { changeItemStatus } from "./item-workflow-service";
@@ -450,6 +451,27 @@ export const mcpActionCatalog = [
 		(ctx, a) => media.reorderConceptReferences({ ...mediaCommon(ctx), ...a }),
 	),
 	action(
+		"update_floor_plan",
+		"Edit a floor plan's title and user-provided measurements or room notes; does not alter its file",
+		{ ...collection, planId: mcpIdentifier, value: c.floorPlanDetailsSchema },
+		"collection",
+		async (ctx, a) => {
+			const { id, title, notes, contentType, updatedAt } =
+				await floorPlans.updateFloorPlan({ ...common(ctx), ...a });
+			return { id, title, notes, contentType, updatedAt };
+		},
+	),
+	action(
+		"delete_floor_plan",
+		"Delete a saved floor plan and its room notes",
+		{ ...collection, planId: mcpIdentifier },
+		"collection",
+		(ctx, a) => floorPlans.deleteFloorPlan({
+			...common(ctx), bucket: ctx.env.CONCEPT_MEDIA, ...a,
+		}),
+		true,
+	),
+	action(
 		"delete_concept_image",
 		"Permanently delete a saved concept image",
 		{ ...collection, imageId: mcpIdentifier },
@@ -669,6 +691,9 @@ export async function actionTarget(
 					collectionId: row.id,
 				})
 			: null;
+		const plans = definition.name.endsWith("floor_plan")
+			? await floorPlans.readFloorPlanContext({ ...base, collectionId: row.id })
+			: null;
 		const importDraft = args.draftId
 			? await imports.readImportDraft({
 					...base,
@@ -684,8 +709,10 @@ export async function actionTarget(
 					})
 				: null;
 		return {
-			name: row.name,
-			version: JSON.stringify([row, extras, images, importDraft, researchDesk]),
+			name: plans?.find((plan) => plan.id === args.planId)?.title ?? row.name,
+			version: JSON.stringify(plans
+				? [row, extras, images, importDraft, researchDesk, plans]
+				: [row, extras, images, importDraft, researchDesk]),
 			confirmationRequired: false,
 		};
 	}

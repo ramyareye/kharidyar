@@ -5,3 +5,4 @@ export * from "./planning";
 export * from "./research";
 export * from "./local-codex";
 export * from "./mcp-actions";
+export * from "./floor-plans";

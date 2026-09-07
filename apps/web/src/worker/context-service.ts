@@ -31,6 +31,7 @@ import {
 	readConcept,
 } from "./collection-direction-service";
 import { itemResource, type ItemRow } from "./core-workspace-service";
+import { readFloorPlanContext } from "./floor-plan-service";
 import { readResearchDeskContent } from "./research-service";
 
 const contextSchemaVersion = 1 as const;
@@ -376,6 +377,7 @@ async function collectionContext(input: {
 
 	const brief = await readCollectionBrief(input);
 	const concept = await readConcept(input);
+	const floorPlans = await readFloorPlanContext(input);
 	const results = await input.database.batch([
 		input.database
 			.prepare(
@@ -655,6 +657,7 @@ async function collectionContext(input: {
 		},
 		brief: brief.brief,
 		concept: concept.concept,
+		floorPlans,
 		items,
 		researchRequests: researchContext(research.requests),
 	});
@@ -912,6 +915,21 @@ export function renderContextSnapshotMarkdown(
 			"",
 			markdownText(content.concept.narrative),
 		);
+	}
+
+	if (content.floorPlans !== undefined) {
+		lines.push(
+			"", "## Floor plans", "",
+			"User-provided measurements and room notes. Files have not been interpreted; no file bytes are included.",
+		);
+		if (content.floorPlans.length === 0) lines.push("No floor plans have been recorded.");
+		for (const plan of content.floorPlans) {
+			lines.push(
+				"", `### ${markdownText(plan.title)}`, "",
+				`- Format: ${plan.contentType}`,
+				`- Notes: ${markdownValue(plan.notes)}`,
+			);
+		}
 	}
 
 	lines.push("", "## Items");

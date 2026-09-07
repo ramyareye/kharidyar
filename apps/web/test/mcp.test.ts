@@ -184,6 +184,7 @@ const call = (token: string, name: string, args: unknown = {}) =>
 
 beforeEach(async () => {
 	await env.DB.batch([
+		env.DB.prepare("delete from floor_plans where collection_id like 'mcp-%'"),
 		env.DB.prepare("delete from workspaces where id like 'mcp-%'"),
 		env.DB.prepare("delete from user where id like 'mcp-%'"),
 		env.DB.prepare("delete from collaboration_rate_limits"),
@@ -707,6 +708,42 @@ const approveAction = (id: string, approve = true, userId = owner) =>
 	request(`/api/connectors/actions/${id}/decision`, post({ approve }), userId);
 
 describe("private assistant write actions", () => {
+	it("reads floor-plan notes without files, edits routinely, and requires fresh approval to delete", async () => {
+		const connected = await connect(owner, true);
+		const collectionId = "mcp-collection-a";
+		const planId = "mcp-floor-plan";
+		const key = "floor-plans/mcp-private-key";
+		await env.CONCEPT_MEDIA.put(key, "%PDF-private-file-bytes");
+		await env.DB.prepare("insert into floor_plans(id,collection_id,title,notes,object_key,content_type,byte_size,uploaded_by_user_id,status) values(?,?,'Living room','4 × 5 m, estimate',?,'application/pdf',23,?,'ready')").bind(planId, collectionId, key, owner).run();
+		const read = await call(connected.access_token, "read_floor_plans", { collectionId });
+		expect(read.body.result?.isError, read.text).not.toBe(true);
+		expect(read.text).toContain("4 × 5 m, estimate");
+		for (const secret of [key, "contentUrl", "%PDF-private-file-bytes"]) expect(read.text).not.toContain(secret);
+		const foreign = await call(connected.access_token, "read_floor_plans", { collectionId: "mcp-collection-b" });
+		expect(foreign.body.result?.isError).toBe(true);
+		const readOnly = await connect();
+		expect((await writeCall(readOnly.access_token, "update_floor_plan", { collectionId, planId, value: { title: "Living room", notes: "Door 82 cm, measured" } })).response.body.result?.isError).toBe(true);
+		const edited = await writeCall(connected.access_token, "update_floor_plan", { collectionId, planId, value: { title: "Living room", notes: "Door 82 cm, measured" } });
+		expect(edited.receipt?.status, edited.response.text).toBe("succeeded");
+		expect(edited.receipt?.result).toMatchObject({ notes: "Door 82 cm, measured" });
+		const stale = await writeCall(connected.access_token, "delete_floor_plan", { collectionId, planId });
+		expect(stale.receipt?.status).toBe("pending");
+		await writeCall(connected.access_token, "update_floor_plan", { collectionId, planId, value: { title: "Living room", notes: "Door 84 cm, corrected" } });
+		expect((await approveAction(stale.receipt!.id)).status).toBe(409);
+		expect(await env.CONCEPT_MEDIA.head(key)).not.toBeNull();
+		const denied = await writeCall(connected.access_token, "delete_floor_plan", { collectionId, planId });
+		expect(await (await approveAction(denied.receipt!.id, false)).json()).toMatchObject({ status: "denied" });
+		expect(await env.CONCEPT_MEDIA.head(key)).not.toBeNull();
+		const operationId = crypto.randomUUID();
+		const deletion = await writeCall(connected.access_token, "delete_floor_plan", { collectionId, planId }, operationId);
+		expect(deletion.receipt?.status).toBe("pending");
+		expect(await (await approveAction(deletion.receipt!.id)).json()).toMatchObject({ status: "succeeded" });
+		expect(await env.CONCEPT_MEDIA.head(key)).toBeNull();
+		expect(await env.DB.prepare("select status, notes from floor_plans where id=?").bind(planId).first()).toEqual({ status: "deleted", notes: null });
+		const replay = await writeCall(connected.access_token, "delete_floor_plan", { collectionId, planId }, operationId);
+		expect(replay.receipt?.status).toBe("succeeded");
+		expect((await call(connected.access_token, "read_action_receipt", { actionId: deletion.receipt!.id })).body.result?.isError).not.toBe(true);
+	});
 	it("keeps old read-only grants read-only and never creates an action row", async () => {
 		const connected = await connect();
 		const attempted = await writeCall(connected.access_token, "create_item", {

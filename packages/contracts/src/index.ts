@@ -1,3 +1,5 @@
+import { floorPlanContextSchema, floorPlanLimits } from "./floor-plans";
+export * from "./floor-plans";
 import {
   decisionEventKinds,
   inputHexColorPattern,
@@ -651,6 +653,7 @@ export const collectionContextSchema = z
 		collection: collectionResourceSchema.omit({ workspaceId: true }),
 		brief: collectionBriefResourceSchema.nullable(),
 		concept: conceptResourceSchema.nullable(),
+		floorPlans: z.array(floorPlanContextSchema).max(floorPlanLimits.maxFiles).optional(),
 		items: z.array(contextItemSchema),
 		researchRequests: z.array(contextResearchRequestSchema),
 	})

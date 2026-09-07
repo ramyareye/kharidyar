@@ -1,5 +1,9 @@
 import {
 	apiErrorResponseSchema,
+	floorPlansResponseSchema,
+	floorPlanResponseSchema,
+	floorPlanDeletedResponseSchema,
+	type FloorPlanDetails,
 	candidateVoteInputSchema,
 	collectionRollupResponseSchema,
 	collectionBriefResponseSchema,
@@ -1001,3 +1005,30 @@ export const planningApi: PlanningApi = {
 		return (await parsedResponse(response, itemResponseSchema)).item;
 	},
 };
+
+const floorPlanPath = (collectionId: string, planId?: string) =>
+	`/collections/${encodeURIComponent(collectionId)}/floor-plans${planId ? `/${encodeURIComponent(planId)}` : ""}`;
+
+export const floorPlanApi = {
+	read: (collectionId: string) =>
+		commerceRequest(floorPlanPath(collectionId), "GET", floorPlansResponseSchema),
+	async upload(collectionId: string, file: File, details: FloorPlanDetails) {
+		const form = new FormData();
+		form.set("file", file);
+		form.set("title", details.title);
+		if (details.notes !== null) form.set("notes", details.notes);
+		return parsedResponse(
+			await fetch(`/api${floorPlanPath(collectionId)}`, {
+				method: "POST",
+				credentials: "same-origin",
+				body: form,
+			}),
+			floorPlansResponseSchema,
+		);
+	},
+	update: (collectionId: string, planId: string, details: FloorPlanDetails) =>
+		commerceRequest(floorPlanPath(collectionId, planId), "PATCH", floorPlanResponseSchema, details),
+	remove: (collectionId: string, planId: string) =>
+		commerceRequest(floorPlanPath(collectionId, planId), "DELETE", floorPlanDeletedResponseSchema),
+};
+export type FloorPlanApi = typeof floorPlanApi;

@@ -1,6 +1,6 @@
 # Private MCP pilot
 
-**2026-09-06 local extension:** write consent, 49 mutation tools, approval receipts, supporting reads and friendly reconnect recovery are implemented but not deployed. The live preview remains the read-only release below. See [MCP_ACTIONS.md](./MCP_ACTIONS.md) for enabling writes after approval, exact coverage and manual gaps.
+**2026-09-07 checkpoint:** ChatGPT's private WantKit read/write connector is deployed and verified on the owner-only preview (70 tools). Claude is deferred. Three additional floor-plan tools are now locally validated but unreleased, bringing the source total to 73. See [MCP_ACTIONS.md](./MCP_ACTIONS.md), [FLOOR_PLANS.md](./FLOOR_PLANS.md) and [HANDOFF.md](./HANDOFF.md) for current status. The read-only pilot description below is historical.
 
 Local implementation verified on 2026-09-05 and subsequently deployed to approved preview. **Preview is enabled only for the verified owner; production remains unchanged. The user confirmed a successful live ChatGPT Workspace read and subsequently reported Claude worked. After disconnect, Claude showed `invalid_client` / `client_id is required`; friendly recovery for this error is implemented locally, awaiting release. Complete live revocation coverage remains independently unverified.** No public directory listing is needed for this pilot. See [HANDOFF.md](./HANDOFF.md) for the approval boundary and remaining work.
 

@@ -26,6 +26,7 @@ export type CollaborationRateLimitAction =
 	| "mcp_request"
 	| "mcp_registration"
 	| "concept_media_upload"
+	| "floor_plan_upload"
 	| "context_snapshot_creation"
 	| "invitation_acceptance"
 	| "invitation_preview"
@@ -109,8 +110,8 @@ export async function enforceCollaborationRateLimit(input: {
 		const message =
 			input.action.startsWith("mcp_")
 				? "Too many connector requests. Please try again later."
-			: input.action === "concept_media_upload"
-				? "Too many image uploads. Please try again later."
+			: input.action === "concept_media_upload" || input.action === "floor_plan_upload"
+				? "Too many file uploads. Please try again later."
 				: input.action === "research_creation"
 					? "Too many research requests. Please try again later."
 				: input.action === "context_snapshot_creation"

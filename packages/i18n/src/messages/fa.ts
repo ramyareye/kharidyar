@@ -1,6 +1,33 @@
 import type { MessageKey } from "./en";
 
 export const faMessages = {
+	"nav.view.floorPlans": "نقشه فضا",
+	"assistantAction.operation.delete_floor_plan": "حذف نقشه و یادداشت‌های فضا",
+	"floorPlans.heading": "نقشه‌های فضا",
+	"floorPlans.intro": "چیدمان و اندازه‌ها را یکجا نگه دارید. ابعاد اتاق‌ها، عرض درها و نیازهای مبلمان را در یادداشت‌ها بنویسید.",
+	"floorPlans.privacy": "فقط افراد دارای دسترسی به این مجموعه می‌توانند فایل‌ها را باز کنند. دستیارهای متصل عنوان و یادداشت‌ها را می‌خوانند؛ فعلاً خود نقشه را نمی‌خوانند.",
+	"floorPlans.limits": "JPG، PNG، WebP یا PDF · هر فایل تا ۱۰ مگابایت · ۶ نقشه در هر مجموعه",
+	"floorPlans.pdfNotice": "PDFها بدون تغییر، همراه با فراداده، ذخیره و به صورت فایل اصلی دانلود می‌شوند.",
+	"floorPlans.empty": "هنوز نقشه‌ای اضافه نشده است. با افزودن نقشه، اطلاعات فضا را یکجا نگه دارید.",
+	"floorPlans.add": "افزودن نقشه",
+	"floorPlans.edit": "ویرایش اطلاعات نقشه",
+	"floorPlans.file": "تصویر یا PDF",
+	"floorPlans.title": "نام نقشه",
+	"floorPlans.notes": "اندازه‌ها و یادداشت‌های فضا (اختیاری)",
+	"floorPlans.notesHint": "مثلاً: پذیرایی ۴ × ۵ متر؛ در ۸۰ سانتی‌متر؛ مبل تا ۲۲۰ سانتی‌متر. واحدها را بنویسید و اندازه‌های تخمینی را مشخص کنید.",
+	"floorPlans.noNotes": "اندازه یا یادداشتی ثبت نشده است.",
+	"floorPlans.view": "باز کردن تصویر",
+	"floorPlans.download": "دانلود PDF",
+	"floorPlans.delete": "حذف نقشه",
+	"floorPlans.deleteConfirm": "«{title}» و یادداشت‌هایش حذف شود؟ این کار برگشت‌پذیر نیست. نسخه‌های قبلی زمینه هوش مصنوعی باقی می‌مانند.",
+	"floorPlans.saved": "نقشه‌ها به‌روز شدند.",
+	"floorPlans.error": "درخواست انجام نشد. پیش از تلاش دوباره، فهرست را تازه کنید.",
+	"floorPlans.reload": "بارگذاری دوباره نقشه‌ها",
+	"floorPlans.invalid": "یک فایل JPG، PNG، WebP یا PDF حداکثر ۱۰ مگابایتی انتخاب کنید.",
+	"floorPlans.full": "این مجموعه ۶ نقشه دارد. برای افزودن نقشه جدید، یک نقشه بلااستفاده را حذف کنید.",
+	"floorPlans.limitError": "محدودیت فایل یا فضای ذخیره‌سازی پر شده است: هر فایل تا ۱۰ مگابایت، هر مجموعه ۶ نقشه و هر فضای کاری ۱۰۰ مگابایت.",
+
+
 	"assistantAction.operation.archive_workspace": "بایگانی فضای کاری",
 	"assistantAction.operation.archive_collection": "بایگانی مجموعه",
 	"assistantAction.operation.archive_item": "بایگانی مورد",
