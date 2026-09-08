@@ -52,10 +52,11 @@ function invalidDownloadLocation(reason: DownloadUrlRejection, url?: URL) {
 	);
 }
 
-// Review origins separately: the Actions guide supplies files.oaiusercontent.com;
-// the 2026-09-08 native file handoff supplied sdmntprcentralus with three opaque
-// path segments (verified by our redacted diagnostic and a public HTTPS check).
-// The MCP contract promises neither a host nor a /file-* path. No wildcard hosts.
+// OpenAI documents *.oaiusercontent.com for ChatGPT networking, but MCP does not
+// guarantee a fixed download host/path. Native handoffs use sdmntpr<region> with
+// three opaque path segments. Accept that family, not every OpenAI subdomain:
+// one DNS label (max 63 chars), letter-led alphanumeric region, exact domain.
+// See VISUAL_WORKFLOW.md for the provider guidance and observed host evidence.
 export function chatgptDownloadUrl(raw: string): URL {
 	let url: URL;
 	try {
@@ -71,7 +72,7 @@ export function chatgptDownloadUrl(raw: string): URL {
 	if (url.hostname === "files.oaiusercontent.com") {
 		if (!url.pathname.startsWith("/file-"))
 			throw invalidDownloadLocation("path", url);
-	} else if (url.hostname === "sdmntprcentralus.oaiusercontent.com") {
+	} else if (/^sdmntpr[a-z][a-z0-9]{0,55}\.oaiusercontent\.com$/.test(url.hostname)) {
 		if (!/^\/[^/]+\/[^/]+\/[^/]+$/.test(url.pathname))
 			throw invalidDownloadLocation("path", url);
 	} else {

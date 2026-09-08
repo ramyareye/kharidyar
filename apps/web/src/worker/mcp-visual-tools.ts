@@ -86,7 +86,7 @@ export function registerMcpVisualTools(server: McpServer, ctx: ActionContext) {
 		{
 			title: "Save a ChatGPT-generated image as a private draft",
 			description:
-				"Import one image file produced in this ChatGPT conversation for an approved space-photo run. Supply ChatGPT's native file parameter, never invent or rewrite a URL. Reviewed HTTPS downloads from files.oaiusercontent.com and sdmntprcentralus.oaiusercontent.com are supported; redirects are rejected. The file is bounded to 10 MiB, decoded and stored as private WebP with provenance. Use reportedModel=null when unknown. Never import a person image. The original remains unchanged and the draft is not adopted as cover. Reuse the same operationId and file_id when checking an uncertain result; changing IDs cannot retry this run. Ask the user to review the result in WantKit before choosing it as cover.",
+				"Import one image file produced in this ChatGPT conversation for an approved space-photo run. Supply ChatGPT's native file parameter, never invent or rewrite a URL. HTTPS downloads from files.oaiusercontent.com/file-* and the regional sdmntpr<region>.oaiusercontent.com family with three path segments are supported; other hosts and redirects are rejected. The file is bounded to 10 MiB, decoded and stored as private WebP with provenance. Use reportedModel=null when unknown. Never import a person image. The original remains unchanged and the draft is not adopted as cover. Reuse the same operationId and file_id when checking an uncertain result; changing IDs cannot retry this run. Ask the user to review the result in WantKit before choosing it as cover.",
 			inputSchema: visualImportSchema,
 			outputSchema: visualRunResultSchema,
 			annotations: { ...annotations, openWorldHint: true },

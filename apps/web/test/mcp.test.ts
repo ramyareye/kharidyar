@@ -1306,12 +1306,19 @@ describe("private ChatGPT image pilot", () => {
 		expect(await env.CONCEPT_MEDIA.get(key)).toBeNull();
 		expect((await readVisualRun(f.ctx, next.id)).status).toBe("failed");
 	});
-	it("imports the observed native OpenAI host through MCP without changing the original or cover", async () => {
+	it.each([
+		"sdmntprcentralus",
+		"sdmntprnorthcentralus",
+		"sdmntpreastus2",
+		"sdmntprwestus2",
+		"sdmntprsouthcentralus",
+		"sdmntprfutureregion9", // Fictional region: support does not depend on enumeration.
+	])("imports the native OpenAI host %s through MCP without changing the original or cover", async (nativeHost) => {
 		const f = await visualFixture();
 		const run = await f.approve((await f.prepare()).id);
 		const args = importArgs(run.id);
-		// Match the observed host/three-segment shape; opaque values and signature are fictional.
-		args.file.download_url = "https://sdmntprcentralus.oaiusercontent.com/fixture-container/fixture-directory/fixture-image?sig=private-signature";
+		// Match the native three-segment shape; file values and signatures are fictional.
+		args.file.download_url = `https://${nativeHost}.oaiusercontent.com/fixture-container/fixture-directory/fixture-image?sig=private-signature`;
 		args.file.file_id = "file_native_fixture";
 		const fetcher = vi.spyOn(globalThis, "fetch").mockImplementation(async () => imageResponse());
 		const response = await visualCall(f.connection.access_token, "import_visual_image", args);
@@ -1336,28 +1343,52 @@ describe("private ChatGPT image pilot", () => {
 		expect(JSON.stringify(stored)).not.toContain("private-signature");
 		expect(JSON.stringify(stored)).not.toContain("oaiusercontent.com");
 	});
-	it("limits native-host support to the observed origin and path shape", () => {
-		const accepted = "https://sdmntprcentralus.oaiusercontent.com/container/directory/image?sig=unchanged";
+	it.each([
+		"sdmntprcentralus",
+		"sdmntprnorthcentralus",
+		"sdmntpreastus2",
+		"sdmntprwestus2",
+		"sdmntprsouthcentralus",
+		"sdmntprfutureregion9", // Fictional region: support does not depend on enumeration.
+	])("limits native-host support to the regional family and path shape for %s", (nativeHost) => {
+		const accepted = `https://${nativeHost}.oaiusercontent.com/container/directory/image?sig=unchanged`;
 		expect(chatgptDownloadUrl(accepted).href).toBe(accepted);
 		for (const url of [
-			"https://sdmntprcentralus.oaiusercontent.com.evil.test/a/b/c",
-			"https://evil-sdmntprcentralus.oaiusercontent.com/a/b/c",
+			`https://${nativeHost}.oaiusercontent.com.evil.test/a/b/c`,
+			`https://evil-${nativeHost}.oaiusercontent.com/a/b/c`,
 			"https://unreviewed.oaiusercontent.com/a/b/c",
-			"https://sdmntprcentralus.blob.core.windows.net/a/b/c",
-			"http://sdmntprcentralus.oaiusercontent.com/a/b/c",
-			"https://sdmntprcentralus.oaiusercontent.com:8443/a/b/c",
-			"https://user:pass@sdmntprcentralus.oaiusercontent.com/a/b/c",
-			"https://sdmntprcentralus.oaiusercontent.com/a/b/c#fragment",
-			"https://sdmntprcentralus.oaiusercontent.com/",
-			"https://sdmntprcentralus.oaiusercontent.com/file-fixture",
-			"https://sdmntprcentralus.oaiusercontent.com/a/b/",
-			"https://sdmntprcentralus.oaiusercontent.com/a/../b/c",
-			"https://sdmntprcentralus.oaiusercontent.com/a//b/c",
+			"https://oaiusercontent.com/a/b/c",
+			"https://sdmntpr.oaiusercontent.com/a/b/c",
+			"https://sdmntpr-region.oaiusercontent.com/a/b/c",
+			"https://sdmntpr_region.oaiusercontent.com/a/b/c",
+			"https://sdmntpr1region.oaiusercontent.com/a/b/c",
+			`https://sdmntpr${"a".repeat(57)}.oaiusercontent.com/a/b/c`,
+			`https://${nativeHost}.oaiusercontent.com./a/b/c`,
+			`https://${nativeHost}.oaiusercontent-com/a/b/c`,
+			`https://${nativeHost}.oaiusercontent.com@127.0.0.1/a/b/c`,
+			`https://child.${nativeHost}.oaiusercontent.com/a/b/c`,
+			`https://${nativeHost}.blob.core.windows.net/a/b/c`,
+			`http://${nativeHost}.oaiusercontent.com/a/b/c`,
+			`https://${nativeHost}.oaiusercontent.com:8443/a/b/c`,
+			`https://user:pass@${nativeHost}.oaiusercontent.com/a/b/c`,
+			`https://${nativeHost}.oaiusercontent.com/a/b/c#fragment`,
+			`https://${nativeHost}.oaiusercontent.com/`,
+			`https://${nativeHost}.oaiusercontent.com/file-fixture`,
+			`https://${nativeHost}.oaiusercontent.com/a/b/`,
+			`https://${nativeHost}.oaiusercontent.com/a/../b/c`,
+			`https://${nativeHost}.oaiusercontent.com/a//b/c`,
 		]) expect(() => chatgptDownloadUrl(url)).toThrow();
 	});
-	it("rejects redirects from the native host without making another request", async () => {
+	it.each([
+		"sdmntprcentralus",
+		"sdmntprnorthcentralus",
+		"sdmntpreastus2",
+		"sdmntprwestus2",
+		"sdmntprsouthcentralus",
+		"sdmntprfutureregion9", // Fictional region: support does not depend on enumeration.
+	])("rejects redirects from the native host %s without making another request", async (nativeHost) => {
 		const args = importArgs("unused");
-		args.file.download_url = "https://sdmntprcentralus.oaiusercontent.com/a/b/c";
+		args.file.download_url = `https://${nativeHost}.oaiusercontent.com/a/b/c`;
 		const fetcher = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(new Response(null, {
 			status: 302, headers: { location: "http://127.0.0.1/private" },
 		}));
