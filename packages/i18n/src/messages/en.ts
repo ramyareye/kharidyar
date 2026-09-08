@@ -149,8 +149,8 @@ export const enMessages = {
 	"connectors.disconnectNote": "Disconnect immediately stops future access and removes this registration. Existing assistant conversations may still contain previously shared records. Your WantKit plans stay intact.",
 	"connectors.empty": "No assistants registered yet.",
 	"connectors.disconnect": "Disconnect",
-	"app.name": "Kharidyar",
-	"app.tagline": "A quieter way to choose",
+	"app.name": "WantKit",
+	"app.tagline": "Your purchase workspace",
 	"common.archive": "Archive",
 	"common.archiveNamed": "Archive {name}",
 	"common.archived": "Archived",
@@ -172,11 +172,11 @@ export const enMessages = {
 	"locale.switchToEnglish": "Switch language to English",
 	"locale.switchToPersian": "تغییر زبان به فارسی",
 	"auth.loading": "Loading account",
-	"auth.eyebrow": "A quieter way to choose",
-	"auth.title": "Buy slowly. Decide clearly.",
+	"auth.eyebrow": "Your purchase workspace",
+	"auth.title": "Your next purchase, planned.",
 	"auth.description":
-		"Keep the brief, options, prices, and conversation together—from first thought to final choice.",
-	"auth.note": "Built for considered purchases, shared without the noise.",
+		"Save ideas, compare options, and keep every purchase plan in one place.",
+	"auth.note": "From your first idea to a shared decision.",
 	"auth.index": "01 / SIGN IN",
 	"auth.cardTitle": "Your decisions, kept private.",
 	"auth.cardBody":
@@ -711,7 +711,7 @@ export const enMessages = {
 	"collaboration.inviteEyebrow": "Manual delivery",
 	"collaboration.inviteTitle": "Create an invitation link",
 	"collaboration.inviteBody":
-		"Choose a scope and role. Kharidyar creates the link; it does not send an email.",
+		"Choose a scope and role. WantKit creates the link; it does not send an email.",
 	"collaboration.scope": "Access scope",
 	"collaboration.scopeWorkspace": "Entire Workspace",
 	"collaboration.scopeCollections": "Selected Collections",
@@ -860,7 +860,7 @@ export const enMessages = {
 	"context.eyebrow": "Permission boundary",
 	"context.privateTitle": "Nothing is sent to an AI provider.",
 	"context.privateBody":
-		"This creates a private, immutable snapshot in Kharidyar. It excludes credentials, invitation and session tokens, raw provider payloads, and image bytes.",
+		"This creates a private, immutable snapshot in WantKit. It excludes credentials, invitation and session tokens, raw provider payloads, and image bytes.",
 	"context.emptyTitle": "Build an inspectable snapshot",
 	"context.emptyBody":
 		"Capture the current authorized context for {name} as versioned JSON and readable Markdown.",

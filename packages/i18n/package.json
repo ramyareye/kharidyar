@@ -1,7 +1,7 @@
 {
 	"name": "@kharidyar/i18n",
 	"version": "0.0.0",
-	"description": "Runtime-independent Persian and English localization for Kharidyar",
+	"description": "Runtime-independent Persian and English localization for WantKit",
 	"private": true,
 	"scripts": {
 		"test": "vitest run"

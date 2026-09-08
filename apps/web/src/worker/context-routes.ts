@@ -58,7 +58,7 @@ export const contextRoutes = new Hono<WorkerAppEnv>()
 			return new Response(renderContextSnapshotMarkdown(snapshot), {
 				headers: {
 					"cache-control": "no-store",
-					"content-disposition": `attachment; filename="kharidyar-context-${snapshot.id}.md"`,
+					"content-disposition": `attachment; filename="wantkit-context-${snapshot.id}.md"`,
 					"content-type": "text/markdown; charset=UTF-8",
 					"x-content-type-options": "nosniff",
 				},

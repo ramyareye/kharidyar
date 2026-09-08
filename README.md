@@ -1,6 +1,6 @@
-# Kharidyar
+# WantKit
 
-Kharidyar is a private, collaborative purchase-planning application. Its current web foundation is a React + Vite client backed by a Hono Cloudflare Worker, D1, private R2 storage, Cloudflare Images, Drizzle, and Better Auth in a Bun workspace.
+WantKit is a private, collaborative purchase-planning application. Its current web foundation is a React + Vite client backed by a Hono Cloudflare Worker, D1, private R2 storage, Cloudflare Images, Drizzle, and Better Auth in a Bun workspace.
 
 The approved product specification, domain model, architecture, and roadmap are in [`PROJECT.md`](./PROJECT.md). Repository workflow and approval rules are in [`AGENTS.md`](./AGENTS.md).
 
@@ -150,7 +150,7 @@ bun run deploy:preview
 bun run db:migrations:list:production
 bun run db:migrate:production
 bun run deploy:production
-bun run release:smoke -- https://kharidyar.formahsa.workers.dev
+bun run release:smoke -- https://wantkit.todoless.dev
 ```
 
 Run `bun run cf-typegen` after changing Worker bindings. Deployment requires the appropriate Cloudflare account, D1 resources, private R2 bucket, Images binding, Workflow, Browser Run binding, and secrets. Apply the latest remote D1 migration and set `TAVILY_API_KEY` before deploying; ordinary local commands never mutate remote resources. `bun run deploy` remains an alias for the explicit production deployment. Follow [`RELEASE.md`](./RELEASE.md) for the required preview-first order, recovery points, smoke checks, rollback compatibility rule, D1 Time Travel procedure, and Concept-media deletion boundary.

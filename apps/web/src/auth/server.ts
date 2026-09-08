@@ -113,7 +113,7 @@ export function createAuth(bindings: AuthBindings) {
 			ipAddress: authIpAddressOptions,
 			useSecureCookies: config.useSecureCookies,
 		},
-		appName: "Kharidyar",
+		appName: "WantKit",
 		baseURL: config.baseURL,
 		plugins: bindings.MCP_ENABLED === "true" ? createMcpAuthPlugins(config.baseURL, bindings) : [],
 		database: drizzleAdapter(database, {

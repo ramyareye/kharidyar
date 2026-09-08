@@ -69,16 +69,15 @@ export function BrandMark({ compact = false }: { compact?: boolean }) {
 
 	return (
 		<div className={compact ? "brand brand--compact" : "brand"}>
-			<svg
+			<img
 				className="brand__mark"
-				viewBox="0 0 40 40"
+				src="/wantkit-mark.svg"
+				width="40"
+				height="40"
+				alt=""
 				aria-hidden="true"
-				focusable="false"
-			>
-				<path d="M6 6h12v12H6zM22 6h12v12H22zM6 22h12v12H6z" />
-				<path className="brand__mark-accent" d="M22 22h12v12H22z" />
-			</svg>
-			<span className="brand__name">{t("app.name")}</span>
+			/>
+			<span className="brand__name" lang="en" dir="ltr">{t("app.name")}</span>
 		</div>
 	);
 }

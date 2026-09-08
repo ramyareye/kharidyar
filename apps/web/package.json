@@ -1,9 +1,9 @@
 {
 	"name": "@kharidyar/web",
 	"version": "0.0.0",
-	"description": "Kharidyar web application and Cloudflare Worker",
+	"description": "WantKit web application and Cloudflare Worker",
 	"cloudflare": {
-		"label": "Kharidyar",
+		"label": "WantKit",
 		"products": [
 			"Workers"
 		],

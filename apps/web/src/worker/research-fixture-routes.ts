@@ -7,13 +7,13 @@ const productFixture = `<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="robots" content="noindex,nofollow">
-  <title>Warm oak paper lamp · Kharidyar fixture</title>
+  <title>Warm oak paper lamp · WantKit fixture</title>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "Product",
     "name": "Warm oak paper lamp",
-    "brand": { "@type": "Brand", "name": "Kharidyar Fixtures" },
+    "brand": { "@type": "Brand", "name": "WantKit Fixtures" },
     "model": "WOPL-01",
     "category": "Floor lamp",
     "offers": {

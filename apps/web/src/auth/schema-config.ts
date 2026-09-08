@@ -8,7 +8,7 @@ import {
 } from "./shared-options";
 
 export const auth = betterAuth({
-	appName: "Kharidyar",
+	appName: "WantKit",
 	// This config exists only for deterministic schema generation. Task 3 owns
 	// request-aware runtime URL and secret configuration.
 	baseURL: "http://localhost:5173",

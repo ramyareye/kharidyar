@@ -18,14 +18,6 @@
 	white-space: nowrap;
 	font-size: 0.9375rem;
 }
-.brand {
-	gap: 0.5rem;
-}
-.brand__name,
-.brand--compact .brand__name {
-	font-size: 1.125rem;
-	font-weight: 700;
-}
 .account-chip {
 	padding-inline-start: 0.75rem;
 	gap: 0.5rem;
@@ -774,7 +766,8 @@
 		padding-inline: 0.5rem;
 	}
 	.studio-header .brand__name {
-		display: none;
+		display: inline;
+		font-size: 1.0625rem;
 	}
 	.studio-grid {
 		display: block;
