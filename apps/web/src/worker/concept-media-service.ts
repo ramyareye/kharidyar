@@ -1,3 +1,4 @@
+import { cleanupVisualRuns, visualOutputReadableSql } from "./visual-lifecycle";
 import { normalizePrivateImage } from "./private-image";
 import type {
 	ConceptImageReorderInput,
@@ -40,6 +41,7 @@ interface ConceptStateRow {
 }
 
 interface ConceptImageRow {
+	generation_json: string | null;
 	byte_size: number;
 	caption: string | null;
 	concept_id: string;
@@ -133,6 +135,7 @@ function timestamp(value: number): string {
 
 function imageResource(row: ConceptImageRow): ConceptImageResource {
 	return {
+		generation: row.generation_json ? JSON.parse(row.generation_json) : null,
 		byteSize: row.byte_size,
 		caption: row.caption,
 		conceptId: row.concept_id,
@@ -257,12 +260,14 @@ async function usage(
 		.prepare(
 			`select
 				(select count(*) from concept_images ci
-					where ci.concept_id = ?1 and ci.deleted_at is null) as concept_image_count,
+					where ci.concept_id = ?1 and ci.deleted_at is null)
+ + (select count(*) from visual_runs where concept_id=?1 and reserved_bytes>0) as concept_image_count,
 				(select coalesce(sum(ci.byte_size), 0)
 					from concept_images ci
 					join concepts co on co.id = ci.concept_id
 					join collections c on c.id = co.collection_id
-					where c.workspace_id = ?2 and ci.deleted_at is null) as workspace_bytes`,
+					where c.workspace_id = ?2 and ci.deleted_at is null)
+ + (select coalesce(sum(vr.reserved_bytes),0) from visual_runs vr join collections c on c.id=vr.collection_id where c.workspace_id=?2 and vr.reserved_bytes>0) as workspace_bytes`,
 		)
 		.bind(conceptId, workspaceId)
 		.first<UsageRow>();
@@ -282,10 +287,14 @@ async function imageRows(
 				ci.content_type, ci.original_filename, ci.byte_size, ci.width,
 				ci.height, ci.position, ci.caption, ci.contains_person,
 				ci.is_cover, ci.created_at,
+(select json_object('runId',vr.id,'provider','chatgpt','reportedModel',vr.reported_model,
+ 'prompt',json_extract(vr.selection_json,'$.prompt'),'baseImageId',json_extract(vr.selection_json,'$.baseImageId'),
+ 'sourceLabels',json((select json_group_array(json_extract(value,'$.label')) from json_each(vr.sources_json))))
+ from visual_runs vr where vr.output_image_id=ci.id and vr.status='completed') as generation_json,
 				u.id as uploader_id, u.name as uploader_name
 			from concept_images ci
 			join user u on u.id = ci.uploaded_by_user_id
-			where ci.concept_id = ?1 and ci.deleted_at is null
+			where ci.concept_id = ?1 and ci.deleted_at is null and ${visualOutputReadableSql}
 			order by case ci.role when 'base' then 0 when 'reference' then 1 else 2 end,
 				ci.position, ci.created_at, ci.id`,
 		)
@@ -350,6 +359,7 @@ export async function readConceptMedia(input: {
 	userId: string;
 }): Promise<ConceptMediaResponse> {
 	const { canManage, state } = await readableConcept(input);
+	await cleanupVisualRuns(input.database, input.bucket, input.collectionId);
 	await cleanupDeletedObjects(input);
 	const currentUsage = await usage(
 		input.database,
@@ -550,13 +560,15 @@ export async function uploadConceptImage(input: {
 					case when (
 						(select count(*)
 							from concept_images ci
-							where ci.concept_id = ?1 and ci.deleted_at is null) < ?2
+							where ci.concept_id = ?1 and ci.deleted_at is null)
+ + (select count(*) from visual_runs where concept_id=?1 and reserved_bytes>0) < ?2
 						and
 						(select coalesce(sum(ci.byte_size), 0)
 							from concept_images ci
 							join concepts co on co.id = ci.concept_id
 							join collections c on c.id = co.collection_id
-							where c.workspace_id = ?3 and ci.deleted_at is null) + ?4 <= ?5
+							where c.workspace_id = ?3 and ci.deleted_at is null)
+ + (select coalesce(sum(vr.reserved_bytes),0) from visual_runs vr join collections c on c.id=vr.collection_id where c.workspace_id=?3 and vr.reserved_bytes>0) + ?4 <= ?5
 						and exists (
 							select 1
 							from concepts co
@@ -685,6 +697,10 @@ async function imageAccess(input: {
 				ci.content_type, ci.original_filename, ci.byte_size, ci.width,
 				ci.height, ci.position, ci.caption, ci.contains_person,
 				ci.is_cover, ci.created_at,
+(select json_object('runId',vr.id,'provider','chatgpt','reportedModel',vr.reported_model,
+ 'prompt',json_extract(vr.selection_json,'$.prompt'),'baseImageId',json_extract(vr.selection_json,'$.baseImageId'),
+ 'sourceLabels',json((select json_group_array(json_extract(value,'$.label')) from json_each(vr.sources_json))))
+ from visual_runs vr where vr.output_image_id=ci.id and vr.status='completed') as generation_json,
 				u.id as uploader_id, u.name as uploader_name,
 				co.collection_id, co.archived_at as concept_archived_at,
 				c.workspace_id, c.archived_at as collection_archived_at,
@@ -694,7 +710,7 @@ async function imageAccess(input: {
 			join collections c on c.id = co.collection_id
 			join workspaces w on w.id = c.workspace_id
 			join user u on u.id = ci.uploaded_by_user_id
-			where ci.id = ?1 and ci.deleted_at is null`,
+			where ci.id = ?1 and ci.deleted_at is null and ${visualOutputReadableSql}`,
 		)
 		.bind(input.imageId)
 		.first<ImageAccessRow>();
@@ -733,6 +749,7 @@ export async function readConceptImageContent(input: {
 		onlyIf: conditionalHeaders,
 	});
 	if (object === null) throw notFound();
+	await imageAccess({ ...input, write: false });
 	const headers = new Headers({
 		"cache-control": "private, no-store",
 		"content-disposition": "inline",
@@ -859,6 +876,7 @@ export async function deleteConceptImage(input: {
 	if (deleted.meta.changes !== 1) {
 		throw conflict("The Concept image changed. Please retry.");
 	}
+	await cleanupVisualRuns(input.database, input.bucket, row.collection_id);
 	await markObjectDeleted(input.database, input.bucket, {
 		id: row.id,
 		object_key: row.object_key,
@@ -878,6 +896,16 @@ export async function deleteAllConceptMedia(input: {
 	database: D1Database;
 	userId: string;
 }): Promise<void> {
+	const collection = await input.database
+		.prepare("select collection_id from concepts where id=?")
+		.bind(input.conceptId)
+		.first<{ collection_id: string }>();
+	if (collection)
+		await cleanupVisualRuns(
+			input.database,
+			input.bucket,
+			collection.collection_id,
+		);
 	const active = await activeImages(input.database, input.conceptId);
 	if (active.length === 0) return;
 	const now = Date.now();

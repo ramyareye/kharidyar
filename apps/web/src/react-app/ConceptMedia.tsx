@@ -68,7 +68,7 @@ function ImageCard({
 					/>
 				)}
 				<div className="concept-image-card__badges">
-					<span>{roleLabel}</span>
+					<span>{image.generation ? t("media.aiDraft") : roleLabel}</span>
 					{image.isCover ? <span>{t("media.cover")}</span> : null}
 					{image.subjectKind ? (
 						<span>
@@ -80,6 +80,24 @@ function ImageCard({
 				</div>
 			</div>
 			<div className="concept-image-card__body">
+				{image.generation && (
+					<details className="concept-image-card__provenance">
+						<summary>{t("media.generationDetails")}</summary>
+						<p>{t("media.generationNotice")}</p>
+						<p dir="auto">
+							ChatGPT ·{" "}
+							{image.generation.reportedModel ?? t("media.modelUnknown")}
+						</p>
+						<p dir="auto">{image.generation.prompt}</p>
+						<ul>
+							{image.generation.sourceLabels.map((label, index) => (
+								<li dir="auto" key={index}>
+									{label}
+								</li>
+							))}
+						</ul>
+					</details>
+				)}
 				{canManage ? (
 					<label className="field field--compact">
 						<span className="field__label">{t("media.caption")}</span>

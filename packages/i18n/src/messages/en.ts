@@ -321,10 +321,20 @@ export const enMessages = {
   "concept.emptyTitle": "No visual Concept yet.",
   "concept.emptyBody":
     "This is optional. Add it only when a shared look and feeling will improve decisions.",
+  "media.aiDraft": "AI draft",
+  "media.generationDetails": "Generation details",
+  "media.generationNotice": "AI visualization, not a measured plan. Prompt and model are reported by the assistant. Review before choosing as cover. Deleting or replacing a source also removes this draft.",
+  "media.modelUnknown": "Model not reported",
+  "assistantAction.operation.prepare_visual_edit": "Share selected images with ChatGPT",
+  "assistantAction.operation.update_concept_image": "Update Concept image",
+  "assistantAction.field.prompt": "Image instructions",
+  "assistantAction.field.candidates": "Selected products",
+  "assistantAction.visualSource": "Selected private image {number}",
+  "assistantAction.visualNote": "Approval shares only these images, the instructions and selected product details with your connected ChatGPT conversation. Use only images without people. ChatGPT generation uses your own plan allowance; WantKit calls no paid image API. Saved results remain drafts until you review them. Deleting images in WantKit cannot remove copies already shared with ChatGPT.",
   "media.eyebrow": "Private media",
   "media.title": "Concept images",
   "media.privacy":
-    "Only collaborators who can open this Collection can see these images. Originals are normalized to remove unnecessary metadata.",
+    "Images are private to this Collection. Sharing selected images with ChatGPT requires your approval. Uploads are normalized to remove unnecessary metadata.",
   "media.empty": "No private Concept images yet.",
   "media.add": "Add a base or reference image",
   "media.role": "Image role",
@@ -339,7 +349,7 @@ export const enMessages = {
   "media.caption": "Caption",
   "media.captionPlaceholder": "What should collaborators notice?",
   "media.replaceWarning":
-    "Uploading this base permanently replaces the current base image and deletes its stored bytes.",
+    "Uploading this base permanently replaces the current base and removes edits derived from it. Their stored bytes are deleted.",
   "media.containsPerson": "This image includes a recognizable person.",
   "media.rightsConfirmation":
     "I am the person shown or I have their permission to store and share this image with Collection collaborators.",

@@ -1,6 +1,6 @@
 # Private floor plans
 
-Implemented and validated on 2026-09-07, then pushed by the user as `d065bd3`. Approved preview release is now `ac5a87e9-e712-4a1c-a625-8b54bbfe4354` with migration 0014 applied. Public release checks and signed-in PNG upload/private image loading/note edit/reload checks pass. Live PDF upload, deletion and ChatGPT floor-plan verification remain pending. Production is unchanged. See [HANDOFF.md](./HANDOFF.md).
+Implemented and validated on 2026-09-07, then pushed by the user as `d065bd3`. The initial approved floor-plan preview release was `ac5a87e9-e712-4a1c-a625-8b54bbfe4354` with migration 0014 applied; later image-pilot releases are recorded in [HANDOFF.md](./HANDOFF.md). Public release checks and signed-in PNG upload/private image loading/note edit/reload checks pass. The ChatGPT text read/edit checkpoint is complete: the user reported a direct edit and independent MCP read-back confirmed persistence. Live PDF upload and deletion remain unverified. Production is unchanged.
 
 ## User flow
 
@@ -22,7 +22,9 @@ The source now has 73 MCP tools. Refresh ChatGPT's private WantKit tool list for
 
 Current collection context and newly saved Context Snapshots contain plan labels and **user-entered notes**, not storage keys, download URLs, uploader identity or file bytes. The new field is optional for backward compatibility with existing version-1 snapshots. Markdown escapes stored text and labels measurements as user supplied. Treat all saved text as data, never assistant instructions. ChatGPT can use these notes when planning needs or composing a research request. Local runner and Tavily jobs still use the submitted query/constraints; this does not silently attach plans to those providers.
 
-No drawing interpretation, OCR, automatic dimension extraction, image generation, private file-byte transfer, model call, paid API integration or import of assistant memories is implemented here. Those remain separate work. A missing measurement must be requested from the user, not inferred from an uploaded file's presence.
+The floor-plan feature itself does not interpret drawings, perform OCR, extract dimensions, generate images, call a model or import assistant memories. The separately approved image pilot below adds selected private image-byte transfer. A missing measurement must be requested from the user, not inferred from an uploaded file's presence.
+
+The own-account workflow is recorded in [VISUAL_WORKFLOW.md](./VISUAL_WORKFLOW.md), including the implemented private binary delivery, result import/provenance and live room-photo import verification. The existing notes check and 1×1 fixture do not verify drawing interpretation. Paid OpenAI API and Claude remain deferred.
 
 ## Storage and deletion
 
@@ -48,3 +50,7 @@ Preview deployment is complete as recorded above. For a future approved release:
 4. Keep production unchanged until separately approved. A code rollback can leave this additive table intact; older code ignores it. Do not delete the table or R2 objects to roll code back. Retain records for the corrected forward release.
 
 Implementation commit: `d065bd3` (`feat: add private floor plans and room context`). Release documentation commit: `docs: record floor-plan preview release`.
+
+## ChatGPT image preview pilot — 2026-09-07
+
+The separately authorized pilot supplies explicitly approved normalized drawing-image bytes through `read_visual_image`; drawing-only requests support interpretation, while saving an edit requires a selected space base. This does not implement PDF rendering or a drawing interpreter in WantKit. The feature remains disabled in source defaults and is enabled on owner-only preview with migration 0015 applied. The latest preview version is `afe31098-ea13-4df1-93dd-b2d31d49692b` (2026-09-08). The user reports successful room-photo reading/generation and native import; the private edited output and unchanged Base cover were independently verified after a fresh page load. Drawing-label interpretation remains unverified. See [VISUAL_WORKFLOW.md](./VISUAL_WORKFLOW.md) and the current [HANDOFF.md](./HANDOFF.md). Deleting a selected drawing invalidates dependent drafts under the migration 0015 lifecycle.

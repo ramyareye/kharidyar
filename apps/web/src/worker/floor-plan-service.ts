@@ -1,3 +1,4 @@
+import { cleanupVisualRuns } from "./visual-lifecycle";
 import {
   floorPlanDetailsSchema,
   floorPlanLimits,
@@ -394,6 +395,7 @@ export async function deleteFloorPlan(
   if (result.meta.changes !== 1)
     throw conflict("The floor plan or your access changed.");
   // Tombstone first: a failed R2 delete cannot leave a downloadable record.
+  await cleanupVisualRuns(input.database, input.bucket, input.collectionId);
   await eraseObject(input.database, input.bucket, row);
   return { deleted: true };
 }

@@ -1939,7 +1939,7 @@
 .concept-image-card__badges span {
 	padding-block: 0.3rem;
 	padding-inline: 0.45rem;
-	color: var(--ink);
+	color: #fff;
 	background: rgba(31, 39, 32, 0.88);
 	font-size: 0.875rem;
 	font-weight: 750;
@@ -4555,3 +4555,5 @@ button:disabled {
 	border-color: var(--line);
 	border-radius: 0.5rem;
 }
+
+.concept-image-card__provenance { overflow-wrap: anywhere; }

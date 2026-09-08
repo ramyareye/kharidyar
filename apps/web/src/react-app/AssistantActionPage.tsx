@@ -10,6 +10,8 @@ import { useLocale } from "./locale-context";
 import "./ConnectorsPage.css";
 
 const actionTitles: Partial<Record<string, MessageKey>> = {
+	prepare_visual_edit: "assistantAction.operation.prepare_visual_edit",
+	update_concept_image: "assistantAction.operation.update_concept_image",
 	delete_floor_plan: "assistantAction.operation.delete_floor_plan",
 	archive_workspace: "assistantAction.operation.archive_workspace",
 	archive_collection: "assistantAction.operation.archive_collection",
@@ -35,6 +37,8 @@ const actionTitles: Partial<Record<string, MessageKey>> = {
 		"assistantAction.operation.remove_collection_member",
 };
 const fieldLabels: Partial<Record<string, MessageKey>> = {
+	prompt: "assistantAction.field.prompt",
+	candidates: "assistantAction.field.candidates",
 	purchasedQuantity: "workflow.purchaseQuantity",
 	shippingBasis: "commerce.shippingBasis",
 	query: "research.query",
@@ -49,6 +53,61 @@ const fieldLabels: Partial<Record<string, MessageKey>> = {
 	restrictToEmail: "assistantAction.field.restrictToEmail",
 	plannedPurchaseQuantity: "assistantAction.field.quantity",
 };
+function VisualPreview({ value }: { value: unknown }) {
+	const { t } = useLocale();
+	const edited = z.object({ imageId: z.string() }).safeParse(value);
+	if (edited.success) {
+		const url = `/api/concept-images/${encodeURIComponent(edited.data.imageId)}/content`;
+		return (
+			<div className="assistant-visual-preview">
+				<a href={url} target="_blank" rel="noreferrer">
+					<img
+						src={url}
+						alt={t("media.aiDraft")}
+						referrerPolicy="no-referrer"
+					/>
+				</a>
+			</div>
+		);
+	}
+	const parsed = z
+		.object({
+			collectionId: z.string(),
+			value: z.object({
+				baseImageId: z.string().nullable(),
+				floorPlanId: z.string().nullable(),
+				referenceImageIds: z.array(z.string()),
+			}),
+		})
+		.safeParse(value);
+	if (!parsed.success) return null;
+	const a = parsed.data;
+	const urls = [
+		...[a.value.baseImageId, ...a.value.referenceImageIds]
+			.filter((id): id is string => Boolean(id))
+			.map((id) => `/api/concept-images/${encodeURIComponent(id)}/content`),
+		...(a.value.floorPlanId
+			? [
+					`/api/collections/${encodeURIComponent(a.collectionId)}/floor-plans/${encodeURIComponent(a.value.floorPlanId)}/content`,
+				]
+			: []),
+	];
+	return (
+		<div className="assistant-visual-preview">
+			{urls.map((url, index) => (
+				<a key={url} href={url} target="_blank" rel="noreferrer">
+					<img
+						src={url}
+						alt={t("assistantAction.visualSource", {
+							number: String(index + 1),
+						})}
+						referrerPolicy="no-referrer"
+					/>
+				</a>
+			))}
+		</div>
+	);
+}
 type Review = z.infer<typeof mcpActionReviewSchema>;
 function FieldValue({ value }: { value: unknown }) {
 	const { locale, t } = useLocale();
@@ -223,6 +282,15 @@ export function AssistantActionPage() {
 							<span dir="auto">{review.target}</span>
 						</p>
 
+						{review.receipt.operation === "prepare_visual_edit" && (
+							<>
+								<p>{t("assistantAction.visualNote")}</p>
+								<VisualPreview value={review.arguments} />
+							</>
+						)}
+						{review.receipt.operation === "update_concept_image" && (
+							<VisualPreview value={review.arguments} />
+						)}
 						{review.arguments && <FieldValue value={review.arguments} />}
 						<p role="status">
 							{t(`assistantAction.status.${review.receipt.status}`)}

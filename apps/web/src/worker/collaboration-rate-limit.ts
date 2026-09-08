@@ -23,6 +23,9 @@ export const contextSnapshotCreationRateLimit = {
 export type CollaborationRateLimitAction =
   | "local_codex_pairing"
   | "local_codex_request"
+	| "mcp_visual_prepare"
+	| "mcp_visual_read"
+	| "mcp_visual_import"
 	| "mcp_request"
 	| "mcp_registration"
 	| "concept_media_upload"

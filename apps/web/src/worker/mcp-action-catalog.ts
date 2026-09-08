@@ -1,3 +1,4 @@
+import { prepareVisualRun, visualSelection } from "./visual-service";
 import * as c from "@kharidyar/contracts";
 import { z } from "zod";
 import * as core from "./core-workspace-service";
@@ -63,8 +64,11 @@ function action<S extends z.ZodRawShape>(
 		title,
 		scope,
 		schema,
-		destructive: !name.startsWith("create_") && !name.startsWith("restore_"),
-		description: `${title}. ${confirm ? "May require the user's confirmation in WantKit; return the approval link and wait for its receipt." : "Applies immediately using the account's current permissions."} Reuse the same operationId when retrying; never retry an uncertain result with a new ID.`,
+		destructive:
+			name !== "prepare_visual_edit" &&
+			!name.startsWith("create_") &&
+			!name.startsWith("restore_"),
+		description: `${title}. ${confirm || name === "update_concept_image" ? "May require the user's confirmation in WantKit; return the approval link and wait for its receipt." : "Applies immediately using the account's current permissions."} Reuse the same operationId when retrying; never retry an uncertain result with a new ID.`,
 		parse: (args: unknown): Record<string, unknown> => schema.parse(args),
 		requiresConfirmation: (args: unknown) =>
 			typeof confirm === "boolean" ? confirm : confirm(schema.parse(args)),
@@ -105,6 +109,14 @@ async function sharing(
 }
 
 export const mcpActionCatalog = [
+	action(
+		"prepare_visual_edit",
+		"Approve selected private images and prompt for ChatGPT",
+		{ ...collection, value: c.visualSelectionSchema },
+		"collection",
+		(ctx, a) => prepareVisualRun(ctx, a.collectionId, a.value),
+		true,
+	),
 	action(
 		"create_workspace",
 		"Create a workspace",
@@ -466,9 +478,12 @@ export const mcpActionCatalog = [
 		"Delete a saved floor plan and its room notes",
 		{ ...collection, planId: mcpIdentifier },
 		"collection",
-		(ctx, a) => floorPlans.deleteFloorPlan({
-			...common(ctx), bucket: ctx.env.CONCEPT_MEDIA, ...a,
-		}),
+		(ctx, a) =>
+			floorPlans.deleteFloorPlan({
+				...common(ctx),
+				bucket: ctx.env.CONCEPT_MEDIA,
+				...a,
+			}),
 		true,
 	),
 	action(
@@ -677,6 +692,22 @@ export async function actionTarget(
 			confirmationRequired: false,
 		};
 	}
+	if (definition.name === "prepare_visual_edit") {
+		const selected = await visualSelection(
+			ctx,
+			mcpIdentifier.parse(args.collectionId),
+			args.value,
+		);
+		return {
+			name: [
+				selected.state.name,
+				...selected.sources.map((s) => s.label),
+				...selected.products.map((p) => p.title),
+			].join(" · "),
+			version: JSON.stringify(selected),
+			confirmationRequired: true,
+		};
+	}
 	if (definition.scope === "collection") {
 		const row = await core.readCollection({
 			...base,
@@ -710,10 +741,17 @@ export async function actionTarget(
 				: null;
 		return {
 			name: plans?.find((plan) => plan.id === args.planId)?.title ?? row.name,
-			version: JSON.stringify(plans
-				? [row, extras, images, importDraft, researchDesk, plans]
-				: [row, extras, images, importDraft, researchDesk]),
-			confirmationRequired: false,
+			version: JSON.stringify(
+				plans
+					? [row, extras, images, importDraft, researchDesk, plans]
+					: [row, extras, images, importDraft, researchDesk],
+			),
+			confirmationRequired:
+				definition.name === "update_concept_image" &&
+				c.conceptImageUpdateInputSchema.parse(args.value).isCover === true &&
+				images?.images.some(
+					(image) => image.id === args.imageId && image.role === "edited",
+				) === true,
 		};
 	}
 	const row = await core.readItem({

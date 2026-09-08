@@ -38,6 +38,7 @@ export function registerMcpWriteTools(server: McpServer, ctx: ActionContext) {
 		};
 	}
 	for (const definition of mcpActionCatalog) {
+ if (definition.name === "prepare_visual_edit" && ctx.env.CHATGPT_VISUALS_ENABLED !== "true") continue;
 		const schema = z
 			.object({ operationId: operationIdSchema, arguments: definition.schema })
 			.strict();
@@ -62,7 +63,7 @@ export function registerMcpWriteTools(server: McpServer, ctx: ActionContext) {
 					readOnlyHint: false,
 					destructiveHint: definition.destructive,
 					idempotentHint: true,
-					openWorldHint: definition.name === "start_research",
+					openWorldHint: ["start_research", "prepare_visual_edit"].includes(definition.name),
 				},
 				_meta: { securitySchemes: [scheme] },
 			},

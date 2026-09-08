@@ -1,8 +1,14 @@
+import { deleteFloorPlan } from "../src/worker/floor-plan-service";
+import { readVisualImage, readVisualRun, importVisualImage } from "../src/worker/visual-service";
+import { boundedBytes, chatgptDownloadUrl, downloadChatgptImage } from "../src/worker/chatgpt-files";
+import { cleanupVisualRuns } from "../src/worker/visual-lifecycle";
+import { conceptMediaLimits, uploadConceptImage, readConceptMedia, readConceptImageContent, deleteConceptImage } from "../src/worker/concept-media-service";
 import { env, exports } from "cloudflare:workers";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import app from "../src/worker";
-import { connectorInputSchema } from "../src/worker/mcp-auth-service";
+import { authenticateMcpRequest, connectorInputSchema } from "../src/worker/mcp-auth-service";
+import { visualRunResultSchema, visualImageResultSchema } from "@kharidyar/contracts";
 
 const origin = "http://localhost:5173";
 const owner = "mcp-owner";
@@ -155,7 +161,7 @@ async function connect(userId = owner, allowWrites = false) {
 		...authorization.credentials,
 	};
 }
-async function rpc(token: string, method: string, params?: unknown) {
+async function rpc(token: string, method: string, params?: unknown, bindings?:Env) {
 	const response = await request("/api/mcp", {
 		...post({ jsonrpc: "2.0", id: 1, method, params }),
 		headers: {
@@ -164,7 +170,7 @@ async function rpc(token: string, method: string, params?: unknown) {
 			authorization: `Bearer ${token}`,
 			"mcp-protocol-version": "2025-11-25",
 		},
-	});
+	},undefined,bindings);
 	const text = await response.text();
 	const data = text.startsWith("event:")
 		? text
@@ -184,6 +190,8 @@ const call = (token: string, name: string, args: unknown = {}) =>
 
 beforeEach(async () => {
 	await env.DB.batch([
+		env.DB.prepare("delete from visual_runs where collection_id like 'mcp-%'"),
+ env.DB.prepare("delete from concept_images where role='edited' and concept_id in (select id from concepts where collection_id like 'mcp-%')"),
 		env.DB.prepare("delete from floor_plans where collection_id like 'mcp-%'"),
 		env.DB.prepare("delete from workspaces where id like 'mcp-%'"),
 		env.DB.prepare("delete from user where id like 'mcp-%'"),
@@ -706,6 +714,905 @@ const writeCall = async (
 };
 const approveAction = (id: string, approve = true, userId = owner) =>
 	request(`/api/connectors/actions/${id}/decision`, post({ approve }), userId);
+
+const visualEnv = () => ({ ...pilotEnv(), CHATGPT_VISUALS_ENABLED: "true" });
+const visualCall = (token: string, name: string, args: unknown) =>
+	rpc(token, "tools/call", { name, arguments: args }, visualEnv());
+const pngBytes = () =>
+	Uint8Array.from(
+		atob(
+			"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+		),
+		(c) => c.charCodeAt(0),
+	);
+const imageResponse = () =>
+	new Response(pngBytes(), { headers: { "content-type": "image/png" } });
+const importArgs = (runId: string) => ({
+	runId,
+	operationId: crypto.randomUUID(),
+	file: {
+		download_url:
+			"https://files.oaiusercontent.com/file-local-fixture?sig=secret",
+		file_id: "file-local-fixture",
+		mime_type: "image/png",
+		file_name: "room.png",
+	},
+	reportedModel: null,
+	caption: "Warmer room draft",
+});
+const runResult = z.object({
+	id: z.string(),
+	status: z.string(),
+	outputImageId: z.string().nullable(),
+});
+async function visualFixture() {
+	const connection = await connect(owner, true);
+	const token = await env.DB.prepare(
+		"select id,session_id from oauth_access_token where client_id=?",
+	)
+		.bind(connection.clientId)
+		.first<{ id: string; session_id: string }>();
+	if (!token) throw Error("No test grant");
+	const ctx = {
+		env: visualEnv(),
+		actor: {
+			userId: owner,
+			clientId: connection.clientId,
+			accessTokenId: token.id,
+			sessionId: token.session_id,
+			scopes: ["wantkit:read", "wantkit:write"],
+		},
+	};
+	await env.DB.prepare(
+		"insert into concepts(id,collection_id,title,narrative,created_by_user_id,updated_by_user_id) values('mcp-concept','mcp-collection-a','Room','Warm',?,?)",
+	)
+		.bind(owner, owner)
+		.run();
+	const mediaInput = {
+		database: env.DB,
+		bucket: env.CONCEPT_MEDIA,
+		collectionId: "mcp-collection-a",
+		userId: owner,
+		limits: conceptMediaLimits(env),
+	};
+	const upload = async (role = "base") => {
+		const form = new FormData();
+		form.set("file", new File([pngBytes()], "room.png", { type: "image/png" }));
+		form.set("role", role);
+		if (role === "base") form.set("subjectKind", "space");
+		form.set("caption", "Original room");
+		form.set("containsPerson", "false");
+		form.set("personRightsConfirmed", "false");
+		return uploadConceptImage({
+			...mediaInput,
+			images: env.IMAGES,
+			rateLimitSecret: env.BETTER_AUTH_SECRET,
+			request: new Request(origin, { method: "POST", body: form }),
+		});
+	};
+	const media = await upload();
+	const base = media.images[0];
+	const selection: {
+		baseImageId: string | null;
+		floorPlanId: string | null;
+		referenceImageIds: string[];
+		candidates: { itemId: string; candidateId: string }[];
+		prompt: string;
+	} = {
+		baseImageId: base.id,
+		floorPlanId: null,
+		referenceImageIds: [],
+		candidates: [],
+		prompt: "Keep the room geometry. Add warmer lighting. No people.",
+	};
+	const prepare = async () => {
+		const response = await visualCall(
+			connection.access_token,
+			"prepare_visual_edit",
+			{
+				operationId: crypto.randomUUID(),
+				arguments: { collectionId: "mcp-collection-a", value: selection },
+			},
+		);
+		const receipt = actionReceipt.parse(
+			response.body.result?.structuredContent,
+		);
+		expect(receipt.status, response.text).toBe("pending");
+		return receipt;
+	};
+	const approve = async (id: string) => {
+		const response = await request(
+			`/api/connectors/actions/${id}/decision`,
+			post({ approve: true }),
+			owner,
+			visualEnv(),
+		);
+		const receipt = actionReceipt.parse(await response.json());
+		expect(receipt.status, JSON.stringify(receipt)).toBe("succeeded");
+		return runResult.parse(receipt.result);
+	};
+	return {
+		connection,
+		ctx,
+		mediaInput,
+		base,
+		selection,
+		prepare,
+		approve,
+		upload,
+	};
+}
+afterEach(() => vi.restoreAllMocks());
+
+async function refreshVisualFixture(f: Awaited<ReturnType<typeof visualFixture>>) {
+	const response = await request("/api/auth/oauth2/token", {
+		method: "POST",
+		headers: { "content-type": "application/x-www-form-urlencoded" },
+		body: new URLSearchParams({
+			grant_type: "refresh_token",
+			client_id: f.connection.clientId,
+			client_secret: f.connection.clientSecret,
+			refresh_token: f.connection.refresh_token,
+			resource: f.connection.endpoint,
+		}),
+	});
+	expect(response.status).toBe(200);
+	const tokens = tokensSchema.parse(await response.json());
+	const actor = await authenticateMcpRequest(f.ctx.env, new Request(origin, {
+		headers: { authorization: `Bearer ${tokens.access_token}` },
+	}));
+	if (!actor) throw new Error("Refreshed test grant was rejected");
+	return { tokens, ctx: { ...f.ctx, actor } };
+}
+
+describe("private ChatGPT image pilot", () => {
+	it("keeps approved image reads usable after a same-grant token refresh", async () => {
+		const f = await visualFixture();
+		const run = await f.approve((await f.prepare()).id);
+		const before = await readVisualRun(f.ctx, run.id);
+		const { tokens } = await refreshVisualFixture(f);
+		const binary = await visualCall(tokens.access_token, "read_visual_image", {
+			runId: run.id,
+			sourceId: f.base.id,
+		});
+		expect(binary.body.result?.isError, binary.text).not.toBe(true);
+		expect(binary.body.result?.content).toEqual(expect.arrayContaining([
+			expect.objectContaining({ type: "image", mimeType: "image/webp" }),
+		]));
+		expect(visualImageResultSchema.parse(binary.body.result?.structuredContent).source.id).toBe(f.base.id);
+		const status = await visualCall(tokens.access_token, "read_visual_run", { runId: run.id });
+		expect(visualRunResultSchema.parse(status.body.result?.structuredContent)).toEqual(before);
+		vi.spyOn(globalThis, "fetch").mockImplementation(async () => imageResponse());
+		const args = importArgs(run.id);
+		const imported = await visualCall(tokens.access_token, "import_visual_image", args);
+		expect(imported.body.result?.isError, imported.text).not.toBe(true);
+		const saved = visualRunResultSchema.parse(imported.body.result?.structuredContent);
+		expect(saved.status).toBe("completed");
+		expect(saved.expiresAt).toBe(before.expiresAt);
+		const replay = await visualCall(tokens.access_token, "import_visual_image", args);
+		expect(visualRunResultSchema.parse(replay.body.result?.structuredContent).outputImageId).toBe(saved.outputImageId);
+		expect((await readConceptMedia(f.mediaInput)).images).toHaveLength(2);
+	});
+	it("rejects a separate authorization for the same user, client and session", async () => {
+		const f = await visualFixture();
+		const run = await f.approve((await f.prepare()).id);
+		const separate = await exchange(await authorize(owner, f.connection, true, true));
+		expect(separate.status).toBe(200);
+		const tokens = tokensSchema.parse(await separate.json());
+		for (const name of ["read_visual_run", "read_visual_image", "import_visual_image"]) {
+			const args = name === "read_visual_image" ? { runId: run.id, sourceId: f.base.id }
+				: name === "import_visual_image" ? importArgs(run.id) : { runId: run.id };
+			const response = await visualCall(tokens.access_token, name, args);
+			expect(response.body.result?.isError, response.text).toBe(true);
+			expect(response.body.result?.structuredContent).toBeUndefined();
+		}
+	});
+	it.each(["original expiry", "original revocation", "current revocation", "missing lineage"])(
+		"does not let a refresh bypass %s", async (reason) => {
+			const f = await visualFixture();
+			const run = await f.approve((await f.prepare()).id);
+			const refreshed = await refreshVisualFixture(f);
+			if (reason === "original expiry") await env.DB.prepare("update oauth_access_token set expires_at=0 where id=?").bind(f.ctx.actor.accessTokenId).run();
+			else if (reason === "missing lineage") await env.DB.prepare("update oauth_access_token set authorization_code_id=null where id=?").bind(refreshed.ctx.actor.accessTokenId).run();
+			else await env.DB.prepare("update oauth_access_token set revoked=1 where id=?").bind(reason === "original revocation" ? f.ctx.actor.accessTokenId : refreshed.ctx.actor.accessTokenId).run();
+			await expect(readVisualImage(refreshed.ctx, run.id, f.base.id)).rejects.toMatchObject({ status: reason === "missing lineage" ? 404 : 403 });
+		});
+	it.each(["original", "current"])("rechecks %s token revocation at the final import transaction after refresh", async (which) => {
+		const f = await visualFixture();
+		const run = await f.approve((await f.prepare()).id);
+		const refreshed = await refreshVisualFixture(f);
+		vi.spyOn(globalThis, "fetch").mockImplementation(async () => imageResponse());
+		let intercepted = false;
+		const database = new Proxy(env.DB, {
+			get(target, key) {
+				if (key === "batch") return async (statements: D1PreparedStatement[]) => {
+					if (!intercepted) {
+						intercepted = true;
+						await target.prepare("update oauth_access_token set revoked=1 where id=?").bind(which === "original" ? f.ctx.actor.accessTokenId : refreshed.ctx.actor.accessTokenId).run();
+					}
+					return target.batch(statements);
+				};
+				const member = Reflect.get(target, key);
+				return typeof member === "function" ? member.bind(target) : member;
+			},
+		});
+		await expect(importVisualImage({ ...refreshed.ctx, env: { ...refreshed.ctx.env, DB: database } }, importArgs(run.id))).rejects.toMatchObject({ status: 403 });
+		expect(intercepted).toBe(true);
+		expect(await env.DB.prepare("select count(*) as n from concept_images where concept_id='mcp-concept' and role='edited'").first("n")).toBe(0);
+		expect(await env.DB.prepare("select reserved_bytes from visual_runs where id=?").bind(run.id).first("reserved_bytes")).toBe(0);
+	});
+	it("encodes a photo-sized transformed payload without losing bytes", async () => {
+		const f = await visualFixture();
+		const run = await f.approve((await f.prepare()).id);
+		// Stub only the image-transform output to isolate the binary transport seam.
+		const bytes = Uint8Array.from({ length: 885192 }, (_, i) => i % 256);
+		const transformer: ImageTransformer = {
+			transform: () => transformer,
+			draw: () => transformer,
+			output: async () => ({
+				image: () => new Blob([bytes]).stream(),
+				response: () => new Response(bytes),
+				contentType: () => "image/webp",
+			}),
+		};
+		vi.spyOn(env.IMAGES, "input").mockReturnValue(transformer);
+		const response = await visualCall(f.connection.access_token, "read_visual_image", { runId: run.id, sourceId: f.base.id });
+		expect(response.body.result?.isError, response.text).not.toBe(true);
+		const content = z.array(z.object({ type: z.string(), data: z.string().optional() })).parse(response.body.result?.content);
+		expect(Uint8Array.from(atob(content[1].data!), c => c.charCodeAt(0))).toEqual(bytes);
+		expect(visualImageResultSchema.parse(response.body.result?.structuredContent).byteSize).toBe(bytes.length);
+	});
+	it("rolls back the final image insert if source cancellation wins just before the database batch", async () => {
+		const f = await visualFixture();
+		const run = await f.approve((await f.prepare()).id);
+		vi.spyOn(globalThis, "fetch").mockImplementation(async () => imageResponse());
+		let intercepted = false;
+		const database = new Proxy(env.DB, {
+			get(target, key) {
+				if (key === "batch") return async (statements: D1PreparedStatement[]) => {
+					if (!intercepted) {
+						intercepted = true;
+						await env.DB.prepare("update concept_images set deleted_at=?,deleted_by_user_id=uploaded_by_user_id where id=?").bind(Date.now(), f.base.id).run();
+						await cleanupVisualRuns(env.DB, env.CONCEPT_MEDIA, "mcp-collection-a");
+					}
+					return target.batch(statements);
+				};
+				const member = Reflect.get(target, key);
+				return typeof member === "function" ? member.bind(target) : member;
+			},
+		});
+		const result = await importVisualImage({ ...f.ctx, env: { ...f.ctx.env, DB: database } }, importArgs(run.id));
+		expect(intercepted).toBe(true);
+		expect(result.status).toBe("failed");
+		expect(await env.DB.prepare("select count(*) from concept_images where concept_id='mcp-concept' and deleted_at is null").first("count(*)")).toBe(0);
+		expect(await env.DB.prepare("select reserved_bytes from visual_runs where id=?").bind(run.id).first("reserved_bytes")).toBe(0);
+	});
+	it("hides pilot tools by default and publishes the complete top-level ChatGPT file parameter when enabled", async () => {
+		const c = await connect(owner, true);
+		const disabled = await rpc(c.access_token, "tools/list");
+		expect(disabled.text).not.toContain('"import_visual_image"');
+		const enabled = await rpc(c.access_token, "tools/list", {}, visualEnv());
+		const descriptors = z
+			.array(
+				z.object({
+					name: z.string(),
+					inputSchema: z.record(z.string(), z.unknown()),
+					outputSchema: z.record(z.string(), z.unknown()).optional(),
+					_meta: z.record(z.string(), z.unknown()).optional(),
+				}),
+			)
+			.parse(enabled.body.result?.tools);
+		for (const name of ["read_visual_run", "read_visual_image", "import_visual_image"]) {
+			expect(descriptors.find(t => t.name === name)?.outputSchema).toMatchObject({ type: "object" });
+		}
+		const tool = descriptors.find((t) => t.name === "import_visual_image")!;
+		expect(tool._meta?.["openai/fileParams"]).toEqual(["file"]);
+		const schema = z
+			.object({
+				properties: z.object({
+					file: z.object({
+						properties: z.record(z.string(), z.unknown()),
+						required: z.array(z.string()),
+					}),
+				}),
+			})
+			.parse(tool.inputSchema);
+		expect(Object.keys(schema.properties.file.properties).sort()).toEqual([
+			"download_url",
+			"file_id",
+			"file_name",
+			"mime_type",
+		]);
+		expect(schema.properties.file.required).toEqual([
+			"download_url",
+			"file_id",
+		]);
+	});
+	it("requires browser approval, transfers only selected image bytes, and denies another grant or viewer", async () => {
+		const f = await visualFixture();
+		const pending = await f.prepare();
+		expect(
+			await env.DB.prepare("select count(*) as n from visual_runs").first("n"),
+		).toBe(0);
+		const run = await f.approve(pending.id);
+		const binary = await visualCall(
+			f.connection.access_token,
+			"read_visual_image",
+			{ runId: run.id, sourceId: f.base.id },
+		);
+		expect(binary.body.result?.isError, binary.text).not.toBe(true);
+		const content = z
+			.array(
+				z.object({
+					type: z.string(),
+					data: z.string().optional(),
+					mimeType: z.string().optional(),
+				}),
+			)
+			.parse(binary.body.result?.content);
+		expect(content[1]).toMatchObject({ type: "image", mimeType: "image/webp" });
+		expect(atob(content[1].data!)).toContain("WEBP");
+		expect(binary.text).not.toContain("concept-images/");
+		await expect(
+			readVisualImage(f.ctx, run.id, "unselected"),
+		).rejects.toMatchObject({ status: 403 });
+		await expect(
+			readVisualRun(
+				{ ...f.ctx, actor: { ...f.ctx.actor, clientId: "other-client" } },
+				run.id,
+			),
+		).rejects.toMatchObject({ status: 404 });
+		await env.DB.prepare(
+			"update workspace_memberships set role='viewer' where user_id=?",
+		)
+			.bind(owner)
+			.run();
+		await expect(
+			readVisualImage(f.ctx, run.id, f.base.id),
+		).rejects.toMatchObject({ status: 403 });
+	});
+	it("refuses stale approval and person images before sharing", async () => {
+		const f = await visualFixture();
+		const pending = await f.prepare();
+		await f.upload();
+		const response = await request(
+			`/api/connectors/actions/${pending.id}/decision`,
+			post({ approve: true }),
+			owner,
+			visualEnv(),
+		);
+		expect(response.status).toBe(403);
+		await env.DB.prepare(
+			"update concept_images set contains_person=1,person_rights_confirmed_at=? where deleted_at is null",
+		)
+			.bind(Date.now())
+			.run();
+		f.selection.baseImageId = (
+			await readConceptMedia(f.mediaInput)
+		).images[0].id;
+		const denied = await visualCall(
+			f.connection.access_token,
+			"prepare_visual_edit",
+			{
+				operationId: crypto.randomUUID(),
+				arguments: { collectionId: "mcp-collection-a", value: f.selection },
+			},
+		);
+		expect(denied.body.result?.isError).toBe(true);
+	});
+	it("stores one normalized draft with provenance, preserves the original, and requires approval to adopt it", async () => {
+		const f = await visualFixture();
+		const run = await f.approve((await f.prepare()).id);
+		const args = importArgs(run.id);
+		const fetcher = vi
+			.spyOn(globalThis, "fetch")
+			.mockImplementation(async () => imageResponse());
+		const response = await visualCall(f.connection.access_token, "import_visual_image", args);
+        expect(response.body.result?.isError,response.text).toBe(false);
+        const result = runResult.parse(response.body.result?.structuredContent);
+		expect(result.status).toBe("completed");
+		const replay = await importVisualImage(f.ctx, {
+			...args,
+			file: {
+				...args.file,
+				download_url:
+					"https://files.oaiusercontent.com/file-local-fixture?sig=new",
+			},
+		});
+		expect(replay.outputImageId).toBe(result.outputImageId);
+		expect(fetcher).toHaveBeenCalledTimes(1);
+		expect(fetcher.mock.calls[0][1]).toMatchObject({
+			redirect: "manual",
+			headers: { accept: "image/png,image/jpeg,image/webp" },
+		});
+		expect(
+			JSON.stringify(
+				await env.DB.prepare("select * from visual_runs where id=?")
+					.bind(run.id)
+					.first(),
+			),
+		).not.toContain("sig=secret");
+		await expect(
+			importVisualImage(f.ctx, { ...args, caption: "Different" }),
+		).rejects.toMatchObject({ status: 409 });
+		fetcher.mockRestore();
+		const media = await readConceptMedia(f.mediaInput);
+		expect(media.images).toHaveLength(2);
+		expect(media.images.find((i) => i.id === f.base.id)).toMatchObject({
+			role: "base",
+			isCover: true,
+		});
+		const draft = media.images.find((i) => i.id === result.outputImageId)!;
+		expect(draft).toMatchObject({
+			role: "edited",
+			isCover: false,
+			generation: {
+				provider: "chatgpt",
+				prompt: f.selection.prompt,
+				baseImageId: f.base.id,
+				sourceLabels: ["Original room"],
+			},
+		});
+		const content = await readConceptImageContent({
+			...f.mediaInput,
+			imageId: draft.id,
+			requestHeaders: new Headers(),
+		});
+		expect(content.status).toBe(200);
+		expect(content.headers.get("cache-control")).toBe("private, no-store");
+		const adopt = await writeCall(
+			f.connection.access_token,
+			"update_concept_image",
+			{
+				collectionId: "mcp-collection-a",
+				imageId: draft.id,
+				value: { isCover: true },
+			},
+		);
+		expect(adopt.receipt?.status).toBe("pending");
+		await deleteConceptImage({ ...f.mediaInput, imageId: f.base.id });
+		await expect(
+			readConceptImageContent({
+				...f.mediaInput,
+				imageId: draft.id,
+				requestHeaders: new Headers(),
+			}),
+		).rejects.toMatchObject({ status: 404 });
+		expect(
+			await env.CONCEPT_MEDIA.get(
+				(await env.DB.prepare("select object_key from visual_runs where id=?")
+					.bind(run.id)
+					.first<string>("object_key"))!,
+			),
+		).toBeNull();
+		expect(
+			await env.DB.prepare(
+				"select selection_json,sources_json from visual_runs where id=?",
+			)
+				.bind(run.id)
+				.first(),
+		).toEqual({ selection_json: "{}", sources_json: "[]" });
+	});
+	it("reserves quota across simultaneous imports and manual uploads, with one download on replay", async () => {
+		const f = await visualFixture();
+		const run = await f.approve((await f.prepare()).id);
+		const args = importArgs(run.id);
+		let release!: () => void;
+		let started!: () => void;
+		const start = new Promise<void>((r) => {
+			started = r;
+		});
+		const gate = new Promise<void>((r) => {
+			release = r;
+		});
+		const fetcher = vi
+			.spyOn(globalThis, "fetch")
+			.mockImplementation(async () => {
+				started();
+				await gate;
+				return imageResponse();
+			});
+		const imported = importVisualImage(f.ctx, args);
+		await start;
+		try {
+			expect((await importVisualImage(f.ctx, args)).status).toBe("importing");
+			const constrained = {
+				...f.mediaInput,
+				limits: { ...f.mediaInput.limits, maxImageCount: 2 },
+			};
+			const form = new FormData();
+			form.set(
+				"file",
+				new File([pngBytes()], "ref.png", { type: "image/png" }),
+			);
+			form.set("role", "reference");
+			form.set("containsPerson", "false");
+			form.set("personRightsConfirmed", "false");
+			await expect(
+				uploadConceptImage({
+					...constrained,
+					images: env.IMAGES,
+					rateLimitSecret: env.BETTER_AUTH_SECRET,
+					request: new Request(origin, { method: "POST", body: form }),
+				}),
+			).rejects.toMatchObject({ code: "MEDIA_LIMIT_EXCEEDED" });
+		} finally {
+			release();
+		}
+		expect((await imported).status).toBe("completed");
+		expect(fetcher).toHaveBeenCalledTimes(1);
+	});
+	it("rechecks revoked access after download and leaves no saved output", async () => {
+		const f = await visualFixture();
+		const run = await f.approve((await f.prepare()).id);
+		vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+			await env.DB.prepare("update oauth_access_token set revoked=1 where id=?")
+				.bind(f.ctx.actor.accessTokenId)
+				.run();
+			return imageResponse();
+		});
+		await expect(
+			importVisualImage(f.ctx, importArgs(run.id)),
+		).rejects.toMatchObject({ status: 403 });
+		const row = await env.DB.prepare(
+			"select status,reserved_bytes,object_key from visual_runs where id=?",
+		)
+			.bind(run.id)
+			.first<{ status: string; reserved_bytes: number; object_key: string }>();
+		expect(row).toMatchObject({ status: "failed", reserved_bytes: 0 });
+		expect(await env.CONCEPT_MEDIA.get(row!.object_key)).toBeNull();
+		expect((await readConceptMedia(f.mediaInput)).images).toHaveLength(1);
+	});
+	it("cancels a source deleted during download and scrubs the prompt without publishing a draft", async () => {
+		const f = await visualFixture();
+		const run = await f.approve((await f.prepare()).id);
+		vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+			await deleteConceptImage({ ...f.mediaInput, imageId: f.base.id });
+			return imageResponse();
+		});
+		expect((await importVisualImage(f.ctx, importArgs(run.id))).status).toBe(
+			"failed",
+		);
+		expect((await readConceptMedia(f.mediaInput)).images).toHaveLength(0);
+		expect(
+			await env.DB.prepare(
+				"select selection_json,reserved_bytes from visual_runs where id=?",
+			)
+				.bind(run.id)
+				.first(),
+		).toEqual({ selection_json: "{}", reserved_bytes: 0 });
+	});
+	it("expires unused requests and recovers abandoned import reservations and objects", async () => {
+		const f = await visualFixture();
+		const run = await f.approve((await f.prepare()).id);
+		await env.DB.prepare("update visual_runs set expires_at=0 where id=?")
+			.bind(run.id)
+			.run();
+		await expect(
+			readVisualImage(f.ctx, run.id, f.base.id),
+		).rejects.toMatchObject({ status: 409 });
+		expect((await readVisualRun(f.ctx, run.id)).status).toBe("cancelled");
+		const next = await f.approve((await f.prepare()).id);
+		const key = "concept-images/abandoned-visual";
+		await env.CONCEPT_MEDIA.put(key, pngBytes(), {
+			customMetadata: { visualRunId: next.id },
+		});
+		await env.DB.prepare(
+			"update visual_runs set status='importing',object_key=?,reserved_bytes=10485760,updated_at=0 where id=?",
+		)
+			.bind(key, next.id)
+			.run();
+		await cleanupVisualRuns(env.DB, env.CONCEPT_MEDIA, "mcp-collection-a");
+		expect(await env.CONCEPT_MEDIA.get(key)).toBeNull();
+		expect((await readVisualRun(f.ctx, next.id)).status).toBe("failed");
+	});
+	it("imports the observed native OpenAI host through MCP without changing the original or cover", async () => {
+		const f = await visualFixture();
+		const run = await f.approve((await f.prepare()).id);
+		const args = importArgs(run.id);
+		// Match the observed host/three-segment shape; opaque values and signature are fictional.
+		args.file.download_url = "https://sdmntprcentralus.oaiusercontent.com/fixture-container/fixture-directory/fixture-image?sig=private-signature";
+		args.file.file_id = "file_native_fixture";
+		const fetcher = vi.spyOn(globalThis, "fetch").mockImplementation(async () => imageResponse());
+		const response = await visualCall(f.connection.access_token, "import_visual_image", args);
+		expect(response.body.result?.isError, response.text).not.toBe(true);
+		const saved = visualRunResultSchema.parse(response.body.result?.structuredContent);
+		expect(saved.status).toBe("completed");
+		expect(saved.outputImageId).toBeTruthy();
+		expect(fetcher).toHaveBeenCalledExactlyOnceWith(args.file.download_url, {
+			redirect: "manual", signal: expect.any(AbortSignal),
+			headers: { accept: "image/png,image/jpeg,image/webp" },
+		});
+		const media = await readConceptMedia(f.mediaInput);
+		expect(media.images).toHaveLength(2);
+		expect(media.images.find(image => image.id === f.base.id)).toEqual(f.base);
+		expect(media.images.find(image => image.id === saved.outputImageId)).toMatchObject({
+			role: "edited", generation: { baseImageId: f.base.id }, isCover: false, contentType: "image/webp",
+		});
+		const replay = await visualCall(f.connection.access_token, "import_visual_image", args);
+		expect(visualRunResultSchema.parse(replay.body.result?.structuredContent).outputImageId).toBe(saved.outputImageId);
+		expect(fetcher).toHaveBeenCalledTimes(1);
+		const stored = await env.DB.prepare("select * from visual_runs where id=?").bind(run.id).first();
+		expect(JSON.stringify(stored)).not.toContain("private-signature");
+		expect(JSON.stringify(stored)).not.toContain("oaiusercontent.com");
+	});
+	it("limits native-host support to the observed origin and path shape", () => {
+		const accepted = "https://sdmntprcentralus.oaiusercontent.com/container/directory/image?sig=unchanged";
+		expect(chatgptDownloadUrl(accepted).href).toBe(accepted);
+		for (const url of [
+			"https://sdmntprcentralus.oaiusercontent.com.evil.test/a/b/c",
+			"https://evil-sdmntprcentralus.oaiusercontent.com/a/b/c",
+			"https://unreviewed.oaiusercontent.com/a/b/c",
+			"https://sdmntprcentralus.blob.core.windows.net/a/b/c",
+			"http://sdmntprcentralus.oaiusercontent.com/a/b/c",
+			"https://sdmntprcentralus.oaiusercontent.com:8443/a/b/c",
+			"https://user:pass@sdmntprcentralus.oaiusercontent.com/a/b/c",
+			"https://sdmntprcentralus.oaiusercontent.com/a/b/c#fragment",
+			"https://sdmntprcentralus.oaiusercontent.com/",
+			"https://sdmntprcentralus.oaiusercontent.com/file-fixture",
+			"https://sdmntprcentralus.oaiusercontent.com/a/b/",
+			"https://sdmntprcentralus.oaiusercontent.com/a/../b/c",
+			"https://sdmntprcentralus.oaiusercontent.com/a//b/c",
+		]) expect(() => chatgptDownloadUrl(url)).toThrow();
+	});
+	it("rejects redirects from the native host without making another request", async () => {
+		const args = importArgs("unused");
+		args.file.download_url = "https://sdmntprcentralus.oaiusercontent.com/a/b/c";
+		const fetcher = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(new Response(null, {
+			status: 302, headers: { location: "http://127.0.0.1/private" },
+		}));
+		await expect(downloadChatgptImage(args.file, 1024)).rejects.toMatchObject({ code: "INVALID_MEDIA" });
+		expect(fetcher).toHaveBeenCalledTimes(1);
+		expect(fetcher.mock.calls[0][1]?.redirect).toBe("manual");
+	});
+	it("returns a redacted native-file URL rejection through MCP before any import side effects", async () => {
+		const f = await visualFixture();
+		const run = await f.approve((await f.prepare()).id);
+		const before = await env.DB.prepare("select * from visual_runs where id=?").bind(run.id).first();
+		const fetcher = vi.spyOn(globalThis, "fetch");
+		const args = importArgs(run.id);
+		args.file.download_url = "https://native-files.example.test/private-path/file_hidden-id/image-private.png?sig=query-secret";
+		args.file.file_id = "hidden-handoff-id";
+		args.file.file_name = "private-room-name.png";
+		const response = await visualCall(f.connection.access_token, "import_visual_image", args);
+		expect(response.body.result?.isError).toBe(true);
+		expect(response.text).toContain("CHATGPT_FILE_URL_REJECTED");
+		const content = z.array(z.object({ type: z.literal("text"), text: z.string() })).parse(response.body.result?.content);
+		expect(content[0].text).toContain(JSON.stringify({
+			reason: "host",
+			scheme: "https:",
+			hostname: "native-files.example.test",
+			pathShape: "/<redacted>/file_<redacted>/<redacted>.png",
+		}));
+		for (const secret of ["private-path", "hidden-id", "image-private", "query-secret", "hidden-handoff-id", "private-room-name"])
+			expect(response.text).not.toContain(secret);
+		expect(fetcher).not.toHaveBeenCalled();
+		expect(await env.DB.prepare("select * from visual_runs where id=?").bind(run.id).first()).toEqual(before);
+		expect((await readConceptMedia(f.mediaInput)).images).toEqual([f.base]);
+	});
+	it("redacts URL diagnostics for every rejection reason without reflecting credentials or arbitrary path text", () => {
+		for (const [url, reason, scheme, hostname, pathShape] of [
+			["not-a-url private-secret", "malformed", null, null, null],
+			["data:image/png;base64,private-secret", "scheme", "data:", null, null],
+			["sandbox:/mnt/data/private-secret.png", "scheme", "sandbox:", null, null],
+			["private-secret:/private-secret", "scheme", "other", null, null],
+			["http://files.oaiusercontent.com/file-private-secret", "scheme", "http:", "files.oaiusercontent.com", "/file-<redacted>"],
+			["https://private-secret:private-secret@files.oaiusercontent.com/file-private-secret?sig=private-secret", "credentials", "https:", "files.oaiusercontent.com", "/file-<redacted>"],
+			["https://files.oaiusercontent.com:8443/file-private-secret", "port", "https:", "files.oaiusercontent.com", "/file-<redacted>"],
+			["https://files.oaiusercontent.com/file-private-secret#private-secret", "fragment", "https:", "files.oaiusercontent.com", "/file-<redacted>"],
+			["https://files.oaiusercontent.com/file_private-secret.png?sig=private-secret", "path", "https:", "files.oaiusercontent.com", "/file_<redacted>.png"],
+			["https://files.oaiusercontent.com/%70rivate-secret.png/private-secret?sig=private-secret", "path", "https:", "files.oaiusercontent.com", "/<redacted>.png/<redacted>"],
+		]) {
+			try {
+				chatgptDownloadUrl(url!);
+				throw new Error("Expected rejected URL");
+			} catch (error) {
+				expect(error).toMatchObject({ code: "INVALID_MEDIA", status: 400 });
+				const message = error instanceof Error ? error.message : "";
+				expect(message).toContain("CHATGPT_FILE_URL_REJECTED");
+				expect(message).toContain(JSON.stringify({ reason, scheme, hostname, pathShape }));
+				expect(message).not.toContain("private-secret");
+			}
+		}
+		const accepted = "https://files.oaiusercontent.com/file-valid?sig=unchanged";
+		expect(chatgptDownloadUrl(accepted).href).toBe(accepted);
+		const oversizedHost = `${"private-secret".repeat(20)}.example.test`;
+		const deepPath = "/private-secret".repeat(100);
+		try {
+			chatgptDownloadUrl(`https://${oversizedHost}${deepPath}?sig=private-secret`);
+			throw new Error("Expected rejected URL");
+		} catch (error) {
+			expect(error).toMatchObject({ code: "INVALID_MEDIA" });
+			const message = error instanceof Error ? error.message : "";
+			expect(message.length).toBeLessThan(1024);
+			expect(message).toContain('"hostname":null');
+			expect(message).toContain("/<more>");
+			expect(message).not.toContain("private-secret");
+		}
+	});
+	it("rejects unsafe hosts, credentials, redirects, MIME mismatches and oversized streaming bodies", async () => {
+		for (const url of [
+			"http://files.oaiusercontent.com/file-a",
+			"https://files.oaiusercontent.com.evil.test/file-a",
+			"https://127.0.0.1/file-a",
+			"https://user:pass@files.oaiusercontent.com/file-a",
+			"https://files.oaiusercontent.com:8443/file-a",
+			"https://files.oaiusercontent.com/other",
+			"https://files.oaiusercontent.com/file-a#fragment",
+		])
+			expect(() => chatgptDownloadUrl(url)).toThrow();
+		const args = importArgs("unused");
+		const fetcher = vi.spyOn(globalThis, "fetch");
+		for (const response of [
+			new Response(null, {
+				status: 302,
+				headers: { location: "http://127.0.0.1" },
+			}),
+			new Response("text", { headers: { "content-type": "text/html" } }),
+			new Response(pngBytes(), { headers: { "content-type": "image/jpeg" } }),
+		]) {
+			fetcher.mockResolvedValueOnce(response);
+			await expect(downloadChatgptImage(args.file, 1024)).rejects.toMatchObject({
+				code: "INVALID_MEDIA",
+				message: "The ChatGPT download did not return a non-empty PNG, JPEG or WebP image.",
+			});
+		}
+		await expect(boundedBytes(new Response("12345"), 4)).rejects.toMatchObject({
+			code: "INVALID_MEDIA",
+		});
+		await expect(
+			boundedBytes(
+				new Response("x", { headers: { "content-length": "2000" } }),
+				1024,
+			),
+		).rejects.toMatchObject({ code: "INVALID_MEDIA" });
+	});
+	it("delivers drawing images for interpretation and invalidates an edit when its selected drawing is deleted", async () => {
+		const f = await visualFixture();
+		const planId = "mcp-visual-plan";
+		const base = await env.DB.prepare(
+			"select object_key from concept_images where id=?",
+		)
+			.bind(f.base.id)
+			.first<string>("object_key");
+		const original = await env.CONCEPT_MEDIA.get(base!);
+		await env.CONCEPT_MEDIA.put(
+			"floor-plans/visual-fixture",
+			await original!.arrayBuffer(),
+		);
+		await env.DB.prepare(
+			"insert into floor_plans(id,collection_id,title,object_key,content_type,byte_size,width,height,status,uploaded_by_user_id) values(?,?,'Room drawing','floor-plans/visual-fixture','image/webp',?,1,1,'ready',?)",
+		)
+			.bind(planId, "mcp-collection-a", original!.size, owner)
+			.run();
+		f.selection.floorPlanId = planId;
+		f.selection.baseImageId = null;
+		const drawing = await f.approve((await f.prepare()).id);
+		expect(
+			(await readVisualImage(f.ctx, drawing.id, planId)).content[1].type,
+		).toBe("image");
+		await expect(
+			importVisualImage(f.ctx, importArgs(drawing.id)),
+		).rejects.toMatchObject({ status: 409 });
+		f.selection.baseImageId = f.base.id;
+		const edit = await f.approve((await f.prepare()).id);
+		vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+			imageResponse(),
+		);
+		const result = await importVisualImage(f.ctx, importArgs(edit.id));
+		expect(result.status).toBe("completed");
+		await deleteFloorPlan({ ...f.mediaInput, planId });
+		expect((await readVisualRun(f.ctx, edit.id)).status).toBe("cancelled");
+		expect((await readConceptMedia(f.mediaInput)).images).toHaveLength(1);
+	});
+	it("rechecks authorization after private object reads", async () => {
+		const f = await visualFixture();
+		const run = await f.approve((await f.prepare()).id);
+		const bucket = new Proxy(env.CONCEPT_MEDIA, {
+			get(target, key) {
+				if (key === "get")
+					return async (id: string) => {
+						const object = await target.get(id);
+						await env.DB.prepare(
+							"update oauth_access_token set revoked=1 where id=?",
+						)
+							.bind(f.ctx.actor.accessTokenId)
+							.run();
+						return object;
+					};
+				const member = Reflect.get(target, key);
+				return typeof member === "function" ? member.bind(target) : member;
+			},
+		});
+		await expect(
+			readVisualImage(
+				{ ...f.ctx, env: { ...f.ctx.env, CONCEPT_MEDIA: bucket } },
+				run.id,
+				f.base.id,
+			),
+		).rejects.toMatchObject({ status: 403 });
+	});
+	it("keeps failed deletion retryable and never deletes a colliding storage object", async () => {
+		const f = await visualFixture();
+		const run = await f.approve((await f.prepare()).id);
+		const args = importArgs(run.id);
+		vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+			imageResponse(),
+		);
+		let collisionKey = "";
+		const collision = new Proxy(env.CONCEPT_MEDIA, {
+			get(target, key) {
+				if (key === "put")
+					return async (id: string) => {
+						collisionKey = id;
+						await target.put(id, "existing object");
+						return null;
+					};
+				const member = Reflect.get(target, key);
+				return typeof member === "function" ? member.bind(target) : member;
+			},
+		});
+		expect(
+			(
+				await importVisualImage(
+					{ ...f.ctx, env: { ...f.ctx.env, CONCEPT_MEDIA: collision } },
+					args,
+				)
+			).status,
+		).toBe("failed");
+		expect(await (await env.CONCEPT_MEDIA.get(collisionKey))!.text()).toBe(
+			"existing object",
+		);
+		const next = await f.approve((await f.prepare()).id);
+		const done = await importVisualImage(f.ctx, importArgs(next.id));
+		expect(done.status).toBe("completed");
+		const failsDelete = new Proxy(env.CONCEPT_MEDIA, {
+			get(target, key) {
+				if (key === "delete")
+					return async () => {
+						throw Error("Storage unavailable");
+					};
+				const member = Reflect.get(target, key);
+				return typeof member === "function" ? member.bind(target) : member;
+			},
+		});
+		await env.DB.prepare(
+			"update concept_images set deleted_at=?,deleted_by_user_id=uploaded_by_user_id where id=?",
+		)
+			.bind(Date.now(), f.base.id)
+			.run();
+		await cleanupVisualRuns(env.DB, failsDelete, "mcp-collection-a");
+		expect(
+			await env.DB.prepare(
+				"select object_deleted_at from visual_runs where id=?",
+			)
+				.bind(next.id)
+				.first("object_deleted_at"),
+		).toBeNull();
+		await cleanupVisualRuns(env.DB, env.CONCEPT_MEDIA, "mcp-collection-a");
+		expect(
+			await env.DB.prepare(
+				"select object_deleted_at from visual_runs where id=?",
+			)
+				.bind(next.id)
+				.first("object_deleted_at"),
+		).toBeTypeOf("number");
+	});
+	it("fails closed on a file whose bytes are not the declared image type", async () => {
+		const f = await visualFixture();
+		const run = await f.approve((await f.prepare()).id);
+		vi.spyOn(globalThis, "fetch").mockResolvedValue(
+			new Response("not a PNG", { headers: { "content-type": "image/png" } }),
+		);
+		const result = await importVisualImage(f.ctx, importArgs(run.id));
+		expect(result).toMatchObject({
+			status: "failed",
+			errorCode: "INVALID_MEDIA",
+			outputImageId: null,
+		});
+		expect((await readConceptMedia(f.mediaInput)).images).toHaveLength(1);
+	});
+});
 
 describe("private assistant write actions", () => {
 	it("reads floor-plan notes without files, edits routinely, and requires fresh approval to delete", async () => {

@@ -4,6 +4,7 @@ import {
 	uploadableConceptImageRoles,
 } from "@kharidyar/domain";
 import { z } from "zod";
+import { visualProvenanceSchema } from "./visuals";
 
 const nullableCaptionSchema = z
 	.string()
@@ -64,6 +65,7 @@ export const conceptImageUploadMetadataSchema = z
 
 export const conceptImageResourceSchema = z
 	.object({
+		generation: visualProvenanceSchema.nullable().optional(),
 		byteSize: z.number().int().positive(),
 		caption: z.string().nullable(),
 		conceptId: z.string(),

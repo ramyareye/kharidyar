@@ -750,3 +750,5 @@ export type ItemPermissions = z.infer<typeof itemPermissionsSchema>;
 export type ApiErrorCode = (typeof apiErrorCodes)[number];
 export * from "./local-codex";
 export * from "./mcp-actions";
+
+export * from "./visuals";

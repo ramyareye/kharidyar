@@ -1,3 +1,4 @@
+import { registerMcpVisualTools } from "./mcp-visual-tools";
 import { McpServer, type CallToolResult } from "@modelcontextprotocol/server";
 import {
 	collectionContextSchema,
@@ -410,5 +411,6 @@ export function createWantkitMcpServer(input: {
 		async (args) => ({ plans: await readFloorPlanContext({ ...input, ...args }) }),
 	);
 	registerMcpWriteTools(server, { env: input.env, actor: input.actor });
+	registerMcpVisualTools(server, { env: input.env, actor: input.actor });
 	return server;
 }
