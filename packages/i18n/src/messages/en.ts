@@ -464,6 +464,8 @@ export const enMessages = {
 	"commerce.model": "Model",
 	"commerce.category": "Category",
 	"commerce.quantity": "Planned units",
+	"commerce.plannedQuantityHelp": "Change planned units below, then save the plan.",
+	"commerce.saveQuantity": "Save quantity",
 	"commerce.notes": "Candidate notes",
 	"commerce.rank": "Rank",
 	"commerce.editCandidate": "Edit Candidate",

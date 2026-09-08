@@ -57,10 +57,12 @@ function CompactActions({ children }: { children: ReactNode }) {
 function CandidateForm({
 	busy,
 	comparison,
+	initialQuantity,
 	onSubmit,
 }: {
 	busy: boolean;
 	comparison: ItemComparisonResponse;
+	initialQuantity: number;
 	onSubmit: (value: CandidateCreateInput) => Promise<boolean>;
 }) {
 	const { t } = useLocale();
@@ -70,7 +72,7 @@ function CandidateForm({
 	const [brand, setBrand] = useState("");
 	const [model, setModel] = useState("");
 	const [category, setCategory] = useState("");
-	const [quantity, setQuantity] = useState("1");
+	const [quantity, setQuantity] = useState(String(initialQuantity));
 	const [notes, setNotes] = useState("");
 	const [rank, setRank] = useState("");
 	const [validation, setValidation] = useState<string | null>(null);
@@ -119,6 +121,7 @@ function CandidateForm({
 			setNotes("");
 			setRank("");
 			setProductId("");
+			setQuantity(String(initialQuantity));
 		}
 	}
 
@@ -208,7 +211,8 @@ function CandidateSettingsForm({
 	onSubmit: (value: CandidateUpdateInput) => Promise<boolean>;
 }) {
 	const { t } = useLocale();
-	const [quantity, setQuantity] = useState(String(candidate.plannedPurchaseQuantity));
+	const [quantityDraft, setQuantityDraft] = useState<string | null>(null);
+	const quantity = quantityDraft ?? String(candidate.plannedPurchaseQuantity);
 	const [notes, setNotes] = useState(candidate.notes ?? "");
 	const [rank, setRank] = useState(candidate.rank === null ? "" : String(candidate.rank));
 	const [validation, setValidation] = useState<string | null>(null);
@@ -218,7 +222,7 @@ function CandidateSettingsForm({
 		const parsedQuantity = positiveInteger(quantity);
 		const parsedRank = rank.trim() ? Number(rank) : null;
 		if (
-			parsedQuantity === null ||
+			(!candidate.isPlanned && parsedQuantity === null) ||
 			(parsedRank !== null &&
 				(!Number.isInteger(parsedRank) || parsedRank < 0 || parsedRank > 1_000))
 		) {
@@ -226,19 +230,24 @@ function CandidateSettingsForm({
 			return;
 		}
 		setValidation(null);
-		await onSubmit({
-			plannedPurchaseQuantity: parsedQuantity,
+		const saved = await onSubmit({
+			...(candidate.isPlanned ? {} : { plannedPurchaseQuantity: parsedQuantity! }),
 			notes: optionalText(notes),
 			rank: parsedRank,
 		});
+		if (saved) setQuantityDraft(null);
 	}
 
 	return (
 		<form className="commerce-form commerce-form--compact" onSubmit={submit}>
-			<label className="field">
-				<span className="field__label">{t("commerce.quantity")}</span>
-				<input type="number" min="1" step="1" value={quantity} onChange={(event) => setQuantity(event.target.value)} />
-			</label>
+			{candidate.isPlanned ? (
+				<p className="commerce-form__wide">{t("commerce.plannedQuantityHelp")}</p>
+			) : (
+				<label className="field">
+					<span className="field__label">{t("commerce.quantity")}</span>
+					<input type="number" min="1" step="1" value={quantity} onChange={(event) => setQuantityDraft(event.target.value)} disabled={busy} />
+				</label>
+			)}
 			<label className="field">
 				<span className="field__label">{t("commerce.rank")}</span>
 				<input type="number" min="0" max="1000" step="1" value={rank} onChange={(event) => setRank(event.target.value)} />
@@ -552,25 +561,28 @@ function PlanControl({
 	onSubmit: (value: PlannedSelectionInput) => Promise<boolean>;
 }) {
 	const { t } = useLocale();
-	const [quantity, setQuantity] = useState(String(candidate.plannedPurchaseQuantity));
+	const [quantityDraft, setQuantityDraft] = useState<string | null>(null);
+	const quantity = quantityDraft ?? String(candidate.plannedPurchaseQuantity);
+	const parsedQuantity = positiveInteger(quantity);
+	const quantityChanged = parsedQuantity !== candidate.plannedPurchaseQuantity;
 	const selected = candidate.isPlanned && candidate.plannedOfferId === offerId;
 	return (
 		<form
 			className="plan-control"
-			onSubmit={(event) => {
+			onSubmit={async (event) => {
 				event.preventDefault();
-				const parsed = positiveInteger(quantity);
-				if (parsed === null) return;
-				void onSubmit({
+				if (busy || parsedQuantity === null || (selected && !quantityChanged)) return;
+				const saved = await onSubmit({
 					candidateId: candidate.id,
 					offerId,
-					plannedPurchaseQuantity: parsed,
+					plannedPurchaseQuantity: parsedQuantity,
 				});
+				if (saved) setQuantityDraft(null);
 			}}
 		>
-			<input aria-label={t("commerce.quantity")} type="number" min="1" step="1" value={quantity} onChange={(event) => setQuantity(event.target.value)} />
-			<button type="submit" className={selected ? "button button--primary" : "button button--quiet"} disabled={busy || selected}>
-				{selected ? t("commerce.planned") : offerId ? t("commerce.planOffer") : t("commerce.planCandidate")}
+			<input aria-label={t("commerce.quantity")} type="number" min="1" step="1" value={quantity} onChange={(event) => setQuantityDraft(event.target.value)} disabled={busy} />
+			<button type="submit" className={selected ? "button button--primary" : "button button--quiet"} disabled={busy || parsedQuantity === null || (selected && !quantityChanged)}>
+				{selected ? t(quantityChanged ? "commerce.saveQuantity" : "commerce.planned") : offerId ? t("commerce.planOffer") : t("commerce.planCandidate")}
 			</button>
 		</form>
 	);
@@ -752,7 +764,7 @@ export function ItemComparisonDialog({
 						{comparison.permissions.canManageCandidates ? (
 							<details className="commerce-disclosure">
 								<summary>{t("commerce.addCandidate")}</summary>
-								<CandidateForm busy={busy} comparison={comparison} onSubmit={(value) => mutate(() => api.createCandidate(item.id, value), "commerce.toast.candidate")} />
+								<CandidateForm busy={busy} comparison={comparison} initialQuantity={item.quantityNeeded} onSubmit={(value) => mutate(() => api.createCandidate(item.id, value), "commerce.toast.candidate")} />
 							</details>
 						) : null}
 

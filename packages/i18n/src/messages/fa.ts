@@ -464,6 +464,8 @@ export const faMessages = {
 	"commerce.model": "مدل",
 	"commerce.category": "دسته‌بندی",
 	"commerce.quantity": "تعداد برنامه‌ریزی‌شده",
+	"commerce.plannedQuantityHelp": "برای تغییر تعداد برنامه‌ریزی‌شده، تعداد را در پایین ویرایش کنید و برنامه را ذخیره کنید.",
+	"commerce.saveQuantity": "ذخیره تعداد",
 	"commerce.notes": "یادداشت کاندید",
 	"commerce.rank": "رتبه",
 	"commerce.editCandidate": "ویرایش کاندید",

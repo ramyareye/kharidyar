@@ -1471,36 +1471,38 @@ export async function changePlannedSelection(input: {
 	}
 	const eventId = crypto.randomUUID();
 	const now = Date.now();
-	const update =
-		input.value.candidateId === null
-			? input.database
-					.prepare(
-						`update item_candidates
-						set is_planned = 0, planned_offer_id = null, updated_at = ?1
-						where item_id = ?2 and is_planned = 1 and archived_at is null`,
-					)
-					.bind(now, item.id)
-			: input.database
-					.prepare(
-						`update item_candidates
-						set
-							is_planned = case when id = ?1 then 1 else 0 end,
-							planned_offer_id = case when id = ?1 then ?2 else null end,
-							planned_purchase_quantity = case when id = ?1 then ?3 else planned_purchase_quantity end,
-							updated_at = ?4
-						where item_id = ?5
-							and archived_at is null
-							and (is_planned = 1 or id = ?1)`,
-					)
-					.bind(
-						input.value.candidateId,
-						input.value.offerId,
-						input.value.plannedPurchaseQuantity,
-						now,
-						item.id,
-					);
+	// Clear first: SQLite checks the one-planned-Candidate index per row, so a
+	// single CASE update can activate the new row before deactivating the old one.
+	const updates = [
+		input.database
+			.prepare(
+				`update item_candidates
+				set is_planned = 0, planned_offer_id = null, updated_at = ?1
+				where item_id = ?2 and is_planned = 1 and archived_at is null`,
+			)
+			.bind(now, item.id),
+	];
+	if (input.value.candidateId !== null) {
+		updates.push(
+			input.database
+				.prepare(
+					`update item_candidates
+					set is_planned = 1, planned_offer_id = ?1,
+						planned_purchase_quantity = ?2, updated_at = ?3
+					where id = ?4 and item_id = ?5 and archived_at is null`,
+				)
+				.bind(
+					input.value.offerId,
+					input.value.plannedPurchaseQuantity,
+					now,
+					input.value.candidateId,
+					item.id,
+				),
+		);
+	}
+	// D1 rolls back the complete batch if any update or history insert fails.
 	await input.database.batch([
-		update,
+		...updates,
 		input.database
 			.prepare(
 				`insert into decision_events (

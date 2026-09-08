@@ -288,9 +288,100 @@ async function createCandidate(
 	)!;
 }
 
+async function planSwitchFixture() {
+	const merchantResponse = await apiRequest(`/api/items/${exactItemId}/merchants`, {
+		body: { name: "Fictional towel shop", salesChannel: "online", websiteUrl: null, notes: null },
+		method: "POST",
+		userId: users.owner,
+	});
+	expect(merchantResponse.status).toBe(201);
+	const merchant = itemComparisonResponseSchema.parse(await merchantResponse.json()).merchants[0]!;
+	const selections = [];
+	for (const [title, unitPriceMinor] of [["Cotton towel", 2_000], ["Linen towel", 3_000]] as const) {
+		const candidate = await createCandidate(exactItemId, title);
+		const response = await apiRequest(`/api/items/${exactItemId}/candidates/${candidate.id}/offers`, {
+			body: {
+				merchantId: merchant.id,
+				sourceUrl: `https://example.com/qa/${candidate.id}`,
+				locale: "nl-NL",
+				facts: offerFacts({ priceKind: "exact", unitPriceMinor, currency: "EUR", shippingMinor: 500, shippingBasis: "per_line" }),
+			},
+			method: "POST",
+			userId: users.owner,
+		});
+		expect(response.status).toBe(201);
+		const offer = itemComparisonResponseSchema.parse(await response.json()).candidates.find(({ id }) => id === candidate.id)!.offers[0]!;
+		selections.push({ candidateId: candidate.id, offerId: offer.id, plannedPurchaseQuantity: 2 });
+	}
+	return { first: selections[0]!, second: selections[1]! };
+}
+
 beforeEach(resetFixture);
 
 describe("Task 7 commerce workflow", () => {
+	it("switches planned Candidates in both directions and persists quantity, budget and history", async () => {
+		const { first, second } = await planSwitchFixture();
+		let previous: typeof first | null = null;
+		for (const [selection, totalMinor] of [
+			[second, 6_500],
+			[first, 4_500],
+			[{ ...second, plannedPurchaseQuantity: 3 }, 9_500],
+			[{ ...second, plannedPurchaseQuantity: 4 }, 12_500],
+		] as const) {
+			const response = await apiRequest(`/api/items/${exactItemId}/plan`, {
+				body: selection, method: "PUT", userId: users.owner,
+			});
+			expect(response.status).toBe(200);
+			const reloaded = await apiRequest(`/api/items/${exactItemId}/comparison`, { userId: users.viewer });
+			const comparison = itemComparisonResponseSchema.parse(await reloaded.json());
+			expect(comparison.candidates.filter(({ isPlanned }) => isPlanned)).toHaveLength(1);
+			expect(comparison.candidates.find(({ isPlanned }) => isPlanned)).toMatchObject({
+				id: selection.candidateId, plannedOfferId: selection.offerId,
+				plannedPurchaseQuantity: selection.plannedPurchaseQuantity,
+			});
+			expect(comparison.candidates.filter(({ isPlanned }) => !isPlanned)).toEqual([
+				expect.objectContaining({ plannedOfferId: null, plannedPurchaseQuantity: previous === null ? 1 : 2 }),
+			]);
+			const rollupResponse = await apiRequest(`/api/collections/${collectionId}/planned-cost`, { userId: users.viewer });
+			const rollup = collectionRollupResponseSchema.parse(await rollupResponse.json());
+			expect(rollup.lines.find(({ itemId }) => itemId === exactItemId)).toMatchObject({
+				...selection, state: "planned", cost: { status: "exact", totalMinor },
+			});
+			expect(rollup.summary.totalMinor).toBe(totalMinor);
+			const event = await env.DB.prepare("select before_snapshot_json, after_snapshot_json from decision_events where item_id = ?1 and kind = 'planned_candidate_changed' order by rowid desc limit 1").bind(exactItemId).first<{ before_snapshot_json: string | null; after_snapshot_json: string }>();
+			expect(event).not.toBeNull();
+			if (previous === null) expect(event!.before_snapshot_json).toBeNull();
+			else expect(JSON.parse(event!.before_snapshot_json!)).toMatchObject(previous);
+			expect(JSON.parse(event!.after_snapshot_json)).toMatchObject(selection);
+			previous = selection;
+		}
+		const cleared = await apiRequest(`/api/items/${exactItemId}/plan`, {
+			body: { candidateId: null, offerId: null, plannedPurchaseQuantity: null },
+			method: "PUT", userId: users.owner,
+		});
+		expect(cleared.status).toBe(200);
+		expect(itemComparisonResponseSchema.parse(await cleared.json()).candidates.every(({ isPlanned, plannedOfferId }) => !isPlanned && plannedOfferId === null)).toBe(true);
+	});
+
+	it("rolls back the whole planned switch when its history cannot be saved", async () => {
+		const { first, second } = await planSwitchFixture();
+		const initial = await apiRequest(`/api/items/${exactItemId}/plan`, { body: first, method: "PUT", userId: users.owner });
+		expect(initial.status).toBe(200);
+		const before = itemComparisonResponseSchema.parse(await initial.json());
+		// A late failure must undo both clearing the old plan and selecting the new one.
+		await env.DB.prepare("create trigger reject_plan_history before insert on decision_events when NEW.kind = 'planned_candidate_changed' begin select raise(abort, 'Fictional history failure'); end").run();
+		try {
+			const response = await apiRequest(`/api/items/${exactItemId}/plan`, { body: { ...second, plannedPurchaseQuantity: 3 }, method: "PUT", userId: users.owner });
+			expect(response.status).toBe(500);
+			const reloaded = await apiRequest(`/api/items/${exactItemId}/comparison`, { userId: users.owner });
+			expect(itemComparisonResponseSchema.parse(await reloaded.json())).toEqual(before);
+			const history = await env.DB.prepare("select count(*) as count from decision_events where item_id = ?1 and kind = 'planned_candidate_changed'").bind(exactItemId).first<{ count: number }>();
+			expect(history?.count).toBe(1);
+		} finally {
+			await env.DB.prepare("drop trigger reject_plan_history").run();
+		}
+	});
+
 	it("compares Candidates and Offers, rolls up honest totals, and records partial purchases", async () => {
 		const exactCandidate = await createCandidate(
 			exactItemId,
