@@ -950,6 +950,18 @@ describe("Product thumbnails", () => {
 		const candidate = itemComparisonResponseSchema.parse(await created.json())
 			.candidates[0]!;
 		expect(candidate.product.imageUrl).toBe(imageUrl);
+		const readRollup = async () =>
+			collectionRollupResponseSchema.parse(
+				await (
+					await apiRequest(`/api/collections/${collectionId}/planned-cost`, {
+						userId: users.viewer,
+					})
+				).json(),
+			);
+		expect((await readRollup()).lines.find((line) => line.itemId === exactItemId)).toMatchObject({
+			state: "unplanned", candidateId: null, productTitle: null, productImageUrl: null, cost: null,
+			previewProduct: { title: "Chair with photo", imageUrl },
+		});
 		const planned = await apiRequest(`/api/items/${exactItemId}/plan`, {
 			userId: users.owner,
 			method: "PUT",
@@ -971,14 +983,6 @@ describe("Product thumbnails", () => {
 			itemComparisonResponseSchema.parse(await renamed.json()).candidates[0]!
 				.product.imageUrl,
 		).toBe(imageUrl);
-		const readRollup = async () =>
-			collectionRollupResponseSchema.parse(
-				await (
-					await apiRequest(`/api/collections/${collectionId}/planned-cost`, {
-						userId: users.viewer,
-					})
-				).json(),
-			);
 		expect(
 			(await readRollup()).lines.find((line) => line.itemId === exactItemId)
 				?.productImageUrl,
@@ -993,6 +997,29 @@ describe("Product thumbnails", () => {
 			(await readRollup()).lines.find((line) => line.itemId === exactItemId)
 				?.productImageUrl,
 		).toBeNull();
+	});
+	it("previews an active ranked candidate without selecting it and never substitutes a planned product's photo", async () => {
+		const candidates = [await createCandidate(exactItemId, "First chair"), await createCandidate(exactItemId, "Second chair"), await createCandidate(exactItemId, "Chosen without photo")];
+		for (const [index, candidate] of candidates.slice(0, 2).entries()) {
+			await env.DB.prepare("update products set image_url=? where id=?").bind(`https://images.example/chair-${index}.webp`, candidate.product.id).run();
+			await env.DB.prepare("update item_candidates set rank=? where id=?").bind(2 - index, candidate.id).run();
+		}
+		const readLine = async () => {
+			const response = await apiRequest(`/api/collections/${collectionId}/planned-cost`, { userId: users.viewer });
+			expect(response.status).toBe(200);
+			return collectionRollupResponseSchema.parse(await response.json()).lines.find((line) => line.itemId === exactItemId)!;
+		};
+		expect(await readLine()).toMatchObject({ state: "unplanned", candidateId: null, cost: null, previewProduct: { title: "Second chair", imageUrl: "https://images.example/chair-1.webp" } });
+		await env.DB.prepare("update products set archived_at=? where id=?").bind(Date.now(), candidates[1]!.product.id).run();
+		expect((await readLine()).previewProduct?.title).toBe("First chair");
+		await env.DB.prepare("update item_candidates set archived_at=? where id=?").bind(Date.now(), candidates[0]!.id).run();
+		expect((await readLine()).previewProduct).toBeNull();
+		await env.DB.prepare("update item_candidates set archived_at=null where id=?").bind(candidates[0]!.id).run();
+		const selected = await apiRequest(`/api/items/${exactItemId}/plan`, { userId: users.owner, method: "PUT", body: { candidateId: candidates[2]!.id, offerId: null, plannedPurchaseQuantity: 1 } });
+		expect(selected.status).toBe(200);
+		const planned = await readLine();
+		expect(planned).toMatchObject({ candidateId: candidates[2]!.id, productTitle: "Chosen without photo", productImageUrl: null });
+		expect(planned.previewProduct ?? null).toBeNull();
 	});
 	it("rejects non-HTTPS and credential-bearing image URLs without changing the product", async () => {
 		const candidate = await createCandidate(exactItemId, "No photo");

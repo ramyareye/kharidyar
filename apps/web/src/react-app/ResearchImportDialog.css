@@ -269,8 +269,8 @@
 
 .import-line__title {
 	display: grid;
-	grid-template-columns: 4.4rem minmax(0, 1fr);
-	align-items: baseline;
+	grid-template-columns: 4rem minmax(0, 1fr);
+	align-items: center;
 	gap: 0.7rem;
 }
 
@@ -287,14 +287,14 @@
 	font-weight: 500;
 }
 
-.import-line dl {
+.import-line dl:not(.product-attributes) {
 	display: grid;
 	grid-template-columns: repeat(4, minmax(0, 1fr));
 	margin: 0;
 	border: 1px solid var(--line-soft);
 }
 
-.import-line dl > div {
+.import-line dl:not(.product-attributes) > div {
 	display: grid;
 	gap: 0.25rem;
 	padding-block: 0.55rem;
@@ -302,7 +302,7 @@
 	border-inline-end: 1px solid var(--line-soft);
 }
 
-.import-line dl > div:last-child {
+.import-line dl:not(.product-attributes) > div:last-child {
 	border-inline-end: 0;
 }
 
@@ -479,15 +479,15 @@
 		border-inline-start: 0;
 	}
 
-	.import-line dl {
+	.import-line dl:not(.product-attributes) {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 
-	.import-line dl > div:nth-child(2) {
+	.import-line dl:not(.product-attributes) > div:nth-child(2) {
 		border-inline-end: 0;
 	}
 
-	.import-line dl > div:nth-child(-n + 2) {
+	.import-line dl:not(.product-attributes) > div:nth-child(-n + 2) {
 		border-block-end: 1px solid var(--line-soft);
 	}
 }

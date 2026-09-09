@@ -78,7 +78,8 @@ describe("Candidate quantity controls", () => {
 				brand: null,
 				model: null,
 				category: null,
-				attributes: [],
+				imageUrl: "https://images.example/cotton.webp",
+				attributes: [{ label: "Material", value: "Cotton" }, { label: "Dimensions", value: "30 × 50 cm" }],
 			},
 			isPlanned,
 			plannedPurchaseQuantity: 5,
@@ -90,6 +91,9 @@ describe("Candidate quantity controls", () => {
 			offers: [],
 		};
 		const html = renderComparison(2, [candidate]);
+		expect(html).toContain('src="https://images.example/cotton.webp"');
+		expect(html).toContain('<dt dir="auto">Material</dt><dd dir="auto">Cotton</dd>');
+		expect(html).toContain('<dt dir="auto">Dimensions</dt><dd dir="auto">30 × 50 cm</dd>');
 		const settings = html.split("<summary>Edit Candidate</summary>")[1]?.split("</details>")[0];
 		expect(settings).toContain("Candidate notes");
 		expect(settings?.includes('type="number" min="1"')).toBe(!isPlanned);

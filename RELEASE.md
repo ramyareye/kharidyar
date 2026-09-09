@@ -1,5 +1,20 @@
 # Release runbook
 
+## Invitation recipient fix — 2026-09-09 (preview and production deployed)
+
+Released pushed commit `5c7a4743b648c84e8966a3f477a48b1a353d9ef9`. The invitation URLs now reach a recipient review screen, preserve the selected invite across Google sign-in, and require an explicit acceptance click. Missing/expired/revoked/used invitations, account mismatch and request failures have EN/FA recovery messages.
+
+| Environment | Active version (100%) | Previous version | Manifest SHA-256 |
+| --- | --- | --- | --- |
+| Preview | `14cfd1fb-e867-4ff3-80fe-c41004483908` | `65df91c1-ccec-4f3e-bd8d-c8fa84aed3d3` | `b59de590b996a739eb4c31c6ac712010335b3e91216a9f989742e45a8feef208` |
+| Production | `023d1df8-229f-4e20-9265-145f9eca3383` | `b91a8917-3290-40a1-b1b7-8de1c1222c06` | `324464a7a2add0477bef6127b2c3c02ad96ae91bef0f06260d4ca1aef838f233` |
+
+- Both deployments completed once, preview first. Live **https://wantkit.todoless.dev** serves the verified new client. All 13 live public checks pass in both environments, including both invitation entry paths, invalid-token preview handling and rejection of anonymous acceptance. Served assets match the frozen build; preview and production clients are byte-identical.
+- Preserved every live plain-text variable, account-only AI allowlist, six inherited secrets, resource binding, runtime setting and dashboard-managed domain. No migrations or planning/media/membership changes were performed; all 17 migrations were already applied and before/after integrity/count checks pass.
+- Validation: prior 264-test full quality gate; fresh 21 invitation regressions against pushed source; fresh environment builds, TypeScript, frozen-config dry-runs, release smoke and live HTTP/asset checks. Browser automation transport was unavailable during release, so **real Google-return/recipient acceptance remains a user check**. The local actual-App flow with synthetic auth/network had passed earlier; it is not presented as live acceptance evidence.
+- Recovery: revert to the listed previous version while preserving its live configuration. This release has no schema change. Do not run checked-in disabled integration defaults over the live owner-only settings. Private manifests, bookmarks and evidence are in `/tmp/wantkit-invitation-release/{preview,production}/`; release-started guards prevent accidental duplicate deployments. Read-only verification can resume through `verify-deployed.mjs` if needed.
+- Next: reload the existing real invitation under the intended account, explicitly accept, then confirm its shared workspace appears. No real invitation URL/token was copied to release files, and no automated acceptance occurred.
+
 ## Compact UI and product thumbnails — 2026-09-09 (preview and production verified)
 
 The user requested release of pushed `37fff6f5070bb894708ffa4d4983e5c04ba9a262`. The final release also includes the two-line gallery-frame correction in `apps/web/src/react-app/ConceptMedia.css`, captured in this follow-up changeset: `position: absolute; inset: 0;` constrains portrait images to the existing aspect-ratio frame. CSS SHA-256: `cef74c735553e4197d2c472949f77a319cfcbfe81ce82c16743fa7ac2984c9d5`.

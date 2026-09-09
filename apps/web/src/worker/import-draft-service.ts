@@ -530,13 +530,14 @@ export async function applyImportDraft(input: {
 		input.database
 			.prepare(
 				`insert into products (
-					id, workspace_id, title, brand, model, category, attributes_json,
+					id, workspace_id, title, brand, model, category, attributes_json, image_url,
 					created_by_user_id, created_at, updated_at
 				)
 				select
 					json_extract(value, '$.id'), d.workspace_id, json_extract(value, '$.title'),
 					json_extract(value, '$.brand'), json_extract(value, '$.model'),
 					json_extract(value, '$.category'), json_extract(value, '$.attributes'),
+					json_extract(value, '$.imageUrl'),
 					?3, ?4, ?4
 				from json_each(?1), import_drafts d
 				where ${activeDraftGate()}`,

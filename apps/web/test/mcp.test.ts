@@ -2065,6 +2065,35 @@ describe("private assistant write actions", () => {
 });
 
 describe("assistant action feature coverage", () => {
+	it("publishes product photo inputs and preserves photos and attributes through assistant edits", async () => {
+		const connected = await connect(owner, true);
+		const discovery = await rpc(connected.access_token, "tools/list");
+		const descriptors = z.array(z.object({ name: z.string(), inputSchema: z.record(z.string(), z.unknown()) })).parse(discovery.body.result?.tools);
+		for (const name of ["create_candidate", "update_product"]) {
+			expect(JSON.stringify(descriptors.find((tool) => tool.name === name)?.inputSchema)).toContain('"imageUrl"');
+		}
+		const itemId = "mcp-item-a";
+		const imageUrl = "https://images.example/chair.webp";
+		const attributes = [{ label: "Material", value: "Oak" }, { label: "Dimensions", value: "50 × 60 × 80 cm" }];
+		const created = await writeCall(connected.access_token, "create_candidate", {
+			itemId, value: { product: { kind: "new", value: { title: "Photo chair", brand: "Example", model: "123", category: "Seating", imageUrl, attributes } }, plannedPurchaseQuantity: 1, notes: null, rank: null },
+		});
+		expect(created.receipt?.status, created.response.text).toBe("succeeded");
+		const read = async () => {
+			const response = await call(connected.access_token, "read_item_comparison", { itemId });
+			return z.object({ candidates: z.array(z.object({ id: z.string(), product: z.object({ imageUrl: z.string().nullable(), attributes: z.array(z.object({ label: z.string(), value: z.string() })) }) })) }).parse(response.body.result?.structuredContent).candidates[0]!;
+		};
+		const candidate = await read();
+		expect(candidate.product).toEqual({ imageUrl, attributes });
+		const edited = await writeCall(connected.access_token, "update_product", { itemId, candidateId: candidate.id, value: { brand: "Updated" } });
+		expect(edited.receipt?.status).toBe("succeeded");
+		expect((await read()).product).toEqual({ imageUrl, attributes });
+		const updatedImageUrl = "https://images.example/chair-beige.webp";
+		expect((await writeCall(connected.access_token, "update_product", { itemId, candidateId: candidate.id, value: { imageUrl: updatedImageUrl } })).receipt?.status).toBe("succeeded");
+		expect((await read()).product.imageUrl).toBe(updatedImageUrl);
+		expect((await writeCall(connected.access_token, "update_product", { itemId, candidateId: candidate.id, value: { imageUrl: null } })).receipt?.status).toBe("succeeded");
+		expect((await read()).product).toEqual({ imageUrl: null, attributes });
+	});
 	it("creates a priced candidate and requires separate exact approval for selection and purchase", async () => {
 		const connected = await connect(owner, true);
 		const token = connected.access_token;

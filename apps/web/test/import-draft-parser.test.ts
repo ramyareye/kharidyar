@@ -39,6 +39,65 @@ const ikeaResearch = `
 `;
 
 describe("deterministic Import Draft parser", () => {
+	it("keeps photos, exact variants and product details separate from the offer URL", () => {
+		const result = parseImportInput("markdown", `
+| Image URL | Product | Price | Brand | Model | Category | Dimensions | Material | Colour | Variant | Article number | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| ![Chair](https://images.example/chair.webp) | [Chair 120×30 cm](https://www.ikea.com/nl/en/p/chair-12345678/) | €89 | IKEA | Chair | Seating | 120×30 cm | Oak | Beige | Large | 12345678 | Fits the desk |
+`);
+		const line = result.proposal.lines[0]!;
+		expect(line.product).toMatchObject({
+			title: "Chair 120×30 cm", imageUrl: "https://images.example/chair.webp",
+			brand: "IKEA", model: "Chair", category: "Seating",
+			attributes: [
+				{ label: "dimensions", value: "120×30 cm" },
+				{ label: "material", value: "Oak" },
+				{ label: "colour", value: "Beige" },
+				{ label: "variant", value: "Large" },
+				{ label: "article number", value: "12345678" },
+			],
+		});
+		expect(line.item.quantityNeeded).toBe(1);
+		expect(line.candidate.notes).toBe("Fits the desk");
+		expect(line.offer?.sourceUrl).toBe("https://www.ikea.com/nl/en/p/chair-12345678/");
+		expect(line.offer?.facts.unitPriceMinor).toBe(8900);
+	});
+
+	it("imports a photo without inventing a product source or price", () => {
+		const result = parseImportInput("markdown", `
+| Product | Image URL | Material |
+| --- | --- | --- |
+| Chair | https://images.example/product/chair.webp | Oak |
+`);
+		const line = result.proposal.lines[0]!;
+		expect(line.product.imageUrl).toBe("https://images.example/product/chair.webp");
+		expect(line.source).toBeNull();
+		expect(line.offer).toBeNull();
+		expect(line.candidate.notes).toBeNull();
+	});
+
+	it("keeps unsupported photo URLs and extra columns reviewable without loading them", () => {
+		for (const imageUrl of ["http://images.example/chair.png", "https://user:password@images.example/chair.png", "not a URL"]) {
+			const result = parseImportInput("markdown", `| Product | Image URL | Care |\n| --- | --- | --- |\n| Chair | ${imageUrl} | Dry cloth only |`);
+			expect(result.proposal.lines[0]!.product.imageUrl).toBeNull();
+			expect(result.proposal.lines[0]!.unmappedFacts).toContain(`image url: ${imageUrl}`);
+			expect(result.proposal.lines[0]!.unmappedFacts).toContain("care: Dry cloth only");
+			expect(result.warnings.some(({ code }) => code === "unmapped_fact")).toBe(true);
+		}
+	});
+
+	it("does not mistake inline photos for product links", () => {
+		const result = parseImportInput("markdown", `| Product | Price | Notes |\n| --- | --- | --- |\n| ![Chair](https://images.example/product/chair.webp) Chair | €20 | saved photo |`);
+		expect(result.proposal.lines[0]!.source).toBeNull();
+		expect(result.proposal.lines[0]!.offer).toBeNull();
+		expect(result.proposal.lines[0]!.product.imageUrl).toBe("https://images.example/product/chair.webp");
+	});
+
+	it.each(["Shelf 120×30 cm", "Shelf 120 × 30 cm", "Shelf 120 × 30", "Shelf 120x30"])("preserves dimensions in %s", (title) => {
+		const result = parseImportInput("markdown", `| Product | Price | Notes |\n| --- | --- | --- |\n| ${title} | €20 | |`);
+		expect(result.proposal.lines[0]!.product.title).toBe(title);
+		expect(result.proposal.lines[0]!.item.quantityNeeded).toBe(1);
+	});
 	it("preserves the representative multi-room list and flags inference", () => {
 		const result = parseImportInput("markdown", ikeaResearch);
 

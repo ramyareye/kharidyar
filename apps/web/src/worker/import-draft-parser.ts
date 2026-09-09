@@ -1,5 +1,6 @@
 import {
 	importProposalSchema,
+	productImageUrlSchema,
 	type ImportProposal,
 	type ImportProposalLine,
 	type ImportReconciliation,
@@ -7,7 +8,7 @@ import {
 	type ImportWarning,
 } from "@kharidyar/contracts";
 
-export const importParserVersion = "deterministic-v1";
+export const importParserVersion = "deterministic-v2";
 
 export class ImportParseError extends Error {
 	constructor(message: string) {
@@ -180,9 +181,14 @@ function parsePrice(value: string): {
 	};
 }
 
+function quantitySuffix(value: string): RegExpExecArray | null {
+	const match = /(?:^|\s)(?:×|x)\s*(\d{1,4})\s*$/iu.exec(value);
+	// A dimension such as "120 × 30" is not a purchase quantity.
+	return match && !/\d\s*$/u.test(value.slice(0, match.index)) ? match : null;
+}
+
 function explicitQuantity(value: string): number | null {
-	const normalized = asciiDigits(value);
-	const match = /(?:×|\bx)\s*(\d{1,4})\b/iu.exec(normalized);
+	const match = quantitySuffix(withoutMarkdown(asciiDigits(value)));
 	if (!match) return null;
 	const quantity = Number(match[1]);
 	return Number.isInteger(quantity) && quantity > 0 ? quantity : null;
@@ -219,10 +225,9 @@ function futureQuantity(
 }
 
 function cleanTitle(value: string): string {
-	return withoutMarkdown(asciiDigits(value))
-		.replace(/\s*(?:×|\bx)\s*\d{1,4}\b/giu, "")
-		.trim()
-		.slice(0, 200);
+	const title = withoutMarkdown(asciiDigits(value.replace(/!\[[^\]]*\]\([^)]*\)/gu, "")));
+	const quantity = quantitySuffix(title);
+	return (quantity ? title.slice(0, quantity.index) : title).trim().slice(0, 200);
 }
 
 function findColumn(
@@ -250,32 +255,54 @@ function lineFromCells(input: {
 }): ImportProposalLine | null {
 	const titleIndex = findColumn(
 		input.headers,
-		[/product/u, /item/u, /name/u, /محصول/u, /کالا/u],
+		[/^(?:product|item|name|product name|product title)$/u, /^(?:محصول|کالا)$/u],
 		0,
 	);
-	let priceIndex = findColumn(
+	const priceIndex = findColumn(
 		input.headers,
 		[/price/u, /cost/u, /قیمت/u, /هزینه/u],
-		1,
+		-1,
 	);
-	let noteIndex = findColumn(
+	const noteIndex = findColumn(
 		input.headers,
 		[/use/u, /note/u, /detail/u, /کاربرد/u, /یادداشت/u, /توضیح/u],
-		2,
+		-1,
 	);
-	if (priceIndex === titleIndex && input.cells.length > 1) priceIndex = 1;
-	if (
-		(noteIndex === titleIndex || noteIndex === priceIndex) &&
-		input.cells.length > 2
-	)
-		noteIndex = 2;
+	const imageIndex = findColumn(input.headers, [/^(?:(?:product )?(?:image|photo|picture|thumbnail)(?: url| link)?)$/u, /^(?:تصویر|عکس)(?: محصول)?$/u], -1);
+	const brandIndex = findColumn(input.headers, [/^brand$/u, /^برند$/u], -1);
+	const modelIndex = findColumn(input.headers, [/^model$/u, /^مدل$/u], -1);
+	const categoryIndex = findColumn(input.headers, [/^category$/u, /^دسته(?:‌بندی)?$/u], -1);
+	const sourceIndex = findColumn(input.headers, [/^(?:(?:product )?(?:url|link)|source(?: url)?)$/u, /^پیوند$/u], -1);
+	const textCell = (index: number, maximumLength: number) =>
+		compact(withoutMarkdown(input.cells[index] ?? "")).slice(0, maximumLength) || null;
+	const withoutImages = (value: string) => value.replace(/!\[[^\]]*\]\([^)]*\)/gu, "");
 	const titleCell = input.cells[titleIndex] ?? "";
 	const title = cleanTitle(titleCell);
 	if (!title || /^[-–—]+$/u.test(title)) return null;
 
 	const note = compact(withoutMarkdown(input.cells[noteIndex] ?? ""));
 	const link =
-		firstHttpsLink(titleCell) ?? firstHttpsLink(input.cells.join(" "));
+		firstHttpsLink(withoutImages(input.cells[sourceIndex] ?? "")) ??
+		firstHttpsLink(withoutImages(titleCell)) ??
+		firstHttpsLink(withoutImages(input.cells.filter((_, index) => index !== imageIndex).join(" ")));
+	const inlineImage = /!\[[^\]]*\]\(([^)\s]+)\)/u.exec(input.cells.join(" "))?.[1];
+	const imageCell = input.cells[imageIndex]?.trim() || inlineImage || "";
+	const imageValue = firstHttpsLink(imageCell)?.url ?? imageCell;
+	const parsedImage = productImageUrlSchema.safeParse(imageValue);
+	const unmappedFacts: string[] = [];
+	if (imageCell && !parsedImage.success) unmappedFacts.push(`image url: ${imageCell}`.slice(0, 1_000));
+	const mappedColumns = new Set([titleIndex, priceIndex, noteIndex, imageIndex, brandIndex, modelIndex, categoryIndex, sourceIndex]);
+	const attributes: ImportProposalLine["product"]["attributes"] = [];
+	for (const [index, header] of input.headers.entries()) {
+		if (mappedColumns.has(index)) continue;
+		const value = textCell(index, 1_000);
+		if (!value) continue;
+		if (/^(?:dimensions|size|material|colou?r|variant|article(?: number)?|sku|ابعاد|اندازه|جنس|رنگ|کد محصول)$/u.test(header) && value.length <= 240 && attributes.length < 30) {
+			attributes.push({ label: header, value });
+		} else {
+			unmappedFacts.push(`${header}: ${value}`.slice(0, 1_000));
+		}
+	}
 	const quantity = explicitQuantity(titleCell) ?? 1;
 	const quantityOrigin = explicitQuantity(titleCell) ? "source" : "inferred";
 	const parsedPrice = parsePrice(input.cells[priceIndex] ?? "");
@@ -333,10 +360,11 @@ function lineFromCells(input: {
 		futureQuantity: futureQuantity(note),
 		product: {
 			title: title.slice(0, 240),
-			brand: null,
-			model: null,
-			category: null,
-			attributes: [],
+			brand: textCell(brandIndex, 160),
+			model: textCell(modelIndex, 160),
+			category: textCell(categoryIndex, 120),
+			imageUrl: parsedImage.success ? parsedImage.data : null,
+			attributes,
 		},
 		candidate: {
 			plannedPurchaseQuantity: quantity,
@@ -347,7 +375,7 @@ function lineFromCells(input: {
 		offer,
 		suppliedLineTotal,
 		exclusions: [],
-		unmappedFacts: [],
+		unmappedFacts: unmappedFacts.slice(0, 30),
 	};
 }
 

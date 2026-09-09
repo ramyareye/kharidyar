@@ -219,6 +219,8 @@ interface RollupRow {
 	planned_purchase_quantity: number | null;
 	product_title: string | null;
 	product_image_url: string | null;
+	preview_product_title: string | null;
+	preview_product_image_url: string | null;
 	offer_id: string | null;
 	merchant_name: string | null;
 	price_kind: OfferPriceKind | null;
@@ -1736,6 +1738,8 @@ export async function readCollectionRollup(input: {
 					ic.planned_purchase_quantity,
 					p.title as product_title,
 					p.image_url as product_image_url,
+					preview.title as preview_product_title,
+					preview.image_url as preview_product_image_url,
 					o.id as offer_id,
 					m.name as merchant_name,
 					o.price_kind,
@@ -1748,6 +1752,15 @@ export async function readCollectionRollup(input: {
 				left join item_candidates ic
 					on ic.item_id = i.id and ic.is_planned = 1 and ic.archived_at is null
 				left join products p on p.id = ic.product_id
+				left join products preview on preview.id = (
+					select candidate.product_id from item_candidates candidate
+					join products product on product.id = candidate.product_id
+					where candidate.item_id = i.id and candidate.archived_at is null
+						and product.archived_at is null and product.image_url is not null
+						and ic.id is null
+					order by candidate.rank is null, candidate.rank, candidate.created_at, candidate.id
+					limit 1
+				)
 				left join offers o on o.id = ic.planned_offer_id and o.archived_at is null
 				left join merchants m on m.id = o.merchant_id
 				where i.collection_id = ?1 and i.archived_at is null
@@ -1779,6 +1792,10 @@ export async function readCollectionRollup(input: {
 				merchantName: null,
 				plannedPurchaseQuantity: row.planned_purchase_quantity,
 				state: "unplanned",
+				previewProduct: row.preview_product_title === null ? null : {
+					title: row.preview_product_title,
+					imageUrl: row.preview_product_image_url,
+				},
 				cost: null,
 			};
 		}

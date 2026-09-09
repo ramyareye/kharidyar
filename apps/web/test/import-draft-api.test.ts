@@ -3,8 +3,11 @@ import {
 	apiErrorResponseSchema,
 	importDraftListResponseSchema,
 	importDraftResponseSchema,
+	itemComparisonResponseSchema,
 } from "@kharidyar/contracts";
 import { beforeEach, describe, expect, it } from "vitest";
+
+import { parseImportInput } from "../src/worker/import-draft-parser";
 
 const authSecret = "task-3-test-secret-with-at-least-32-characters";
 const workspaceId = "import-workspace";
@@ -117,6 +120,36 @@ Delivery is not included.
 
 describe("Research Import Draft API", () => {
 	beforeEach(resetFixture);
+
+	it("preserves a JSON import photo and attributes through correction, apply and replay", async () => {
+		const proposal = parseImportInput("markdown", "| Product | Price | Notes |\n| --- | --- | --- |\n| [Chair](https://www.ikea.com/nl/en/p/chair-12345678/) | €89 | Beige variant |").proposal;
+		proposal.lines[0]!.product.imageUrl = "https://images.example/chair.webp";
+		proposal.lines[0]!.product.attributes = [{ label: "Material", value: "Oak" }];
+		const created = await apiRequest(`/api/collections/${collectionId}/import-drafts`, {
+			body: { format: "json", rawInput: JSON.stringify(proposal) }, method: "POST", userId: users.owner,
+		});
+		expect(created.status).toBe(201);
+		const draft = importDraftResponseSchema.parse(await created.json()).draft;
+		expect(draft.proposal.lines[0]!.product.imageUrl).toBe("https://images.example/chair.webp");
+		proposal.lines[0]!.product.imageUrl = "https://images.example/chair-beige.webp";
+		const corrected = await apiRequest(`/api/collections/${collectionId}/import-drafts/${draft.id}`, {
+			body: { proposal }, method: "PUT", userId: users.owner,
+		});
+		expect(corrected.status).toBe(200);
+		for (let attempt = 0; attempt < 2; attempt += 1) {
+			const response = await apiRequest(`/api/collections/${collectionId}/import-drafts/${draft.id}/apply`, { method: "POST", userId: users.owner });
+			expect(response.status).toBe(200);
+			const applied = importDraftResponseSchema.parse(await response.json()).draft;
+			const item = applied.application.find(({ recordType }) => recordType === "item")!;
+			const read = await apiRequest(`/api/items/${item.recordId}/comparison`, { userId: users.viewer });
+			expect(read.status).toBe(200);
+			const candidates = itemComparisonResponseSchema.parse(await read.json()).candidates;
+			expect(candidates).toHaveLength(1);
+			expect(candidates[0]!.product).toMatchObject({ imageUrl: "https://images.example/chair-beige.webp", attributes: [{ label: "Material", value: "Oak" }] });
+			expect(candidates[0]!.isPlanned).toBe(false);
+			expect(candidates[0]!.offers[0]!.sourceUrl).toBe(proposal.lines[0]!.source!.url);
+		}
+	});
 
 	it("stages a review without mutating planning records and enforces permissions", async () => {
 		const denied = await apiRequest(

@@ -376,6 +376,10 @@ export const rollupLineSchema = z
 		candidateId: z.string().nullable(),
 		productTitle: z.string().nullable(),
 		productImageUrl: productImageUrlSchema.optional(),
+		previewProduct: z.object({
+			title: z.string(),
+			imageUrl: productImageUrlSchema,
+		}).strict().nullable().optional(),
 		offerId: z.string().nullable(),
 		merchantName: z.string().nullable(),
 		plannedPurchaseQuantity: z.number().int().nullable(),

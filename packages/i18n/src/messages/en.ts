@@ -483,6 +483,7 @@ export const enMessages = {
 	"workflow.field.deadline": "Deadline",
 	"commerce.open": "Compare products",
 	"commerce.title": "Compare products and offers",
+	"commerce.scrollComparison": "Swipe or scroll sideways to compare products.",
 	"commerce.description":
 		"Keep Products canonical, compare retailer Offers honestly, and explicitly choose what contributes to the plan.",
 	"commerce.loading": "Loading comparison…",

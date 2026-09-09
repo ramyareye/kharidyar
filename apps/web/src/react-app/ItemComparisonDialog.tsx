@@ -30,6 +30,7 @@ import {
 	type PlanningApi,
 } from "./planning-api";
 import { ProductThumbnail } from "./ProductThumbnail";
+import { ProductAttributes } from "./ProductAttributes";
 import { EditorDialog } from "./planning-forms";
 
 function optionalText(value: string): string | null {
@@ -787,7 +788,9 @@ export function ItemComparisonDialog({
 						{comparison.candidates.length === 0 ? (
 							<p className="commerce-empty">{t("commerce.empty")}</p>
 						) : (
-							<div className="candidate-comparison">
+							<>
+							{comparison.candidates.length > 1 ? <p className="candidate-comparison__hint">{t("commerce.scrollComparison")}</p> : null}
+							<div className="candidate-comparison" role="region" aria-label={t("commerce.title")} tabIndex={0}>
 								{comparison.candidates.map((candidate) => {
 									const plannedOffer = candidate.offers.find((offer) => offer.id === candidate.plannedOfferId);
 									return (
@@ -795,7 +798,7 @@ export function ItemComparisonDialog({
 											<header className="candidate-card__header">
 												<ProductThumbnail src={candidate.product.imageUrl} title={candidate.product.title} />
 												<div>
-													<p>{candidate.product.brand ?? candidate.product.category ?? t("commerce.candidate")}</p>
+													<p>{[candidate.product.brand, candidate.product.category].filter(Boolean).join(" · ") || t("commerce.candidate")}</p>
 													<h3 dir="auto">{candidate.product.title}</h3>
 													{candidate.product.model ? <span dir="auto">{candidate.product.model}</span> : null}
 												</div>
@@ -805,6 +808,7 @@ export function ItemComparisonDialog({
 												<span>{t("commerce.quantity")}: {formatNumber(locale, candidate.plannedPurchaseQuantity)}</span>
 												<span>{t("commerce.purchasedToDate", { quantity: formatNumber(locale, candidate.purchasedQuantity) })}</span>
 											</div>
+											<ProductAttributes attributes={candidate.product.attributes} />
 											{candidate.notes ? <p className="candidate-card__notes" dir="auto">{candidate.notes}</p> : null}
 											<CompactActions>
 												{comparison.permissions.canManageCandidates && !candidate.archivedAt ? <details><summary>{t("commerce.editCandidate")}</summary><CandidateSettingsForm busy={busy} candidate={candidate} onSubmit={(value) => mutate(() => api.updateCandidate(item.id, candidate.id, value), "commerce.toast.candidate")} /></details> : null}
@@ -861,6 +865,7 @@ export function ItemComparisonDialog({
 									);
 								})}
 							</div>
+							</>
 						)}
 					</>
 				)}

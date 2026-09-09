@@ -15,6 +15,8 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useLocale } from "./locale-context";
 import { PlanningApiError, type PlanningApi } from "./planning-api";
 import { EditorDialog } from "./planning-forms";
+import { ProductThumbnail } from "./ProductThumbnail";
+import { ProductAttributes } from "./ProductAttributes";
 import "./ResearchImportDialog.css";
 
 const warningMessages: Record<ImportWarningCode, MessageKey> = {
@@ -385,8 +387,11 @@ export function ResearchImportDialog({
 											{lines.map((line) => (
 												<article className="import-line" key={line.key}>
 													<div className="import-line__title">
-														<span>{line.key}</span>
-														<h5 dir="auto">{line.item.title}</h5>
+														<ProductThumbnail src={line.product.imageUrl} title={line.product.title} />
+														<div>
+															<span>{line.key}</span>
+															<h5 dir="auto">{line.item.title}</h5>
+														</div>
 													</div>
 													<dl>
 														<div>
@@ -447,6 +452,8 @@ export function ResearchImportDialog({
 															· {line.futureQuantity.note}
 														</p>
 													) : null}
+													<p dir="auto">{[line.product.brand, line.product.model, line.product.category].filter(Boolean).join(" · ")}</p>
+													<ProductAttributes attributes={line.product.attributes} />
 													{line.source ? (
 														<a
 															href={line.source.url}

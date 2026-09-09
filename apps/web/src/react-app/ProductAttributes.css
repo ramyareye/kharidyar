@@ -1,0 +1,30 @@
+.product-attributes {
+	display: grid;
+	gap: 0.45rem;
+	margin: 0.75rem 0;
+	font-size: 0.8rem;
+}
+
+.product-attributes > div {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+	gap: 0.75rem;
+}
+
+.candidate-card > .product-attributes {
+	margin-inline: 1rem;
+}
+
+.product-attributes dt {
+	opacity: 0.7;
+}
+
+.product-attributes dd {
+	margin: 0;
+}
+
+.product-attributes dt,
+.product-attributes dd {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}

@@ -528,8 +528,8 @@ function ItemLedger({
 								key={item.id}
 							>
 								<ProductThumbnail
-									src={plans.get(item.id)?.productImageUrl}
-									title={plans.get(item.id)?.productTitle ?? item.title}
+									src={plans.get(item.id)?.productImageUrl ?? plans.get(item.id)?.previewProduct?.imageUrl}
+									title={plans.get(item.id)?.productTitle ?? plans.get(item.id)?.previewProduct?.title ?? item.title}
 								/>
 								<div className="item-row__content">
 									<div className="item-row__meta">

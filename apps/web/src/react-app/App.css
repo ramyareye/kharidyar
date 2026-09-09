@@ -2807,6 +2807,7 @@
 .commerce-dialog {
 	grid-column: 2;
 	display: grid;
+	min-inline-size: 0;
 	gap: 1rem;
 	padding-block-start: 1.5rem;
 }
@@ -2940,7 +2941,58 @@
 
 .candidate-comparison {
 	display: grid;
+	grid-auto-flow: column;
+	grid-auto-columns: min(24rem, 90%);
+	align-items: start;
 	gap: 1.25rem;
+	min-inline-size: 0;
+	max-inline-size: 100%;
+	overflow-x: auto;
+	overscroll-behavior-inline: contain;
+	scroll-snap-type: inline proximity;
+	padding: 0.25rem 0.25rem 1rem;
+}
+
+.candidate-comparison:focus-visible {
+	outline: 2px solid var(--moss);
+	outline-offset: -2px;
+}
+
+.candidate-comparison > .candidate-card {
+	scroll-snap-align: start;
+}
+
+.candidate-comparison__hint {
+	margin: 0;
+	color: var(--ink-muted);
+	font-size: 0.8125rem;
+}
+
+.candidate-comparison .candidate-card__header {
+	grid-template-columns: 4rem minmax(0, 1fr);
+}
+
+.candidate-comparison .candidate-card__header .product-thumbnail {
+	inline-size: 4rem;
+	block-size: 4rem;
+}
+
+.candidate-comparison .candidate-card__header > .commerce-badge {
+	grid-column: 2;
+	justify-self: start;
+}
+
+.candidate-comparison :is(.commerce-form--compact, .commerce-form__grid, .offer-card__facts, .offer-card__qualifiers) {
+	grid-template-columns: minmax(0, 1fr);
+}
+
+.candidate-comparison :is(.offer-card > header, .plan-control) {
+	align-items: stretch;
+	flex-direction: column;
+}
+
+.candidate-comparison .plan-control input {
+	inline-size: 100%;
 }
 
 .candidate-card {

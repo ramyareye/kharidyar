@@ -1,5 +1,7 @@
 # Private assistant actions
 
+**2026-09-09 local product-import update:** product image URLs now survive import application; Markdown can preserve photos and basic product attributes, and the UI displays them before and after import. The existing product create/update tools already accept `imageUrl`; refresh stale client discovery if that field is missing. No new tool or permission scope was added. See [PRODUCT_IMPORT.md](./PRODUCT_IMPORT.md) for fields, limits and the next phase. This update is not yet deployed.
+
 Implemented on 2026-09-06 on top of `5a921a5`; the user committed and pushed it as `9a65b41`. Deployed to the owner-only preview as `c8bbf5a1-771a-45b3-b643-535fe76851af` with migration 0013 applied. ChatGPT's new private **WantKit** plugin passed live add/edit, approval/decline and receipt replay checks on 2026-09-07 (Amsterdam). Old registrations remain read-only unless replaced with opt-in write credentials. Claude is deferred at the user's request. The local Codex runner remains a research runner; this extension uses the existing authenticated remote MCP endpoint. Production is unchanged.
 
 **2026-09-07 preview addition:** floor-plan metadata read/edit and approval-gated deletion are deployed as `ac5a87e9-e712-4a1c-a625-8b54bbfe4354`, with migration 0014 applied. The server now exposes 73 tools; refresh ChatGPT’s tool list. The previous 70-tool live verification remains valid, but the three additions have local OAuth/MCP coverage only until the signed-in client test is completed. See [FLOOR_PLANS.md](./FLOOR_PLANS.md).

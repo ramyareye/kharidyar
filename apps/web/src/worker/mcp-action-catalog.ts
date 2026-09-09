@@ -242,7 +242,7 @@ export const mcpActionCatalog = [
 	),
 	action(
 		"create_candidate",
-		"Add a product candidate to an item",
+		"Add a product candidate to an item, including an optional direct HTTPS imageUrl and sourced attributes such as dimensions, material and colour",
 		{ ...item, value: c.candidateCreateInputSchema },
 		"item",
 		(ctx, a) => commerce.createCandidate({ ...common(ctx), ...a }),
@@ -273,7 +273,7 @@ export const mcpActionCatalog = [
 	),
 	action(
 		"update_product",
-		"Edit a candidate's shared catalog product",
+		"Edit a candidate's shared catalog product, including imageUrl (direct HTTPS image link; null clears it) and attributes. Preserve existing attributes when adding facts; never invent images or product details",
 		{ ...candidate, value: c.productUpdateInputSchema },
 		"item",
 		(ctx, a) => commerce.updateCandidateProduct({ ...common(ctx), ...a }),

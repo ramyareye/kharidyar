@@ -483,6 +483,7 @@ export const faMessages = {
 	"workflow.field.deadline": "مهلت",
 	"commerce.open": "مقایسهٔ محصولات",
 	"commerce.title": "مقایسهٔ محصول و پیشنهادها",
+	"commerce.scrollComparison": "برای مقایسهٔ محصولات، به طرفین بکشید یا پیمایش کنید.",
 	"commerce.description":
 		"محصول‌ها را یکپارچه نگه دار، پیشنهاد فروشنده‌ها را دقیق مقایسه کن و انتخاب برنامه را خودت مشخص کن.",
 	"commerce.loading": "در حال بارگذاری مقایسه…",
