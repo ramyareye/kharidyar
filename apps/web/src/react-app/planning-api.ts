@@ -15,6 +15,8 @@ import {
 	commentInputSchema,
 	commentResolutionInputSchema,
 	invitationCreatedResponseSchema,
+	invitationPreviewResponseSchema,
+	invitationAcceptedResponseSchema,
 	importDraftListResponseSchema,
 	importDraftResponseSchema,
 	itemDiscussionResponseSchema,
@@ -1032,3 +1034,13 @@ export const floorPlanApi = {
 		commerceRequest(floorPlanPath(collectionId, planId), "DELETE", floorPlanDeletedResponseSchema),
 };
 export type FloorPlanApi = typeof floorPlanApi;
+
+// Opening an invitation only previews it. Granting access requires an explicit accept.
+export const invitationApi = {
+	preview: (token: string) => commerceRequest(
+		"/invitations/preview", "POST", invitationPreviewResponseSchema, { token },
+	),
+	accept: (token: string) => commerceRequest(
+		"/invitations/accept", "POST", invitationAcceptedResponseSchema, { token },
+	),
+};

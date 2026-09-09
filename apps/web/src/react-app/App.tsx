@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { InvitationPage } from "./InvitationPage";
 
 import { authClient } from "./auth-client";
 import { useLocale } from "./locale-context";
@@ -177,6 +178,15 @@ function App() {
 
 	if (isPending) {
 		return <LoadingScreen />;
+	}
+
+	if (/^\/invite\/?$/.test(window.location.pathname)) {
+		return (
+			<InvitationPage
+				user={session?.user ?? null}
+				sessionError={Boolean(error)}
+			/>
+		);
 	}
 
 	if (!session) {

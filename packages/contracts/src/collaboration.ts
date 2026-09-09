@@ -141,6 +141,26 @@ export const invitationCreatedResponseSchema = z
 	})
 	.strict();
 
+export const invitationPreviewResponseSchema = z.object({
+	invitation: z.object({
+		expiresAt: z.iso.datetime(),
+		inviterDisplayName: z.string(),
+		role: membershipRoleSchema,
+		scopeType: z.enum(["workspace", "collections"]),
+		scopes: z.array(z.object({
+			name: z.string(),
+			type: z.enum(["workspace", "collection"]),
+		}).strict()).min(1),
+	}).strict(),
+}).strict();
+
+export const invitationAcceptedResponseSchema = z.object({
+	accepted: z.literal(true),
+	alreadyAccepted: z.boolean(),
+}).strict();
+
+export type InvitationPreviewResponse = z.infer<typeof invitationPreviewResponseSchema>;
+
 export const membershipMutationResponseSchema = z
 	.object({
 		membership: z

@@ -1,0 +1,88 @@
+.invitation-page {
+	max-inline-size: 44rem;
+	margin-inline: auto;
+	padding: clamp(1rem, 4vw, 2.5rem);
+}
+.invitation-page > header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-block-end: 2rem;
+}
+.invitation-card {
+	padding: clamp(1.25rem, 4vw, 2rem);
+	background: var(--paper-white);
+	border: 1px solid var(--line);
+	border-radius: 1rem;
+	overflow-wrap: anywhere;
+}
+.invitation-card h1 {
+	margin-block: 0.5rem 1rem;
+	font-size: clamp(1.5rem, 4vw, 2rem);
+}
+.invitation-card p {
+	color: var(--ink-soft);
+}
+.invitation-details {
+	margin-block: 1.5rem;
+}
+.invitation-details > div {
+	padding-block: 0.75rem;
+	border-block-end: 1px solid var(--line-soft);
+}
+.invitation-details dt {
+	color: var(--ink-muted);
+	font-size: 0.875rem;
+}
+.invitation-details dd {
+	margin: 0.25rem 0 0;
+	font-weight: 600;
+}
+.invitation-details ul {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+.invitation-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+}
+.invitation-primary,
+.invitation-secondary {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-block-size: 2.75rem;
+	padding: 0.625rem 1rem;
+	border: 1px solid var(--moss-dark);
+	border-radius: 0.5rem;
+	font-weight: 650;
+	text-decoration: none;
+	cursor: pointer;
+}
+.invitation-primary {
+	background: var(--moss-dark);
+	color: white;
+}
+.invitation-secondary {
+	background: var(--paper-white);
+	color: var(--ink);
+	border-color: var(--line);
+}
+.invitation-card button:disabled {
+	opacity: 0.6;
+	cursor: wait;
+}
+.invitation-card > a:not(.invitation-primary) {
+	display: block;
+	margin-block-start: 1rem;
+	color: var(--moss-dark);
+}
+.invitation-card .invitation-error {
+	color: var(--danger);
+}
+.invitation-error:empty {
+	display: none;
+}
