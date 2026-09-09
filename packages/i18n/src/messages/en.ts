@@ -1,4 +1,13 @@
 export const enMessages = {
+	"commerce.openShort": "Compare",
+	"commerce.imageUrl": "Product image URL (optional)",
+	"commerce.imageUrlHint": "Paste a direct HTTPS image link. Images load from that website.",
+	"commerce.noImage": "No product photo",
+	"media.openImage": "Open {image}",
+	"media.editDetails": "Edit details",
+	"media.original": "Original",
+	"media.libraryTitle": "Images",
+
 	"nav.view.floorPlans": "Floor plans",
 	"assistantAction.operation.delete_floor_plan": "Delete floor plan and room notes",
 	"floorPlans.heading": "Floor plans",
@@ -238,7 +247,7 @@ export const enMessages = {
 		"Archive this collection and pause edits to its items?",
 	"collection.select": "Open {name}",
   "direction.eyebrow": "Shared direction",
-  "direction.title": "Brief & Concept",
+  "direction.title": "Brief & images",
   "direction.description":
     "Keep the practical brief, visual language, and budget beside the items they guide.",
   "direction.loading": "Loading the Collection direction…",
@@ -334,7 +343,7 @@ export const enMessages = {
   "media.eyebrow": "Private media",
   "media.title": "Concept images",
   "media.privacy":
-    "Images are private to this Collection. Sharing selected images with ChatGPT requires your approval. Uploads are normalized to remove unnecessary metadata.",
+    "Private to this collection. Sharing selected images with ChatGPT requires your approval.",
   "media.empty": "No private Concept images yet.",
   "media.add": "Add a base or reference image",
   "media.role": "Image role",

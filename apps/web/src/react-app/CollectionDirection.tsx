@@ -249,6 +249,19 @@ export function CollectionDirection({
         </p>
       ) : (
         <div className="direction-board">
+          {concept && media ? (
+            <div className="direction-media">
+              <ConceptMedia
+                busy={busy}
+                media={media}
+                onDelete={onDeleteImage}
+                onReorder={onReorderImages}
+                onUpdate={onUpdateImage}
+                onUpload={onUploadImage}
+              />
+            </div>
+          ) : null}
+
           {brief ? (
             <BriefDetails brief={brief} />
           ) : (
@@ -278,16 +291,6 @@ export function CollectionDirection({
                 <p className="concept-card__narrative" dir="auto">
                   {concept.narrative}
                 </p>
-                {media ? (
-                  <ConceptMedia
-                    busy={busy}
-                    media={media}
-                    onDelete={onDeleteImage}
-                    onReorder={onReorderImages}
-                    onUpdate={onUpdateImage}
-                    onUpload={onUploadImage}
-                  />
-                ) : null}
                 {canEditConcept ? (
                   <button
                     type="button"

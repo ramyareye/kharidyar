@@ -1,6 +1,15 @@
 import type { MessageKey } from "./en";
 
 export const faMessages = {
+	"commerce.openShort": "مقایسه",
+	"commerce.imageUrl": "نشانی تصویر محصول (اختیاری)",
+	"commerce.imageUrlHint": "پیوند مستقیم HTTPS تصویر را وارد کنید. تصویر از همان وب‌سایت بارگیری می‌شود.",
+	"commerce.noImage": "بدون تصویر محصول",
+	"media.openImage": "باز کردن {image}",
+	"media.editDetails": "ویرایش جزئیات",
+	"media.original": "اصلی",
+	"media.libraryTitle": "تصاویر",
+
 	"nav.view.floorPlans": "نقشه فضا",
 	"assistantAction.operation.delete_floor_plan": "حذف نقشه و یادداشت‌های فضا",
 	"floorPlans.heading": "نقشه‌های فضا",
@@ -241,7 +250,7 @@ export const faMessages = {
 		"این کالکشن بایگانی شود و ویرایش آیتم‌هایش متوقف شود؟",
 	"collection.select": "بازکردن {name}",
   "direction.eyebrow": "جهت مشترک",
-  "direction.title": "بریف و کانسپت",
+  "direction.title": "بریف و تصاویر",
   "direction.description":
     "بریف کاربردی، زبان بصری و بودجه را کنار آیتم‌هایی نگه دار که از آن‌ها پیروی می‌کنند.",
   "direction.loading": "در حال بارگذاری جهت کالکشن…",
@@ -335,7 +344,7 @@ export const faMessages = {
   "media.eyebrow": "رسانهٔ خصوصی",
   "media.title": "تصاویر کانسپت",
   "media.privacy":
-    "تصاویر خصوصی این کالکشن هستند. اشتراک تصاویر انتخاب‌شده با ChatGPT به تأیید شما نیاز دارد. تصویرها برای حذف فرادادهٔ غیرضروری بازپردازش می‌شوند.",
+    "تصاویر این کالکشن خصوصی هستند. اشتراک تصاویر انتخاب‌شده با ChatGPT به تأیید شما نیاز دارد.",
   "media.empty": "هنوز تصویر خصوصی برای کانسپت ثبت نشده است.",
   "media.add": "افزودن تصویر پایه یا مرجع",
   "media.role": "نقش تصویر",

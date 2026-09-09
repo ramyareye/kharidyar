@@ -77,6 +77,7 @@ interface CandidateProductRow {
 	product_brand: string | null;
 	product_model: string | null;
 	product_category: string | null;
+	product_image_url: string | null;
 	product_attributes_json: string | null;
 	product_archived_at: number | null;
 	product_created_at: number;
@@ -90,6 +91,7 @@ interface ProductRow {
 	brand: string | null;
 	model: string | null;
 	category: string | null;
+	image_url: string | null;
 	attributes_json: string | null;
 	archived_at: number | null;
 	created_at: number;
@@ -216,6 +218,7 @@ interface RollupRow {
 	candidate_id: string | null;
 	planned_purchase_quantity: number | null;
 	product_title: string | null;
+	product_image_url: string | null;
 	offer_id: string | null;
 	merchant_name: string | null;
 	price_kind: OfferPriceKind | null;
@@ -252,6 +255,7 @@ function productResource(row: ProductRow): ProductResource {
 		brand: row.brand,
 		model: row.model,
 		category: row.category,
+		imageUrl: row.image_url,
 		attributes: attributes(row.attributes_json),
 		archivedAt: nullableTimestamp(row.archived_at),
 		createdAt: timestamp(row.created_at),
@@ -267,6 +271,7 @@ function candidateProductResource(row: CandidateProductRow): ProductResource {
 		brand: row.product_brand,
 		model: row.product_model,
 		category: row.product_category,
+		image_url: row.product_image_url,
 		attributes_json: row.product_attributes_json,
 		archived_at: row.product_archived_at,
 		created_at: row.product_created_at,
@@ -486,6 +491,7 @@ const candidateProductSelect = `select
 	p.brand as product_brand,
 	p.model as product_model,
 	p.category as product_category,
+	p.image_url as product_image_url,
 	p.attributes_json as product_attributes_json,
 	p.archived_at as product_archived_at,
 	p.created_at as product_created_at,
@@ -595,7 +601,7 @@ export async function readItemComparison(input: {
 			.prepare(
 				`select
 					p.id, p.workspace_id, p.title, p.brand, p.model, p.category,
-					p.attributes_json, p.archived_at, p.created_at, p.updated_at
+					p.image_url, p.attributes_json, p.archived_at, p.created_at, p.updated_at
 				from products p
 				where p.workspace_id = ?1
 					and p.archived_at is null
@@ -613,7 +619,11 @@ export async function readItemComparison(input: {
 				order by p.title, p.id
 				limit 200`,
 			)
-			.bind(item.workspace_id, canViewWorkspaceCatalog ? 1 : 0, item.collection_id),
+			.bind(
+				item.workspace_id,
+				canViewWorkspaceCatalog ? 1 : 0,
+				item.collection_id,
+			),
 		input.database
 			.prepare(
 				`select distinct
@@ -662,7 +672,8 @@ export async function readItemComparison(input: {
 	const purchasesByCandidate = new Map<string, PurchaseRecordResource[]>();
 	for (const row of purchaseRows) {
 		const purchase = purchaseRecordResource(row);
-		const values = purchasesByCandidate.get(purchase.purchase.candidateId) ?? [];
+		const values =
+			purchasesByCandidate.get(purchase.purchase.candidateId) ?? [];
 		values.push(purchase);
 		purchasesByCandidate.set(purchase.purchase.candidateId, values);
 	}
@@ -816,8 +827,8 @@ export async function createCandidate(input: {
 					.prepare(
 						`insert into products (
 							id, workspace_id, title, brand, model, category, attributes_json,
-							created_by_user_id, created_at, updated_at
-						) values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?9)`,
+							created_by_user_id, created_at, updated_at, image_url
+						) values (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?9, ?10)`,
 					)
 					.bind(
 						productId,
@@ -829,6 +840,7 @@ export async function createCandidate(input: {
 						JSON.stringify(product.attributes),
 						input.userId,
 						now,
+						product.imageUrl ?? null,
 					),
 			);
 		}
@@ -882,7 +894,9 @@ export async function updateCandidate(input: {
 		input.value.plannedPurchaseQuantity !== undefined &&
 		input.value.plannedPurchaseQuantity !== current.planned_purchase_quantity
 	) {
-		throw conflict("Change a planned Candidate's quantity through the plan command.");
+		throw conflict(
+			"Change a planned Candidate's quantity through the plan command.",
+		);
 	}
 
 	await input.database
@@ -996,7 +1010,7 @@ export async function updateCandidateProduct(input: {
 	const current = await input.database
 		.prepare(
 			`select
-				id, workspace_id, title, brand, model, category, attributes_json,
+				id, workspace_id, title, brand, model, category, image_url, attributes_json,
 				archived_at, created_at, updated_at
 			from products
 			where id = ?1 and workspace_id = ?2`,
@@ -1009,7 +1023,7 @@ export async function updateCandidateProduct(input: {
 		.prepare(
 			`update products
 			set title = ?1, brand = ?2, model = ?3, category = ?4,
-				attributes_json = ?5, updated_at = ?6
+				attributes_json = ?5, updated_at = ?6, image_url = ?9
 			where id = ?7 and workspace_id = ?8 and archived_at is null`,
 		)
 		.bind(
@@ -1025,6 +1039,9 @@ export async function updateCandidateProduct(input: {
 			Date.now(),
 			current.id,
 			item.workspace_id,
+			input.value.imageUrl === undefined
+				? current.image_url
+				: input.value.imageUrl,
 		)
 		.run();
 	return readItemComparison(input);
@@ -1059,7 +1076,10 @@ export async function createMerchant(input: {
 			)
 			.run();
 	} catch (error) {
-		constraintConflict(error, "An active Merchant with that name already exists.");
+		constraintConflict(
+			error,
+			"An active Merchant with that name already exists.",
+		);
 	}
 	return readItemComparison(input);
 }
@@ -1206,14 +1226,7 @@ export async function createOffer(input: {
 					?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15
 				)`,
 			)
-			.bind(
-				priceCheckId,
-				offerId,
-				...factValues,
-				checkedAt,
-				input.userId,
-				now,
-			),
+			.bind(priceCheckId, offerId, ...factValues, checkedAt, input.userId, now),
 	]);
 	return readItemComparison(input);
 }
@@ -1290,7 +1303,11 @@ async function refreshOffer(input: {
 	const current = await input.database
 		.prepare("select merchant_id, source_url, locale from offers where id = ?1")
 		.bind(input.offerId)
-		.first<{ merchant_id: string; source_url: string; locale: string | null }>();
+		.first<{
+			merchant_id: string;
+			source_url: string;
+			locale: string | null;
+		}>();
 	if (current === null) throw notFound();
 	const checkId = crypto.randomUUID();
 	const now = Date.now();
@@ -1395,7 +1412,9 @@ async function selectedCandidate(
 		.first<SelectionRow>();
 }
 
-function selectionSnapshot(row: SelectionRow | null): PlannedSelectionSnapshot | null {
+function selectionSnapshot(
+	row: SelectionRow | null,
+): PlannedSelectionSnapshot | null {
 	if (row === null) return null;
 	return {
 		candidateId: row.candidate_id,
@@ -1560,13 +1579,16 @@ export async function recordPurchase(input: {
 		.bind(input.value.offerId, input.value.candidateId, item.id)
 		.first<PurchaseContextRow>();
 	if (current === null) throw notFound();
-	if (current.candidate_archived_at !== null) throw resourceArchived("Candidate");
+	if (current.candidate_archived_at !== null)
+		throw resourceArchived("Candidate");
 	if (current.offer_archived_at !== null) throw resourceArchived("Offer");
 	if (
 		current.is_planned !== 1 ||
 		current.planned_offer_id !== current.offer_id
 	) {
-		throw conflict("Record a purchase only against the currently planned Offer.");
+		throw conflict(
+			"Record a purchase only against the currently planned Offer.",
+		);
 	}
 
 	const checkId = crypto.randomUUID();
@@ -1678,8 +1700,7 @@ function rollupSummary(
 ): RollupSummary {
 	const aggregate = aggregatePlannedCosts(costs, "EUR");
 	return {
-		status:
-			unplannedLineCount > 0 ? "incomplete" : aggregate.status,
+		status: unplannedLineCount > 0 ? "incomplete" : aggregate.status,
 		currency: aggregate.currency,
 		merchandiseMinor: aggregate.merchandiseMinor,
 		shippingMinor: aggregate.shippingMinor,
@@ -1714,6 +1735,7 @@ export async function readCollectionRollup(input: {
 					ic.id as candidate_id,
 					ic.planned_purchase_quantity,
 					p.title as product_title,
+					p.image_url as product_image_url,
 					o.id as offer_id,
 					m.name as merchant_name,
 					o.price_kind,
@@ -1752,6 +1774,7 @@ export async function readCollectionRollup(input: {
 				groupLabel: row.group_label,
 				candidateId: row.candidate_id,
 				productTitle: row.product_title,
+				productImageUrl: row.product_image_url,
 				offerId: null,
 				merchantName: null,
 				plannedPurchaseQuantity: row.planned_purchase_quantity,
@@ -1775,6 +1798,7 @@ export async function readCollectionRollup(input: {
 				groupLabel: row.group_label,
 				candidateId: row.candidate_id,
 				productTitle: row.product_title,
+				productImageUrl: row.product_image_url,
 				offerId: null,
 				merchantName: null,
 				plannedPurchaseQuantity: row.planned_purchase_quantity,
@@ -1814,6 +1838,7 @@ export async function readCollectionRollup(input: {
 			groupLabel: row.group_label,
 			candidateId: row.candidate_id,
 			productTitle: row.product_title,
+			productImageUrl: row.product_image_url,
 			offerId: row.offer_id,
 			merchantName: row.merchant_name,
 			plannedPurchaseQuantity: row.planned_purchase_quantity,

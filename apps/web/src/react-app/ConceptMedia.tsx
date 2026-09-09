@@ -36,7 +36,6 @@ function ImageCard({
 	const { locale, t } = useLocale();
 	const [broken, setBroken] = useState(false);
 	const [caption, setCaption] = useState(image.caption ?? "");
-
 	const roleLabel =
 		image.role === "base"
 			? t("media.roleBase")
@@ -47,8 +46,16 @@ function ImageCard({
 	const captionChanged = caption.trim() !== (image.caption ?? "");
 
 	return (
-		<article className="concept-image-card">
-			<div className="concept-image-card__visual">
+		<article
+			className={`concept-image-card${image.isCover ? " concept-image-card--cover" : ""}`}
+		>
+			<a
+				className="concept-image-card__visual"
+				href={image.contentUrl}
+				target="_blank"
+				rel="noreferrer"
+				aria-label={t("media.openImage", { image: alt })}
+			>
 				{broken ? (
 					<div
 						className="concept-image-card__broken"
@@ -62,25 +69,113 @@ function ImageCard({
 					<img
 						alt={alt}
 						loading="lazy"
+						decoding="async"
 						onError={() => setBroken(true)}
 						referrerPolicy="no-referrer"
 						src={image.contentUrl}
 					/>
 				)}
+				<span className="concept-image-card__expand" aria-hidden="true">
+					↗
+				</span>
+			</a>
+			<div className="concept-image-card__body">
 				<div className="concept-image-card__badges">
-					<span>{image.generation ? t("media.aiDraft") : roleLabel}</span>
-					{image.isCover ? <span>{t("media.cover")}</span> : null}
-					{image.subjectKind ? (
-						<span>
-							{image.subjectKind === "person"
-								? t("media.subjectPerson")
-								: t("media.subjectSpace")}
+					<span>
+						{image.generation
+							? t("media.aiDraft")
+							: image.role === "base"
+								? t("media.original")
+								: roleLabel}
+					</span>
+					{image.isCover ? (
+						<span className="concept-image-card__cover">
+							{t("media.cover")}
 						</span>
 					) : null}
 				</div>
-			</div>
-			<div className="concept-image-card__body">
-				{image.generation && (
+				<p className="concept-image-card__caption" dir="auto">
+					{image.caption || roleLabel}
+				</p>
+				<p className="concept-image-card__meta" dir="auto">
+					{formatNumber(locale, image.width)} ×{" "}
+					{formatNumber(locale, image.height)} ·{" "}
+					{t("media.uploadedBy", { name: image.uploader.name })}
+				</p>
+				{canManage ? (
+					<div className="concept-image-card__actions">
+						{!image.isCover ? (
+							<button
+								type="button"
+								disabled={busy}
+								onClick={() => void onUpdate(image.id, { isCover: true })}
+							>
+								{t("media.makeCover")}
+							</button>
+						) : null}
+						<details className="concept-image-card__edit">
+							<summary>{t("media.editDetails")}</summary>
+							<div>
+								<label className="field field--compact">
+									<span className="field__label">{t("media.caption")}</span>
+									<input
+										disabled={busy}
+										maxLength={500}
+										onChange={(event) => setCaption(event.target.value)}
+										placeholder={t("media.captionPlaceholder")}
+										value={caption}
+									/>
+								</label>
+								{captionChanged ? (
+									<button
+										type="button"
+										disabled={busy}
+										onClick={() =>
+											void onUpdate(image.id, {
+												caption: caption.trim() || null,
+											})
+										}
+									>
+										{t("common.save")}
+									</button>
+								) : null}
+								{image.role === "reference" ? (
+									<>
+										<button
+											type="button"
+											disabled={busy || referenceIndex === 0}
+											onClick={() => onMove(image.id, -1)}
+											aria-label={t("media.moveEarlier", { image: alt })}
+										>
+											↑
+										</button>
+										<button
+											type="button"
+											disabled={
+												busy ||
+												referenceIndex === null ||
+												referenceIndex === referenceCount - 1
+											}
+											onClick={() => onMove(image.id, 1)}
+											aria-label={t("media.moveLater", { image: alt })}
+										>
+											↓
+										</button>
+									</>
+								) : null}
+								<button
+									type="button"
+									className="concept-image-card__delete"
+									disabled={busy}
+									onClick={() => onDelete(image)}
+								>
+									{t("media.delete")}
+								</button>
+							</div>
+						</details>
+					</div>
+				) : null}
+				{image.generation ? (
 					<details className="concept-image-card__provenance">
 						<summary>{t("media.generationDetails")}</summary>
 						<p>{t("media.generationNotice")}</p>
@@ -97,83 +192,6 @@ function ImageCard({
 							))}
 						</ul>
 					</details>
-				)}
-				{canManage ? (
-					<label className="field field--compact">
-						<span className="field__label">{t("media.caption")}</span>
-						<input
-							disabled={busy}
-							maxLength={500}
-							onChange={(event) => setCaption(event.target.value)}
-							placeholder={t("media.captionPlaceholder")}
-							value={caption}
-						/>
-					</label>
-				) : image.caption ? (
-					<p className="concept-image-card__caption" dir="auto">
-						{image.caption}
-					</p>
-				) : null}
-				<p className="concept-image-card__meta" dir="auto">
-					{formatNumber(locale, image.width)} ×{" "}
-					{formatNumber(locale, image.height)} ·{" "}
-					{t("media.uploadedBy", { name: image.uploader.name })}
-				</p>
-				{canManage ? (
-					<div className="concept-image-card__actions">
-						{captionChanged ? (
-							<button
-								type="button"
-								disabled={busy}
-								onClick={() =>
-									void onUpdate(image.id, { caption: caption.trim() || null })
-								}
-							>
-								{t("common.save")}
-							</button>
-						) : null}
-						{!image.isCover ? (
-							<button
-								type="button"
-								disabled={busy}
-								onClick={() => void onUpdate(image.id, { isCover: true })}
-							>
-								{t("media.makeCover")}
-							</button>
-						) : null}
-						{image.role === "reference" ? (
-							<>
-								<button
-									type="button"
-									disabled={busy || referenceIndex === 0}
-									onClick={() => onMove(image.id, -1)}
-									aria-label={t("media.moveEarlier", { image: alt })}
-								>
-									↑
-								</button>
-								<button
-									type="button"
-									disabled={
-										busy ||
-										referenceIndex === null ||
-										referenceIndex === referenceCount - 1
-									}
-									onClick={() => onMove(image.id, 1)}
-									aria-label={t("media.moveLater", { image: alt })}
-								>
-									↓
-								</button>
-							</>
-						) : null}
-						<button
-							type="button"
-							className="concept-image-card__delete"
-							disabled={busy}
-							onClick={() => onDelete(image)}
-						>
-							{t("media.delete")}
-						</button>
-					</div>
 				) : null}
 			</div>
 		</article>
@@ -277,7 +295,7 @@ export function ConceptMedia({
 			<header className="concept-media__header">
 				<div>
 					<p className="eyebrow">{t("media.eyebrow")}</p>
-					<h5 id="concept-media-heading">{t("media.title")}</h5>
+					<h5 id="concept-media-heading">{t("media.libraryTitle")}</h5>
 					<p>{t("media.privacy")}</p>
 				</div>
 				<span>

@@ -28,6 +28,7 @@ import {
 } from "@kharidyar/i18n";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
+import { ProductThumbnail } from "./ProductThumbnail";
 import { useLocale } from "./locale-context";
 import { CollaborationAdminDialog } from "./CollaborationAdminDialog";
 import { FloorPlans } from "./FloorPlans";
@@ -337,7 +338,7 @@ function ResourceActions({
 					disabled={busy}
 					aria-label={t("commerce.open") + `: ${resourceName}`}
 				>
-					{t("commerce.open")}
+					{t("commerce.openShort")}
 				</button>
 			) : null}
 			{inline ? (
@@ -467,6 +468,7 @@ function CollectionCostSummary({
 
 function ItemLedger({
 	busy,
+	rollup,
 	items,
 	onArchive,
 	onCompare,
@@ -477,6 +479,7 @@ function ItemLedger({
 	permissions,
 }: {
 	busy: boolean;
+	rollup: CollectionRollupResponse | null;
 	items: ItemResource[];
 	onArchive: (item: ItemResource) => void;
 	onCompare: (item: ItemResource) => void;
@@ -487,6 +490,10 @@ function ItemLedger({
 	permissions: ItemPermissions;
 }) {
 	const { locale, t } = useLocale();
+	const plans = useMemo(
+		() => new Map(rollup?.lines.map((line) => [line.itemId, line]) ?? []),
+		[rollup],
+	);
 	const groups = useMemo(() => {
 		const grouped = new Map<string, ItemResource[]>();
 		for (const item of items) {
@@ -513,16 +520,17 @@ function ItemLedger({
 					</header>
 
 					<div className="item-group__rows">
-						{groupItems.map((item, itemIndex) => (
+						{groupItems.map((item) => (
 							<article
 								className={
 									item.archivedAt ? "item-row item-row--archived" : "item-row"
 								}
 								key={item.id}
 							>
-								<div className="item-row__number" aria-hidden="true">
-									{String(itemIndex + 1).padStart(2, "0")}
-								</div>
+								<ProductThumbnail
+									src={plans.get(item.id)?.productImageUrl}
+									title={plans.get(item.id)?.productTitle ?? item.title}
+								/>
 								<div className="item-row__content">
 									<div className="item-row__meta">
 										<span className={`status-tag status-tag--${item.status}`}>
@@ -553,11 +561,7 @@ function ItemLedger({
 												quantity: formatNumber(locale, item.quantityNeeded),
 											})}
 										</span>
-										<span>
-											{t("item.created", {
-												date: formatDate(locale, item.createdAt),
-											})}
-										</span>
+
 										{item.deadlineAt ? (
 											<span>
 												{t("item.deadline", {
@@ -1565,31 +1569,33 @@ export function PlanningDashboard({
 										<section className="collection-folio">
 											<header className="collection-folio__header">
 												<div>
-													<p className="eyebrow">{t("collection.singular")}</p>
+													<p className="collection-context" dir="auto">
+														{selectedWorkspace.name}
+														<span aria-hidden="true"> / </span>
+														{t("collection.singular")}
+													</p>
 													<h1 dir="auto">{selectedCollection.name}</h1>
 													{selectedCollection.description ? (
 														<p dir="auto">{selectedCollection.description}</p>
 													) : null}
 												</div>
 												<div className="collection-folio__actions">
-													<ResourceActions
-														archived={Boolean(selectedCollection.archivedAt)}
-														busy={busy}
-														onArchive={() =>
-															void archiveCollection(selectedCollection)
-														}
-														onEdit={() =>
-															setEditor({
-																kind: "collection-edit",
-																resource: selectedCollection,
-															})
-														}
-														onRestore={() =>
-															void restoreCollection(selectedCollection)
-														}
-														resourceName={selectedCollection.name}
-													/>
 													<ActionMenu label={t("nav.researchTools")}>
+														{!selectedCollection.archivedAt ? (
+															<button
+																type="button"
+																className="button button--secondary"
+																onClick={() =>
+																	setEditor({
+																		kind: "provider-research",
+																		resource: selectedCollection,
+																	})
+																}
+															>
+																<InlineIcon>⌕</InlineIcon>
+																{t("research.open")}
+															</button>
+														) : null}
 														<button
 															type="button"
 															className="button button--quiet"
@@ -1620,21 +1626,7 @@ export function PlanningDashboard({
 															</button>
 														) : null}
 													</ActionMenu>
-													{!selectedCollection.archivedAt ? (
-														<button
-															type="button"
-															className="button button--secondary"
-															onClick={() =>
-																setEditor({
-																	kind: "provider-research",
-																	resource: selectedCollection,
-																})
-															}
-														>
-															<InlineIcon>⌕</InlineIcon>
-															{t("research.open")}
-														</button>
-													) : null}
+
 													{!selectedCollection.archivedAt &&
 													itemPermissions.canCreate ? (
 														<button
@@ -1646,6 +1638,23 @@ export function PlanningDashboard({
 															{t("item.new")}
 														</button>
 													) : null}
+													<ResourceActions
+														archived={Boolean(selectedCollection.archivedAt)}
+														busy={busy}
+														onArchive={() =>
+															void archiveCollection(selectedCollection)
+														}
+														onEdit={() =>
+															setEditor({
+																kind: "collection-edit",
+																resource: selectedCollection,
+															})
+														}
+														onRestore={() =>
+															void restoreCollection(selectedCollection)
+														}
+														resourceName={selectedCollection.name}
+													/>
 												</div>
 											</header>
 
@@ -1653,27 +1662,41 @@ export function PlanningDashboard({
 												className="collection-views"
 												aria-label={t("nav.collectionViews")}
 											>
-												{(["items", "direction", "floorPlans", "budget"] as const).map(
-													(view) => (
-														<button
-															key={view}
-															type="button"
-															aria-pressed={collectionView === view}
-															aria-controls={`collection-panel-${view}`}
-															onClick={() => setCollectionView(view)}
-														>
-															{t(`nav.view.${view}`)}
-															{view === "items" ? (
-																<span>
-																	{formatNumber(locale, activeItems.length)}
-																</span>
-															) : null}
-														</button>
-													),
-												)}
+												{(
+													[
+														"items",
+														"direction",
+														"floorPlans",
+														"budget",
+													] as const
+												).map((view) => (
+													<button
+														key={view}
+														type="button"
+														aria-pressed={collectionView === view}
+														aria-controls={`collection-panel-${view}`}
+														onClick={() => setCollectionView(view)}
+													>
+														{t(`nav.view.${view}`)}
+														{view === "items" ? (
+															<span>
+																{formatNumber(locale, activeItems.length)}
+															</span>
+														) : null}
+													</button>
+												))}
 											</nav>
-											<section id="collection-panel-floorPlans" hidden={collectionView !== "floorPlans"} aria-label={t("nav.view.floorPlans")}>
-												{collectionView === "floorPlans" ? <FloorPlans key={selectedCollection.id} collectionId={selectedCollection.id} /> : null}
+											<section
+												id="collection-panel-floorPlans"
+												hidden={collectionView !== "floorPlans"}
+												aria-label={t("nav.view.floorPlans")}
+											>
+												{collectionView === "floorPlans" ? (
+													<FloorPlans
+														key={selectedCollection.id}
+														collectionId={selectedCollection.id}
+													/>
+												) : null}
 											</section>
 											<section
 												id="collection-panel-direction"
@@ -1773,7 +1796,7 @@ export function PlanningDashboard({
 															</div>
 															{groupLabels.length > 0 ? (
 																<label className="item-group-select">
-																	{t("nav.itemGroups")}
+																	<span>{t("nav.itemGroups")}</span>
 																	<select
 																		value={selectedGroup}
 																		onChange={(event) =>
@@ -1798,6 +1821,7 @@ export function PlanningDashboard({
 															</p>
 														) : null}
 														<ItemLedger
+															rollup={collectionRollup}
 															busy={busy}
 															items={filteredItems}
 															onArchive={(item) => void archiveItem(item)}

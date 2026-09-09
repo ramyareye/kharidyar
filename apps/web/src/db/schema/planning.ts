@@ -275,6 +275,7 @@ export const products = sqliteTable(
 		brand: text("brand"),
 		model: text("model"),
 		category: text("category"),
+		imageUrl: text("image_url"),
 		attributesJson: text("attributes_json"),
 		createdByUserId: text("created_by_user_id")
 			.notNull()

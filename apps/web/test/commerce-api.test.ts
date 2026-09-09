@@ -931,3 +931,108 @@ describe("Task 7 commerce workflow", () => {
 		expect(untrustedMutation.status).toBe(403);
 	});
 });
+
+describe("Product thumbnails", () => {
+	it("saves, preserves and clears an optional photo through the product and planned item reads", async () => {
+		const imageUrl = "https://example.com/chair.webp";
+		const product = newProduct("Chair with photo");
+		const created = await apiRequest(`/api/items/${exactItemId}/candidates`, {
+			userId: users.owner,
+			method: "POST",
+			body: {
+				product: { ...product, value: { ...product.value, imageUrl } },
+				plannedPurchaseQuantity: 1,
+				notes: null,
+				rank: null,
+			},
+		});
+		expect(created.status).toBe(201);
+		const candidate = itemComparisonResponseSchema.parse(await created.json())
+			.candidates[0]!;
+		expect(candidate.product.imageUrl).toBe(imageUrl);
+		const planned = await apiRequest(`/api/items/${exactItemId}/plan`, {
+			userId: users.owner,
+			method: "PUT",
+			body: {
+				candidateId: candidate.id,
+				offerId: null,
+				plannedPurchaseQuantity: 1,
+			},
+		});
+		expect(planned.status).toBe(200);
+		const path = `/api/items/${exactItemId}/candidates/${candidate.id}/product`;
+		const renamed = await apiRequest(path, {
+			userId: users.owner,
+			method: "PATCH",
+			body: { title: "Updated chair" },
+		});
+		expect(renamed.status).toBe(200);
+		expect(
+			itemComparisonResponseSchema.parse(await renamed.json()).candidates[0]!
+				.product.imageUrl,
+		).toBe(imageUrl);
+		const readRollup = async () =>
+			collectionRollupResponseSchema.parse(
+				await (
+					await apiRequest(`/api/collections/${collectionId}/planned-cost`, {
+						userId: users.viewer,
+					})
+				).json(),
+			);
+		expect(
+			(await readRollup()).lines.find((line) => line.itemId === exactItemId)
+				?.productImageUrl,
+		).toBe(imageUrl);
+		const cleared = await apiRequest(path, {
+			userId: users.owner,
+			method: "PATCH",
+			body: { imageUrl: null },
+		});
+		expect(cleared.status).toBe(200);
+		expect(
+			(await readRollup()).lines.find((line) => line.itemId === exactItemId)
+				?.productImageUrl,
+		).toBeNull();
+	});
+	it("rejects non-HTTPS and credential-bearing image URLs without changing the product", async () => {
+		const candidate = await createCandidate(exactItemId, "No photo");
+		for (const imageUrl of [
+			"http://example.com/chair.png",
+			"javascript:alert(1)",
+			"data:image/png;base64,abcd",
+			"https://user:password@example.com/chair.png",
+		]) {
+			const response = await apiRequest(
+				`/api/items/${exactItemId}/candidates/${candidate.id}/product`,
+				{ userId: users.owner, method: "PATCH", body: { imageUrl } },
+			);
+			expect(response.status).toBe(400);
+		}
+		const read = await apiRequest(`/api/items/${exactItemId}/comparison`, {
+			userId: users.viewer,
+		});
+		expect(
+			itemComparisonResponseSchema.parse(await read.json()).candidates[0]!
+				.product.imageUrl,
+		).toBeNull();
+	});
+	it("keeps image writes and reads inside the existing product permission boundary", async () => {
+		const candidate = await createCandidate(exactItemId, "Private product");
+		const response = await apiRequest(
+			`/api/items/${exactItemId}/candidates/${candidate.id}/product`,
+			{
+				userId: users.viewer,
+				method: "PATCH",
+				body: { imageUrl: "https://example.com/chair.png" },
+			},
+		);
+		expect(response.status).toBe(403);
+		expect(
+			(
+				await apiRequest(`/api/collections/${collectionId}/planned-cost`, {
+					userId: users.outsider,
+				})
+			).status,
+		).toBe(404);
+	});
+});

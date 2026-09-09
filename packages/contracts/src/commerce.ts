@@ -37,17 +37,9 @@ const nullableHttpsUrl = z
 	.transform((value) => (value === "" ? null : value))
 	.nullable();
 
-const nonNegativeMinor = z
-	.number()
-	.int()
-	.min(0)
-	.max(maximumSafeInteger);
+const nonNegativeMinor = z.number().int().min(0).max(maximumSafeInteger);
 
-const positiveQuantity = z
-	.number()
-	.int()
-	.min(1)
-	.max(maximumSafeInteger);
+const positiveQuantity = z.number().int().min(1).max(maximumSafeInteger);
 
 const nullableRank = z.number().int().min(0).max(1_000).nullable();
 
@@ -67,12 +59,19 @@ export const productAttributeSchema = z
 	})
 	.strict();
 
+export const productImageUrlSchema = nullableHttpsUrl.refine(
+	(value) =>
+		value === null || !/^https:\/\/[^/?#]*@/iu.test(value),
+	{ message: "Use an HTTPS image URL without credentials." },
+);
+
 export const productInputSchema = z
 	.object({
 		title: requiredText(240),
 		brand: nullableText(160),
 		model: nullableText(160),
 		category: nullableText(120),
+		imageUrl: productImageUrlSchema.optional(),
 		attributes: z.array(productAttributeSchema).max(30),
 	})
 	.strict();
@@ -376,6 +375,7 @@ export const rollupLineSchema = z
 		groupLabel: z.string().nullable(),
 		candidateId: z.string().nullable(),
 		productTitle: z.string().nullable(),
+		productImageUrl: productImageUrlSchema.optional(),
 		offerId: z.string().nullable(),
 		merchantName: z.string().nullable(),
 		plannedPurchaseQuantity: z.number().int().nullable(),

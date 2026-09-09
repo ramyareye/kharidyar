@@ -29,6 +29,7 @@ import {
 	PlanningApiError,
 	type PlanningApi,
 } from "./planning-api";
+import { ProductThumbnail } from "./ProductThumbnail";
 import { EditorDialog } from "./planning-forms";
 
 function optionalText(value: string): string | null {
@@ -72,6 +73,7 @@ function CandidateForm({
 	const [brand, setBrand] = useState("");
 	const [model, setModel] = useState("");
 	const [category, setCategory] = useState("");
+	const [imageUrl, setImageUrl] = useState("");
 	const [quantity, setQuantity] = useState(String(initialQuantity));
 	const [notes, setNotes] = useState("");
 	const [rank, setRank] = useState("");
@@ -103,6 +105,7 @@ function CandidateForm({
 							kind: "new",
 							value: {
 								attributes: [],
+								imageUrl: optionalText(imageUrl),
 								brand: optionalText(brand),
 								category: optionalText(category),
 								model: optionalText(model),
@@ -118,6 +121,7 @@ function CandidateForm({
 			setBrand("");
 			setModel("");
 			setCategory("");
+			setImageUrl("");
 			setNotes("");
 			setRank("");
 			setProductId("");
@@ -176,6 +180,11 @@ function CandidateForm({
 					<label className="field commerce-form__wide">
 						<span className="field__label">{t("commerce.category")}</span>
 						<input value={category} onChange={(event) => setCategory(event.target.value)} maxLength={120} />
+					</label>
+					<label className="field commerce-form__wide">
+						<span className="field__label">{t("commerce.imageUrl")}</span>
+						<input type="url" inputMode="url" dir="ltr" value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} maxLength={2048} placeholder="https://…" />
+						<small className="field-hint">{t("commerce.imageUrlHint")}</small>
 					</label>
 				</div>
 			)}
@@ -278,6 +287,7 @@ function ProductForm({
 	const [brand, setBrand] = useState(candidate.product.brand ?? "");
 	const [model, setModel] = useState(candidate.product.model ?? "");
 	const [category, setCategory] = useState(candidate.product.category ?? "");
+	const [imageUrl, setImageUrl] = useState(candidate.product.imageUrl ?? "");
 
 	return (
 		<form
@@ -290,6 +300,7 @@ function ProductForm({
 					brand: optionalText(brand),
 					model: optionalText(model),
 					category: optionalText(category),
+					imageUrl: optionalText(imageUrl),
 				});
 			}}
 		>
@@ -308,6 +319,11 @@ function ProductForm({
 			<label className="field commerce-form__wide">
 				<span className="field__label">{t("commerce.category")}</span>
 				<input value={category} onChange={(event) => setCategory(event.target.value)} maxLength={120} />
+			</label>
+			<label className="field commerce-form__wide">
+				<span className="field__label">{t("commerce.imageUrl")}</span>
+				<input type="url" inputMode="url" dir="ltr" value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} maxLength={2048} placeholder="https://…" />
+				<small className="field-hint">{t("commerce.imageUrlHint")}</small>
 			</label>
 			<button type="submit" className="button button--quiet" disabled={busy || !title.trim()}>
 				{t("common.save")}
@@ -772,12 +788,12 @@ export function ItemComparisonDialog({
 							<p className="commerce-empty">{t("commerce.empty")}</p>
 						) : (
 							<div className="candidate-comparison">
-								{comparison.candidates.map((candidate, index) => {
+								{comparison.candidates.map((candidate) => {
 									const plannedOffer = candidate.offers.find((offer) => offer.id === candidate.plannedOfferId);
 									return (
 										<article className={candidate.archivedAt ? "candidate-card candidate-card--archived" : candidate.isPlanned ? "candidate-card candidate-card--planned" : "candidate-card"} key={candidate.id}>
 											<header className="candidate-card__header">
-												<span className="candidate-card__index">{String(index + 1).padStart(2, "0")}</span>
+												<ProductThumbnail src={candidate.product.imageUrl} title={candidate.product.title} />
 												<div>
 													<p>{candidate.product.brand ?? candidate.product.category ?? t("commerce.candidate")}</p>
 													<h3 dir="auto">{candidate.product.title}</h3>

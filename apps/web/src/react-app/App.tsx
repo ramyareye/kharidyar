@@ -11,6 +11,7 @@ import {
 import { BrandMark, LocaleSwitch } from "./ui";
 import "./App.css";
 import "./Dashboard.css";
+import "./ConceptMedia.css";
 
 function GoogleIcon() {
 	return (
