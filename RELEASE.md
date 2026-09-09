@@ -1,12 +1,60 @@
 # Release runbook
 
-## Regional ChatGPT file-host fix — 2026-09-08 (validated; not deployed)
+## Compact UI and product thumbnails — 2026-09-09 (preview and production verified)
 
-The user authorized the production import fix and requested coverage for other regional URLs. Source now accepts the bounded `sdmntpr<region>.oaiusercontent.com` family, with exact domain matching and the existing three-segment path rule. This covers the observed centralus/northcentralus handoffs and permits additional alphanumeric regions without another release. The legacy `files.oaiusercontent.com/file-*` route and all approval, expiry, transfer/decode, private-save and original/cover protections are preserved. This family policy is inferred from OpenAI's documented content domain and observed transport, not a guaranteed MCP URL catalog; see [VISUAL_WORKFLOW.md](./VISUAL_WORKFLOW.md).
+The user requested release of pushed `37fff6f5070bb894708ffa4d4983e5c04ba9a262`. The final release also includes the two-line gallery-frame correction in `apps/web/src/react-app/ConceptMedia.css`, captured in this follow-up changeset: `position: absolute; inset: 0;` constrains portrait images to the existing aspect-ratio frame. CSS SHA-256: `cef74c735553e4197d2c472949f77a319cfcbfe81ce82c16743fa7ac2984c9d5`.
 
-The exact production error was reproduced before the fix. Eighteen regional cases now pass, including private MCP import/replay for five publicly reachable regional endpoints and a fictional future region, URL lookalikes and blocked redirects. Full `bun run check` passes **240 tests**, lint, types, Drizzle check, production build and deployment dry-run; preview build/dry-run also passes. Test downloads use controlled fictional images. No live signed-file retry or regeneration ran. Logs: `/tmp/wantkit-regional-host-fix/`.
+| Environment | Final active version (100%) | Version before this release | Final manifest SHA-256 |
+| --- | --- | --- | --- |
+| Preview | `65df91c1-ccec-4f3e-bd8d-c8fa84aed3d3` | `f97fdac6-1d04-40f5-ad7a-ef797c3145bf` | `4ff65940e9e2949e79a9e0ee3663e754b00f4a110c2619ee70b4c6d8351bdb6a` |
+| Production | `b91a8917-3290-40a1-b1b7-8de1c1222c06` | `38184797-f0ac-4985-ab62-0fff22e656d2` | `2c91fc69fc725edc413ab8e22ae8ec0150544378633290282f3d54d7c59ad0ee` |
 
-Production remains `40773e6b-469a-48f0-9885-8553b29c03bc`; preview remains `8a89c10c-96b5-4044-8ba2-652d388128a9`. No commit, push, deployment or migration occurred. Before release, complete the exact staged-tree/message approval gate and push main, then preserve each environment's existing private owner allowlists, variables, secrets and resources. After preview and production verification, prepare fresh approval and import the existing **Calm Japandi Kitchen and Dining Nook** image once. Keep production Base `a32bf603-5c86-497a-b64e-46690389f177` and its cover unchanged. Do not replay the expired run or regenerate.
+- Production: **https://wantkit.todoless.dev**. Preview was migrated and verified first. Preview intermediate version `3ca1cbbc-129b-41e7-997c-9177817ff485` exposed the portrait clipping during desktop QA; final preview and production include its correction. Production was deployed once, after corrected preview passed.
+- Migration `0016_product_images.sql` adds nullable `products.image_url`; it ran exactly once per environment. Both databases now have 17 migrations. Before/after aggregate counts and quick/foreign-key checks pass. Production data was not edited; preview only temporarily set and cleared the image URL on an existing disposable QA product, advancing its update timestamp.
+- The 243-test full gate passed for the pushed implementation. Both corrected environment builds, TypeScript checks and artifact dry-runs passed. Signed-in browser checks verified preview thumbnail persistence/clearing, selected-product image display, navigation, and original/draft gallery. Exact image/frame bounds were checked locally at 390/1280px, live preview at 1280px and live production at 466px. Production retains Sofa quantity 1, the QA item quantity 2 and the two active images with Base as cover. Fresh OAuth and second-user live testing were not repeated.
+- Both final deployments pass smoke and ten public checks, including exact JS/CSS/logo bytes; the client asset sets match across preview/production. Each artifact freezes 229 source hashes and 30 artifact hashes. Live variables, owner-only integration flags/allowlists, six inherited secrets, all resource bindings and runtime settings remain equal to their respective previous versions. Dashboard-managed routes are omitted from the deployment configuration so the existing domain assignment is retained.
+- No research/image generation, import, connector registration or permissions change was performed. Existing products require a direct HTTPS image URL before showing a thumbnail. The signed-in production page is left available to the user.
+
+Recovery: Worker rollback does not revert D1. The new nullable column is additive and should be retained if rolling the Worker back to the version in the table; do not drop it or restore a database merely to revert UI code. Fresh pre-migration production bookmark and metadata are in `/tmp/wantkit-compact-ui-framing-release/production/bookmark-recheck.json`; preview pre-migration evidence is in `/tmp/wantkit-compact-ui-release/preview/`. Final artifact/settings/checks are in `/tmp/wantkit-compact-ui-framing-release/{preview,production}/`. Do not rerun one-shot deployment scripts; inspect the recorded active version first. The CSS-only preview kept the Worker script etag; read-only verification was completed after removing the invalid assumption that every asset change must change that etag.
+
+At deployment time, HANDOFF/RELEASE notes, the two-line CSS fix and the pre-existing wrangler research-origin defaults were unstaged; no assistant commit/push occurred during deployment. This follow-up changeset captures the deployed CSS correction and release notes. The wrangler defaults are excluded and remain unstaged. Historical warning/reconnect notes below describe earlier checkpoints: the normal connection and private image import were subsequently verified, as recorded in HANDOFF.
+
+## WantKit branding — 2026-09-09 (preview and production verified)
+
+The user pushed and requested release of `56c70899849fa9d77c6e4c4b581d06d4739f507a`. Remote main and the previously reviewed branding patch match exactly. This release changes public branding and context-export filenames; it leaves the existing domain, credentials, access settings and data intact.
+
+| Environment | Active version (100%) | Previous version | Manifest SHA-256 |
+| --- | --- | --- | --- |
+| Preview | `f97fdac6-1d04-40f5-ad7a-ef797c3145bf` | `f6179fdd-d681-4f03-bfe6-12f75b095804` | `40bd8f952b0e1fb04949ec7619c55d7e4e4016ffd233d979b8b552f3a06de54a` |
+| Production | `38184797-f0ac-4985-ab62-0fff22e656d2` | `b4303de9-8aeb-460d-813f-6391f75dc5ce` | `a8c196752002a2590d84817bc481b7c66d62d4a029ff8ad7ae27390affa1df5a` |
+
+- The full local quality gate had passed for this exact source. Fresh environment builds and exact-config dry-runs passed; each frozen release contains 225 source hashes and 29 artifact hashes. Preview was verified before production. Smoke and ten public checks pass in both, including new WantKit title/favicon and byte-identical deployed JS/CSS/logo.
+- Existing authenticated browser sessions show WantKit and its loaded W mark; preview collection and production Japanese theme load. Production retains Sofa quantity 1 and QA item quantity 2. EN/FA and compact mobile branding were checked locally. Fresh Google sign-in was not repeated; the separate Chrome warning/review remains unresolved and unsubmitted.
+- Live variables, sole-owner allowlists, six inherited secret bindings, D1/R2/Images/Browser/Workflow bindings and runtime settings are identical before/after. No secrets file was used, and no credential values were read. Dashboard-managed routing and the custom domain are preserved. No migrations ran: all 16 were already applied, aggregate counts stayed unchanged and quick/FK checks passed.
+- Runtime files are committed/pushed. The two existing research-origin defaults in `apps/web/wrangler.json` match live production and remain unstaged with HANDOFF/RELEASE notes. Builds verified that these are the only configuration differences from the pushed source, then restored and compared the exact live deployment configuration. Checked-in integration defaults must not overwrite the owner-only live settings.
+
+Private evidence and timestamps: `/tmp/wantkit-branding-release/{preview,production}/`, including manifests, release results, `bookmark-recheck.json`, before/after metadata/integrity and signed-in checks. The previous versions in the table are the migration-free rollback targets; no database rollback is needed. No Google Console update, reconnect, generation or import belongs to this release. Operator: Codex using the authorized Wrangler account.
+
+## WantKit domain and regional file-host release — 2026-09-09 (deployed and verified)
+
+Production's primary origin is now **https://wantkit.todoless.dev**. The user assigned the domain, completed the Google OAuth update and authorized release. The exact approved commit `1ba9b5753bfdda94c2e8d78be29d115563b836be` was confirmed on remote main, then deployed through preview before production.
+
+| Environment | Active version (100%) | Previous version | Manifest SHA-256 |
+| --- | --- | --- | --- |
+| Preview | `f6179fdd-d681-4f03-bfe6-12f75b095804` | `8a89c10c-96b5-4044-8ba2-652d388128a9` | `fc9b9c42e421c6e36f78d6da13401ad6324777db573bbc371571e60a35a8d369` |
+| Production | `b4303de9-8aeb-460d-813f-6391f75dc5ce` | `40773e6b-469a-48f0-9885-8553b29c03bc` | `308d19df379cf1d97fc3eaf493b5106a27c56f2c43e6d3335eec63dd030f9db9` |
+
+- The regional fix accepts the bounded `sdmntpr<region>.oaiusercontent.com` family, including the observed northcentralus handoff, with exact domain and three-segment path boundaries. Legacy file URLs and all approval, expiry, transfer/decode, private-save and original/cover protections remain. Eighteen regional regression cases and the full **240-test** source gate pass. Provider evidence and the distinction between observed transport and inferred policy are in VISUAL_WORKFLOW.
+- Both releases verified 224 source hashes and 28 frozen artifact hashes, dry-ran the exact deployment configuration, and passed smoke plus all nine public checks. Deployed JS/CSS match the frozen builds. Database aggregate counts, quick check and foreign keys pass unchanged before/after release. All 16 migrations were already applied; none ran.
+- Production changed only the public origin values in `BETTER_AUTH_URL`, `AUTH_TRUSTED_ORIGINS` and `RESEARCH_BROWSER_ALLOWED_ORIGIN`. The trusted list is `https://wantkit.todoless.dev,https://kharidyar.formahsa.workers.dev`. Wrangler uploaded the two origin bindings atomically with code using `--secrets-file`, preserving the other encrypted bindings. Credential values were not accessed or changed. Owner-only integration flags/allowlists, six secret names, storage/database/workflow bindings and runtime settings remain intact.
+- The custom domain remains dashboard-managed: frozen configurations intentionally omit `route`/`routes` so deployment preserves the assigned route. The old workers.dev address is retained, but canonical OAuth discovery and approvals now use the custom domain. Google configuration includes authorized domain `todoless.dev`, origin `https://wantkit.todoless.dev` and exact callback `https://wantkit.todoless.dev/api/auth/callback/google`, alongside the existing URLs. Live in-app Google sign-in passes on the custom domain.
+- Signed-in production confirms Harlemmer / Japanese theme, Sofa quantity 1, QA Item quantity 2, and the sole active original Base still marked Space/Cover at 3024×4032. The owner's existing read/write assistant registration remains present. Preview retains its three active Concept images and original cover. No new media/model call or native-file retry ran.
+
+Private artifacts, manifests, live metadata, integrity results and signed-in checks are in `/tmp/wantkit-domain-release/{preview,production}/`. Pre-release D1 bookmarks: preview `000000a3-00000000-000050e0-840a43fb399c344794dadff56a965621`; production `0000008b-00000000-000050e0-ef93d2f8b7bb64b537ab7778de802ec9`. No database rollback is needed for this migration-free release. Any code rollback must explicitly preserve or reconcile the new origin settings and Google registration; do not assume a Worker version rollback reverses external OAuth settings.
+
+The source configuration's default and production research origins and current runbook examples now match the deployed domain. These follow-up configuration/documentation changes are unstaged/uncommitted; runtime commit `1ba9b57` is already pushed. Future releases must still preserve the private owner overrides because checked-in integration defaults remain disabled.
+
+Next: update/reconnect the existing **WantKit Production** ChatGPT app to `https://wantkit.todoless.dev/api/mcp`, preserving its owner registration where supported. Chrome remains under the user's control. Then obtain fresh approval and import the existing generated image once; do not replay the expired run or regenerate. The production image round trip is still pending that native import.
 
 ## Production image test — 2026-09-08 (generation passed; import rejected)
 
@@ -142,7 +190,7 @@ Production is unchanged and requires separate approval. The released server expo
 | Environment | Worker | D1 database | private R2 bucket | Workflow | Application origin |
 | --- | --- | --- | --- | --- | --- |
 | Preview | `kharidyar-preview` | `kharidyar-preview` | `kharidyar-concept-media-preview` | `kharidyar-research-preview` | `https://kharidyar-preview.formahsa.workers.dev` |
-| Production | `kharidyar` | `kharidyar-production` | `kharidyar-concept-media-production` | `kharidyar-research` | `https://kharidyar.formahsa.workers.dev` |
+| Production | `kharidyar` | `kharidyar-production` | `kharidyar-concept-media-production` | `kharidyar-research` | `https://wantkit.todoless.dev` |
 
 Local, preview, and production never share a D1 database, R2 bucket, or Workflow. `CLOUDFLARE_ENV` selects and flattens the requested Wrangler environment during the Vite build; the following deployment scripts then deploy that generated configuration.
 
@@ -243,7 +291,7 @@ Local, preview, and production never share a D1 database, R2 bucket, or Workflow
 
    ```bash
    bun run deploy:production
-   bun run release:smoke -- https://kharidyar.formahsa.workers.dev
+   bun run release:smoke -- https://wantkit.todoless.dev
    ```
 
 7. Manually confirm Google sign-in, one authenticated planning read, and—when affected—one private Concept upload/read/delete cycle and one bounded provider request. Record the commit, new Worker version, previous Worker version, pre-migration D1 bookmark, operator, timestamp, and smoke result.

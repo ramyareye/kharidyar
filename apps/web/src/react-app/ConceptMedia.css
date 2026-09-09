@@ -67,6 +67,8 @@
 	text-decoration: none;
 }
 .concept-image-card__visual img {
+	position: absolute;
+	inset: 0;
 	object-fit: contain;
 	transition: filter 160ms ease;
 }
