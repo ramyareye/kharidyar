@@ -24,6 +24,7 @@ import { deadlineInputValue, deadlineIsoValue } from "./item-workflow-state";
 
 const dialogFocusableSelector = [
 	"a[href]",
+	"summary",
 	"button:not([disabled])",
 	"input:not([disabled]):not([type='hidden'])",
 	"select:not([disabled])",
@@ -34,15 +35,22 @@ const dialogFocusableSelector = [
 function dialogFocusableElements(dialog: HTMLElement): HTMLElement[] {
 	return Array.from(
 		dialog.querySelectorAll<HTMLElement>(dialogFocusableSelector),
-	).filter(
-		(element) =>
-			element.getAttribute("aria-hidden") !== "true" &&
-			element.getClientRects().length > 0,
-	);
+	).filter((element) => {
+		if (element.getAttribute("aria-hidden") === "true" || element.getClientRects().length === 0) return false;
+		// Closed details can report client rects for descendants. Only their
+		// own summary belongs in the keyboard loop, including nested details.
+		for (let ancestor = element.parentElement; ancestor && ancestor !== dialog; ancestor = ancestor.parentElement) {
+			if (ancestor.tagName !== "DETAILS" || ancestor.hasAttribute("open")) continue;
+			const summary = Array.from(ancestor.children).find((child) => child.tagName === "SUMMARY");
+			if (!summary?.contains(element)) return false;
+		}
+		return true;
+	});
 }
 
 export function EditorDialog({
 	busy,
+	className,
 	children,
 	description,
 	onClose,
@@ -51,7 +59,8 @@ export function EditorDialog({
 }: {
 	busy: boolean;
 	children: ReactNode;
-	description: string;
+	className?: string;
+	description?: string;
 	onClose: () => void;
 	size?: "default" | "wide";
 	title: string;
@@ -139,16 +148,16 @@ export function EditorDialog({
 			}}
 		>
 			<section
-				className={
-					size === "wide"
-						? "editor-dialog editor-dialog--wide"
-						: "editor-dialog"
-				}
+				className={[
+					"editor-dialog",
+					size === "wide" ? "editor-dialog--wide" : "",
+					className,
+				].filter(Boolean).join(" ")}
 				ref={dialogRef}
 				role="dialog"
 				aria-modal="true"
 				aria-labelledby={titleId}
-				aria-describedby={descriptionId}
+				aria-describedby={description ? descriptionId : undefined}
 				aria-busy={busy || undefined}
 				tabIndex={-1}
 			>
@@ -163,7 +172,7 @@ export function EditorDialog({
 				</button>
 				<div className="editor-dialog__heading">
 					<h2 id={titleId}>{title}</h2>
-					<p id={descriptionId}>{description}</p>
+					{description ? <p id={descriptionId}>{description}</p> : null}
 				</div>
 				{children}
 			</section>

@@ -1921,6 +1921,12 @@ export function PlanningDashboard({
 					events={workflowEvents}
 					item={editor.resource}
 					loading={workflowLoading}
+					plan={collectionRollup?.lines.find(
+						(line) => line.itemId === editor.resource.id,
+					)}
+					onCompare={() =>
+						setEditor({ kind: "item-comparison", resource: editor.resource })
+					}
 					onChangeStatus={changeItemStatus}
 					onClose={() => setEditor(null)}
 					onEdit={() =>

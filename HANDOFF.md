@@ -1,4 +1,27 @@
-# Handoff: product photos and import details ready locally
+# Handoff: compact item detail ready locally
+
+Updated 2026-09-09 (Europe/Amsterdam). Completed the requested minimal item detail UI in `/Users/reza/Documents/web/kharidyar`. **Not staged, committed, pushed or deployed.** No subagents or production data writes.
+
+- Item details now show the saved planned-product photo or the unplanned candidate preview, with a missing/broken-photo fallback and a Compare products action. A chosen product without a photo never borrows another candidate's image. The previous detail dialog did not render any product photo.
+- Replaced the large green status panel with an inline select/confirmation row and an optional note revealed after choosing a status. Reduced notes to 14px, made HTTPS Markdown/plain links clickable without HTML rendering, omitted unset optional facts, and collapsed history plus individual event changes. Save errors remain visible. Fixed keyboard focus to skip descendants of closed details while including visible summaries.
+- Validation: 47 UI tests, TypeScript, lint and production build pass. Browser QA at 1280, 390 and 320px, English/Persian RTL, decoded image, missing/broken images, read-only state, status save/reset/error, reversal warning, Compare navigation, Escape, and Tab/Shift+Tab through nested disclosures pass. Desktop fixture dialog 736 × 495px; no horizontal overflow at any tested width. Uses fictional in-memory data and an existing local IKEA sample photo, not live retailer/product verification. Only expected fixture favicon/missing-image 404s; existing build chunk-size warning remains.
+- Source changes: `apps/web/src/react-app/{ItemWorkflowDialog.tsx,ItemWorkflowDialog.css,ItemWorkflowDialog.test.tsx,App.css,PlanningDashboard.tsx,planning-forms.tsx}` and this handoff. Pre-existing `RELEASE.md` dirt is preserved. No dependencies, backend, scopes, bindings or migrations changed.
+- Local preview: **http://127.0.0.1:5185/** (in-app tab 6); fixture/config in ignored `apps/web/node_modules/.cache/item-detail/`. Screenshots in ignored `output/playwright/compact-item/`; final build log `/tmp/wantkit-compact-item-build-final.log`. Browser QA sessions closed; local preview server remains running.
+- Production plugin refresh from the preceding task is complete: existing `WantKit Production — wantkit.todoless.dev` connection reauthenticated and refreshed; `create_candidate` and `update_product` both expose `imageUrl` after a settings reload. No duplicate connector or permissions change.
+- **Next ordered task, on request:** review/stage this UI and ask for exact staged-tree/commit-message approval. Release after the approved commit is pushed. Existing product records with no photo URL still need a later sourced-photo backfill; this UI pass does not fill missing data.
+
+## Previous checkpoint: product photos and horizontal comparison deployed
+
+Updated 2026-09-09 (Europe/Amsterdam). Released pushed `202360ef5a9b93e8edffcea3854dfdb64474342c` to preview and **https://wantkit.todoless.dev**, preview first. Work in `/Users/reza/Documents/web/kharidyar` on `main`. No subagents.
+
+- Production version **`3738c0e7-f9b8-4739-8e48-bfdb829af227`**; preview **`2bc67024-e238-442d-878f-ab5440e00bd6`**, each 100% traffic. Photos/details now survive import and appear in preview, unplanned item thumbnails and comparison. Comparison uses horizontal columns, mobile scrolling and EN/FA hints.
+- Verified smoke + 13 public checks in each environment, exact served assets, equal source/client artifacts, preserved live configuration/secrets/bindings and database integrity. All 17 migrations already applied; none ran. Prior full gate: 277 tests, plus final layout checks; fresh release builds/types/dry-runs pass.
+- Live preview import/photo-edit/read-back and mobile comparison passed using one new fictional QA import. Its image was cleared and Item archived; its applied draft/product/candidate remain as test history. Original QA towel plan was unchanged. Production verification was read-only: existing shopping workspace and product attributes load. No production data backfill or permissions change occurred.
+- Private evidence: `/tmp/wantkit-product-fields-release/`. Recovery versions: production `023d1df8-229f-4e20-9265-145f9eca3383`, preview `14cfd1fb-e867-4ff3-80fe-c41004483908`. No schema rollback needed. Preserve live owner-only flags and origins; checked-in defaults remain disabled.
+- Changed during this release: **HANDOFF.md and RELEASE.md only**, unstaged/uncommitted. Runtime is pushed and clean. No assistant commit/push. Any documentation commit still requires the user's exact staged-tree approval gate.
+- **Next ordered task, on request:** refresh the existing Production plugin tools and verify `imageUrl`, then backfill existing products' sourced photos/details using updates. Do not re-import duplicates. Existing blank images need data enrichment; the release alone does not fill them. Grouping alternatives and numeric rating/review sorting remain later tasks.
+
+## Previous checkpoint: product photos and import details ready locally
 
 Updated 2026-09-09 (Europe/Amsterdam). Completed the user's first phase: usable photo URLs and product details through import and comparison. **Not committed, pushed or deployed; no saved shopping record was changed.** Work is in `/Users/reza/Documents/web/kharidyar`. No subagents.
 
