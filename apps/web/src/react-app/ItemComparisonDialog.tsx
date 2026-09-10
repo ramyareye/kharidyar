@@ -13,7 +13,6 @@ import type {
 	PurchaseRecordInput,
 } from "@kharidyar/contracts";
 import {
-	formatDateTime,
 	formatMoney,
 	formatNumber,
 	type MessageKey,
@@ -31,6 +30,7 @@ import {
 } from "./planning-api";
 import { ProductThumbnail } from "./ProductThumbnail";
 import { ProductAttributes } from "./ProductAttributes";
+import { ProductOfferSummary } from "./ProductOfferSummary";
 import { EditorDialog } from "./planning-forms";
 
 function optionalText(value: string): string | null {
@@ -715,6 +715,7 @@ export function ItemComparisonDialog({
 	loading,
 	onChange,
 	onClose,
+	onRetry,
 }: {
 	api: PlanningApi;
 	comparison: ItemComparisonResponse | null;
@@ -723,6 +724,7 @@ export function ItemComparisonDialog({
 	loading: boolean;
 	onChange: (value: ItemComparisonResponse, toast: string) => void;
 	onClose: () => void;
+	onRetry?: () => void;
 }) {
 	const { locale, t } = useLocale();
 	const [busy, setBusy] = useState(false);
@@ -756,8 +758,9 @@ export function ItemComparisonDialog({
 		<EditorDialog busy={busy} description={t("commerce.description")} onClose={onClose} size="wide" title={`${t("commerce.title")} · ${item.title}`}>
 			<div className="commerce-dialog">
 				{error || mutationError ? <p className="field-error" role="alert">{error ?? mutationError}</p> : null}
+				{error && onRetry ? <button type="button" className="text-action" onClick={onRetry} disabled={loading}>{t("common.retry")}</button> : null}
 				{loading || comparison === null ? (
-					<p className="commerce-loading">{t("commerce.loading")}</p>
+					!error ? <p className="commerce-loading">{t("commerce.loading")}</p> : null
 				) : (
 					<>
 						<header className="commerce-toolbar">
@@ -820,29 +823,8 @@ export function ItemComparisonDialog({
 												<header><h4>{t("commerce.offers")}</h4><span>{formatNumber(locale, candidate.offers.length)}</span></header>
 												{candidate.offers.length === 0 ? <p>{t("commerce.noOffers")}</p> : candidate.offers.map((offer) => (
 													<article className={offer.id === candidate.plannedOfferId ? "offer-card offer-card--planned" : "offer-card"} key={offer.id}>
-														<header>
-															<div>
-																<strong dir="auto">{offer.merchant.name}</strong>
-																<a
-																	href={offer.sourceUrl}
-																	target="_blank"
-																	rel="noreferrer"
-																	aria-label={t("commerce.openOfferSource", {
-																		merchant: offer.merchant.name,
-																	})}
-																>
-																	<span aria-hidden="true">↗</span>
-																</a>
-															</div>
-															<span className={`commerce-badge commerce-badge--${offer.freshness}`}>{t(`commerce.${offer.freshness}`)}</span>
-														</header>
-												<div className="offer-card__facts">
-													<span>{t(`commerce.priceKind.${offer.facts.priceKind}`)}</span>
-													<span>{offer.facts.unitPriceMinor !== null && offer.facts.currency ? t("commerce.unitPrice", { amount: formatMoney(locale, offer.facts.unitPriceMinor, offer.facts.currency) }) : t("commerce.priceKind.unknown")}</span>
-													<span className={`commerce-availability commerce-availability--${offer.facts.availabilityState}`}>{t(`commerce.availability.${offer.facts.availabilityState}`)}</span>
-													<span>{offer.facts.shippingMinor !== null && offer.facts.currency ? t("commerce.shippingSummary", { amount: formatMoney(locale, offer.facts.shippingMinor, offer.facts.currency), basis: t(`commerce.shippingBasis.${offer.facts.shippingBasis}`) }) : t("commerce.shippingUnknown")}</span>
+													<ProductOfferSummary offer={offer} />
 													<OfferCost offer={offer} />
-												</div>
 												{offer.facts.availabilityChannel || offer.facts.availabilityLocation || offer.facts.availabilityVariant || offer.facts.availabilityNote ? (
 													<dl className="offer-card__qualifiers">
 														{offer.facts.availabilityChannel ? <div><dt>{t("commerce.availabilityChannel")}</dt><dd dir="auto">{offer.facts.availabilityChannel}</dd></div> : null}
@@ -851,7 +833,7 @@ export function ItemComparisonDialog({
 														{offer.facts.availabilityNote ? <div><dt>{t("commerce.availabilityNote")}</dt><dd dir="auto">{offer.facts.availabilityNote}</dd></div> : null}
 													</dl>
 												) : null}
-												<p>{t("commerce.lastChecked", { date: formatDateTime(locale, offer.lastCheckedAt) })} · {t("commerce.priceChecks", { count: formatNumber(locale, offer.priceChecks.length) })}</p>
+												<p>{t("commerce.priceChecks", { count: formatNumber(locale, offer.priceChecks.length) })}</p>
 												{comparison.permissions.canRefreshOffers && !candidate.archivedAt && !offer.archivedAt ? <button type="button" className="button button--quiet" disabled={busy} onClick={() => void mutate(() => api.refreshOffer(item.id, candidate.id, offer.id), "commerce.toast.refresh")}>{t("commerce.refreshOffer")}</button> : null}
 												{comparison.permissions.canManageCandidates && !candidate.archivedAt && !offer.archivedAt ? <PlanControl busy={busy} candidate={candidate} offerId={offer.id} onSubmit={(value) => mutate(() => api.changePlannedSelection(item.id, value), "commerce.toast.plan")} /> : null}
 														{comparison.permissions.canManageOffers && !candidate.archivedAt && !offer.archivedAt ? <details className="commerce-disclosure commerce-disclosure--nested"><summary>{t("commerce.editOffer")}</summary><OfferForm busy={busy} initial={offer} merchants={comparison.merchants} onSubmit={(value) => mutate(() => api.updateOffer(item.id, candidate.id, offer.id, value), "commerce.toast.offer")} /></details> : null}

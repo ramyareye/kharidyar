@@ -1,5 +1,37 @@
 # Release runbook
 
+## Compact item details and saved product photos — 2026-09-10 (deployed)
+
+Released user-pushed `53daa87c4122ad29ef3b3aeebfb1973483d45990` (`feat: simplify item details and show product photos`) to preview, then **https://wantkit.todoless.dev**. Item details display the saved product photo, compact facts/status controls, clickable HTTPS notes and collapsed history.
+
+| Environment | Active version (100%) | Previous version | Manifest SHA-256 |
+| --- | --- | --- | --- |
+| Preview | `7f7667db-d1f7-48d0-bb75-5a1fb3a9fccf` | `2bc67024-e238-442d-878f-ab5440e00bd6` | `d53dee1952feadada5d4f85fb4039370912bf0e249957514742d86e15844dab1` |
+| Production | `aaca173c-37c5-4a21-b68a-052654c2e3b6` | `3738c0e7-f9b8-4739-8e48-bfdb829af227` | `eb5b5eb227c26092f61f73b254b3c606c9af7bf7c503bf747c518e51854791b3` |
+
+- Each release freezes 240 source hashes and 30 artifact hashes. Preview and production source/client artifacts match; remote main matches the reviewed source. Prior 47 UI tests, lint, TypeScript, production build and responsive/keyboard QA passed. Fresh builds and frozen-config dry-runs passed in each environment.
+- Smoke and all 13 public checks pass in both environments, including exact served assets. Production's first check briefly saw the previous index during propagation; the fresh root response matched the frozen build, and read-only verification completed successfully. Deployment ran once per environment.
+- Signed-in production verifies the STOCKHOLM sofa's already-saved photo decodes in the detail and comparison views. Notes are 14px, the IKEA source is clickable, the large status panel is gone, and history plus its event begin collapsed. Detail width/scroll width both measure 734px; Compare navigation succeeds without overflow. Preview confirms the no-photo fallback, existing history and Compare, with existing quantities unchanged. No saved records were edited in either environment.
+- Preserved all live variables, owner-only integration allowlists, six inherited secrets, bindings, runtime settings and dashboard-managed domains. All 17 migrations were already applied; none ran. Before/after aggregate counts, quick check and foreign-key checks pass unchanged. This release does not backfill missing photo URLs or verify retailer rating claims.
+- Recovery: return to the previous version above while retaining its live configuration; no schema rollback is required. Private manifests, bookmarks, release results and browser evidence: `/tmp/wantkit-compact-item-release/{preview,production}/`. Do not rerun completed deployment scripts.
+- Only HANDOFF.md and RELEASE.md changed during release, unstaged/uncommitted; existing release notes are preserved. No assistant commit/push. Next ordered task, on request: enrich remaining existing products with sourced photos/details. Numeric rating/review sorting remains separate work.
+
+## Product photos, details and horizontal comparison — 2026-09-09 (deployed)
+
+Released pushed commit `202360ef5a9b93e8edffcea3854dfdb64474342c` to preview, then production at **https://wantkit.todoless.dev**. Import application now retains product image URLs and attributes; import previews, item thumbnails and comparison cards expose the saved details. Comparison products sit in horizontally scrollable columns with EN/FA hints and keyboard access.
+
+| Environment | Active version (100%) | Previous version | Manifest SHA-256 |
+| --- | --- | --- | --- |
+| Preview | `2bc67024-e238-442d-878f-ab5440e00bd6` | `14cfd1fb-e867-4ff3-80fe-c41004483908` | `c9ff085e4b91309eb703aca391cea8ead74cd6ee4fa25ef8a440b66d5f0a85df` |
+| Production | `3738c0e7-f9b8-4739-8e48-bfdb829af227` | `023d1df8-229f-4e20-9265-145f9eca3383` | `fef41f02321dc63aef95d9969873657a7583ba02f95f5a470cbccaf6b45aee18` |
+
+- Both releases passed smoke and 13 public checks, including exact deployed JS/CSS/logo bytes. Each release freezes 238 source hashes and 30 artifact hashes; preview and production source/client artifacts match. The prior 277-test full gate plus final layout lint/types/build and 9 targeted tests cover the pushed source; fresh environment builds and exact-config dry-runs passed during release.
+- Preserved all live variables, owner-only integration allowlists, six inherited secrets, bindings, runtime settings and dashboard-managed domains. All 17 migrations were already applied; none ran. Deployment before/after aggregate counts, quick check and foreign-key checks pass. No production planning, product, purchase, membership or media record was edited.
+- Signed-in preview verified two existing fictional candidates at 1280px and horizontal scrolling at 390px without page overflow. Applied exactly one fictional Markdown import in the disposable Launch check collection, verified its decoded sample-logo photo/brand/attributes in the preview, collection row and fetched comparison, then cleared the photo and read back retained attributes. **QA photo import 2026-09-09** was archived; the applied draft and its item/product/candidate remain as recoverable QA history. Original towel candidates, selected plan and offers were unchanged.
+- Signed-in production loads Reza's Home — Japandi Shopping / Living Room with 19 items. The existing STOCKHOLM comparison displays brand/category, saved attribute labels (including rating details) and a clickable source. Column layout and no page overflow are verified. This does not verify the retailer's rating claims or backfill photos; the sampled product has no image URL.
+- Recovery: return to the previous version above while retaining its configuration. No schema rollback is required. Private evidence and guarded one-shot scripts: `/tmp/wantkit-product-fields-release/{preview,production}/`. Do not rerun completed deployments.
+- Next ordered task: refresh the existing WantKit Production plugin schema, confirm `imageUrl` inputs, then enrich existing products with sourced photos/details without duplicate imports. Grouping alternatives and numeric rating/review sorting remain separate work.
+
 ## Invitation recipient fix — 2026-09-09 (preview and production deployed)
 
 Released pushed commit `5c7a4743b648c84e8966a3f477a48b1a353d9ef9`. The invitation URLs now reach a recipient review screen, preserve the selected invite across Google sign-in, and require an explicit acceptance click. Missing/expired/revoked/used invitations, account mismatch and request failures have EN/FA recovery messages.

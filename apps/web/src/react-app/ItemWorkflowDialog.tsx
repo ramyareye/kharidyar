@@ -1,6 +1,7 @@
 import type {
 	DecisionEventResource,
 	ItemPermissions,
+	ItemComparisonResponse,
 	ItemPlanningSnapshot,
 	ItemResource,
 	ItemStatusChangeInput,
@@ -24,6 +25,8 @@ import {
 import { useLocale } from "./locale-context";
 import { EditorDialog } from "./planning-forms";
 import { ProductThumbnail } from "./ProductThumbnail";
+import { ItemProductDetails } from "./ProductOfferSummary";
+import { detailCandidate } from "./product-presentation";
 import "./ItemWorkflowDialog.css";
 
 const priorityMessage: Record<ItemResource["priority"], MessageKey> = {
@@ -226,6 +229,10 @@ function DecisionEventCard({ event }: { event: DecisionEventResource }) {
 
 export function ItemWorkflowDialog({
 	busy,
+	comparison,
+	productLoading = false,
+	productError,
+	onRetryProducts,
 	error,
 	events,
 	item,
@@ -238,6 +245,10 @@ export function ItemWorkflowDialog({
 	plan,
 }: {
 	busy: boolean;
+	comparison?: ItemComparisonResponse | null;
+	productLoading?: boolean;
+	productError?: string | null;
+	onRetryProducts?: () => void;
 	error: string | null;
 	events: DecisionEventResource[];
 	item: ItemResource;
@@ -252,11 +263,18 @@ export function ItemWorkflowDialog({
 	const { locale, t } = useLocale();
 	const [nextStatus, setNextStatus] = useState<"" | ItemResource["status"]>("");
 	const [note, setNote] = useState("");
-	const photo = plan?.candidateId
-		? plan.productImageUrl
-		: plan?.previewProduct?.imageUrl;
+	const candidates =
+		comparison?.itemId === item.id ? comparison.candidates : undefined;
+	const candidate = candidates ? detailCandidate(candidates) : undefined;
+	const photo = candidates
+		? candidate?.product.imageUrl
+		: plan?.candidateId
+			? plan.productImageUrl
+			: plan?.previewProduct?.imageUrl;
 	const productTitle =
-		plan?.productTitle ?? plan?.previewProduct?.title ?? item.title;
+		(candidates
+			? candidate?.product.title
+			: (plan?.productTitle ?? plan?.previewProduct?.title)) ?? item.title;
 	const statuses = useMemo(
 		() => availableItemStatuses(item.status, permissions),
 		[item.status, permissions],
@@ -322,6 +340,30 @@ export function ItemWorkflowDialog({
 									{productTitle}
 								</p>
 							) : null}
+							{candidate ? (
+								<div className="item-workflow__catalog-meta">
+									<span>
+										{candidate.isPlanned
+											? t("commerce.planned")
+											: t("commerce.productPreview")}
+									</span>
+									{candidate.product.brand ? (
+										<span>
+											{t("commerce.brand")}:{" "}
+											<strong dir="auto">{candidate.product.brand}</strong>
+										</span>
+									) : null}
+									{candidate.product.model ? (
+										<span>
+											{t("commerce.model")}:{" "}
+											<strong dir="auto">{candidate.product.model}</strong>
+										</span>
+									) : null}
+									{candidate.product.category ? (
+										<span dir="auto">{candidate.product.category}</span>
+									) : null}
+								</div>
+							) : null}
 							<dl className="item-workflow__facts">
 								<div>
 									<dt>{t("item.quantity")}</dt>
@@ -362,6 +404,29 @@ export function ItemWorkflowDialog({
 							</button>
 						</div>
 					</div>
+					{productLoading ? (
+						<p className="item-workflow__product-loading" role="status">
+							{t("commerce.loadingDetails")}
+						</p>
+					) : null}
+					{productError ? (
+						<div>
+							<p className="field-error" role="alert">
+								{productError}
+							</p>
+							{onRetryProducts ? (
+								<button
+									type="button"
+									className="text-action"
+									onClick={onRetryProducts}
+									disabled={productLoading}
+								>
+									{t("common.retry")}
+								</button>
+							) : null}
+						</div>
+					) : null}
+					{candidate ? <ItemProductDetails candidate={candidate} /> : null}
 					{item.description ? (
 						<p className="item-workflow__description" dir="auto">
 							<LinkedText text={item.description} />

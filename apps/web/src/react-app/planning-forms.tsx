@@ -99,6 +99,8 @@ export function EditorDialog({
 
 	useEffect(() => {
 		function manageDialogKeyboard(event: KeyboardEvent) {
+			// A native photo modal owns focus/Escape while layered above this editor.
+			if (document.querySelector("dialog:modal")) return;
 			if (event.key === "Escape" && !busy) {
 				event.preventDefault();
 				onClose();

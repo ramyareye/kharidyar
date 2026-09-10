@@ -629,6 +629,7 @@ export function PlanningDashboard({
 		null,
 	);
 	const [comparisonLoading, setComparisonLoading] = useState(false);
+	const [comparisonRetryNonce, setComparisonRetryNonce] = useState(0);
 	const [comparisonError, setComparisonError] = useState<ApiErrorCode | null>(
 		null,
 	);
@@ -678,7 +679,9 @@ export function PlanningDashboard({
 	const workflowItemId =
 		editor?.kind === "item-workflow" ? editor.resource.id : null;
 	const comparisonItemId =
-		editor?.kind === "item-comparison" ? editor.resource.id : null;
+		editor?.kind === "item-comparison" || editor?.kind === "item-workflow"
+			? editor.resource.id
+			: null;
 
 	useEffect(() => {
 		let current = true;
@@ -923,7 +926,7 @@ export function PlanningDashboard({
 		return () => {
 			current = false;
 		};
-	}, [api, comparisonItemId]);
+	}, [api, comparisonItemId, comparisonRetryNonce]);
 
 	useEffect(() => {
 		if (!toast) return;
@@ -1921,6 +1924,12 @@ export function PlanningDashboard({
 					events={workflowEvents}
 					item={editor.resource}
 					loading={workflowLoading}
+					comparison={comparison}
+					productLoading={comparisonLoading}
+					productError={
+						comparisonError ? errorMessageForCode(comparisonError) : null
+					}
+					onRetryProducts={() => setComparisonRetryNonce((value) => value + 1)}
 					plan={collectionRollup?.lines.find(
 						(line) => line.itemId === editor.resource.id,
 					)}
@@ -1941,6 +1950,7 @@ export function PlanningDashboard({
 					error={comparisonError ? errorMessageForCode(comparisonError) : null}
 					item={editor.resource}
 					loading={comparisonLoading}
+					onRetry={() => setComparisonRetryNonce((value) => value + 1)}
 					onChange={comparisonChanged}
 					onClose={() => setEditor(null)}
 				/>
