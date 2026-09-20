@@ -18,6 +18,7 @@ function testApp() {
 describe("request observability", () => {
 	it("correlates a response with its version and route without logging private inputs", async () => {
 		const log = vi.spyOn(console, "info").mockImplementation(() => {});
+		vi.spyOn(Math, "random").mockReturnValue(0.05);
 		const app = testApp().post("/api/items/:itemId", (c) => {
 			c.set("actorId", "private-user-id");
 			return c.json({ saved: true }, 201);
@@ -43,6 +44,7 @@ describe("request observability", () => {
 			status: 201,
 			durationMs: expect.any(Number),
 			slow: false,
+			sampleRate: 0.1,
 		});
 		expect(response.headers.get("x-request-id")).not.toBe("untrusted-id");
 		const serialized = JSON.stringify(log.mock.calls);
@@ -53,6 +55,7 @@ describe("request observability", () => {
 
 	it("records handled server failures as errors while preserving response protections", async () => {
 		const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+		vi.spyOn(Math, "random").mockReturnValue(0.99);
 		const app = testApp().get("/api/failure", () => { throw new Error("private-database-details"); });
 		app.onError((_error, c) => c.json({ error: "Unavailable" }, 503));
 		const response = await app.request("https://example.com/api/failure", {}, env);
@@ -60,17 +63,19 @@ describe("request observability", () => {
 		expect(response.headers.get("cache-control")).toBe("no-store");
 		expect(errors).toHaveBeenCalledOnce();
 		expect(errors.mock.calls[0]?.[0]).toMatchObject({
-			event: "http_request_completed", status: 503, requestId: response.headers.get("x-request-id"),
+			event: "http_request_completed", status: 503, requestId: response.headers.get("x-request-id"), sampleRate: 1,
 		});
 		expect(JSON.stringify(errors.mock.calls)).not.toContain("private-database-details");
 	});
 
 	it("records rejected and unmatched requests without leaking their path", async () => {
 		const log = vi.spyOn(console, "info").mockImplementation(() => {});
+		vi.spyOn(Math, "random").mockReturnValue(0.99);
 		const app = testApp().get("/api/private", (c) => c.json({ error: "Sign in" }, 401));
 		await app.request("https://example.com/api/private", {}, env);
 		await app.request("https://example.com/private-path-secret", {}, env);
 		expect(log.mock.calls.map(([entry]) => entry.status)).toEqual([401, 404]);
+		expect(log.mock.calls.every(([entry]) => entry.sampleRate === 1)).toBe(true);
 		expect(JSON.stringify(log.mock.calls)).not.toContain("private-path-secret");
 	});
 
@@ -85,11 +90,31 @@ describe("request observability", () => {
 
 	it("marks slow responses for filtering without changing their status", async () => {
 		const log = vi.spyOn(console, "info").mockImplementation(() => {});
+		vi.spyOn(Math, "random").mockReturnValue(0.99);
 		vi.spyOn(performance, "now").mockReturnValueOnce(100).mockReturnValueOnce(2_205);
 		const response = await testApp().get("/api/slow", (c) => c.text("ok"))
 			.request("https://example.com/api/slow", {}, env);
 		expect(response.status).toBe(200);
-		expect(log.mock.calls[0]?.[0]).toMatchObject({ durationMs: 2_105, slow: true });
+		expect(log.mock.calls[0]?.[0]).toMatchObject({ durationMs: 2_105, slow: true, sampleRate: 1 });
+	});
+
+	it("samples routine responses at ten percent without dropping response headers or bodies", async () => {
+		const log = vi.spyOn(console, "info").mockImplementation(() => {});
+		vi.spyOn(Math, "random").mockReturnValueOnce(0.099).mockReturnValueOnce(0.1).mockReturnValueOnce(0.99);
+		const app = testApp().get("/api/routine", (c) => c.json({ ok: true }));
+		const requestIds = [];
+		for (let attempt = 0; attempt < 3; attempt += 1) {
+			const response = await app.request("https://example.com/api/routine", {}, env);
+			expect(response.status).toBe(200);
+			expect(await response.json()).toEqual({ ok: true });
+			expect(response.headers.get("cache-control")).toBe("no-store");
+			expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+			expect(response.headers.get("x-request-id")).toBeTruthy();
+			requestIds.push(response.headers.get("x-request-id"));
+		}
+		expect(new Set(requestIds).size).toBe(3);
+		expect(log).toHaveBeenCalledOnce();
+		expect(log.mock.calls[0]?.[0]).toMatchObject({ requestId: requestIds[0], status: 200, sampleRate: 0.1 });
 	});
 });
 

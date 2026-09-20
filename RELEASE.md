@@ -2,7 +2,9 @@
 
 ## Cloudflare monitoring — 2026-09-20 (local; not deployed)
 
-Request completion logs, release metadata and a minimal D1 health endpoint are ready locally. Full `bun run check` passes with 307 tests. This change requires the new `CF_VERSION_METADATA` binding in each frozen deployment config while preserving all existing live settings; regenerate/verify the manifest accordingly. No schema or dependency changes. The updated release smoke requires `/api/health`, so it is expected to fail against the older deployed build until release.
+Initial monitoring commit `349231a4c636bbbe190b206bffab38daab014fa1` is verified on remote main. A user-requested cost-sampling follow-up is local: retain all failed/slow responses, sample 10% of routine responses and emit `sampleRate`. Full `bun run check` passes with 308 tests. Commit/push this follow-up before release. The new $5 account budget alert is saved and verified, with the existing $2/$10 alerts preserved. Both $5 and $10 list the chosen email. Budget alerts notify rather than cap spending; email delivery is still untested, as recorded in MONITORING.md.
+
+Request completion logs, release metadata and a minimal D1 health endpoint are ready locally. This change requires the new `CF_VERSION_METADATA` binding in each frozen deployment config while preserving all existing live settings; regenerate/verify the manifest accordingly. Keep Cloudflare head sampling at 100%, since sampling now happens in application code to preserve failures. No schema or dependency changes. The updated release smoke requires `/api/health`, so it is expected to fail against the older deployed build until release.
 
 Release preview first, verify one public request's safe log fields and healthy/no-store response, then production. Independent website uptime setup was submitted to UptimeRobot but email activation is not verified. Add the health-endpoint monitor only after deployment and verify email delivery separately. No production failure injection or domain-wide alert policy is authorized by this pass. See [MONITORING.md](./MONITORING.md) for the exact scope, pending steps and recovery considerations.
 

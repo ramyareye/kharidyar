@@ -1,4 +1,14 @@
-# Handoff: Cloudflare monitoring ready for commit; uptime activation pending
+# Handoff: monitoring cost safeguards ready for commit; budget alerts configured
+
+Updated 2026-09-20. Verified user-pushed `349231a4c636bbbe190b206bffab38daab014fa1` on remote main, exactly matching the reviewed monitoring changes. The user then explicitly requested cost safeguards before release. No deployment, assistant commit/push or product reads/writes. No subagents.
+
+- **Local follow-up:** sample 10% of routine completion logs; retain every HTTP 400+ and slow response. Add `sampleRate` for correct interpretation. Cloudflare head sampling stays at 100% to preserve those failures; response protections and request IDs remain on every response. This reduces routine log volume, not overall app usage, and is not a hard bill cap.
+- **Validation:** `bun run check` passed with 308 tests (26 domain, 5 i18n, 128 Worker, 78 MCP, 64 UI, 7 runner), lint, types, schema metadata, build and deployment dry-run. Sampling tests cover selection boundaries, unchanged bodies/headers/request IDs and retention of failures/slow responses. Evidence: `/tmp/wantkit-monitoring-cost-check.log`.
+- **Cloudflare billing:** the live account dashboard showed $0.00 current-cycle usage charges, excluding subscription fees. Saved the requested `Usage spend — $5 warning` alert in the signed-in in-app browser after the user completed sign-in. The budget-alert list confirms the new USD 5 threshold and the requested email; the existing USD 10 alert lists the same recipient. The existing USD 2 alert is preserved. Three policies are present. Account-wide alerts notify only; delivery remains untested. No paid plan or subscription change occurred.
+- **Next within monitoring:** review/commit this follow-up through the exact staged-tree approval gate, then push and release preview → production with preserved live settings. Verify health/logging and finish independent uptime activation/email verification. Axiom remains deferred and product auditing remains paused.
+- **Dirty files:** monitoring middleware/tests and MONITORING/HANDOFF/PROJECT/RELEASE documentation. No dependencies, bindings, migrations or generated files changed in this follow-up.
+
+## Previous checkpoint: Cloudflare monitoring ready for commit; uptime activation pending
 
 Updated 2026-09-20. The user chose Cloudflare-native monitoring before Axiom and provided an email recipient for availability alerts. Completed the local implementation and submitted one independent website-monitor request. No subagents; product auditing remains paused.
 

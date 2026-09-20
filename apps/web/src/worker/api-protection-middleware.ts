@@ -98,6 +98,11 @@ export const protectApiResponse = createMiddleware<WorkerAppEnv>(
 		// Summarize the response without copying URLs, headers, bodies or user IDs.
 		// Duration ends when response headers are ready, not when a stream closes.
 		const durationMs = Math.max(0, Math.round(performance.now() - startedAt));
+		const slow = durationMs >= 2_000;
+		// Sample only routine responses; retain all failures and slow responses.
+		// Keep Cloudflare head sampling at 100% so it cannot drop those events.
+		const sampleRate = context.res.status >= 400 || slow ? 1 : 0.1;
+		if (sampleRate < 1 && Math.random() >= sampleRate) return;
 		const entry = {
 			event: "http_request_completed",
 			requestId,
@@ -109,7 +114,8 @@ export const protectApiResponse = createMiddleware<WorkerAppEnv>(
 			route: context.req.routePath || "unmatched",
 			status: context.res.status,
 			durationMs,
-			slow: durationMs >= 2_000,
+			slow,
+			sampleRate,
 		};
 		if (entry.status >= 500) console.error(entry);
 		else console.info(entry);
