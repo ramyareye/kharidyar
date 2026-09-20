@@ -1,4 +1,15 @@
-# Handoff: monitoring cost safeguards ready for commit; budget alerts configured
+# Handoff: monitoring complete; product work deferred
+
+Updated 2026-09-21. Released user-pushed `a0f23a2c2818ac23dc8d15b19259f7c042618723` to preview, then **https://wantkit.todoless.dev**. Remote main matched the reviewed safeguards and the source tree was clean. No assistant commit/push or subagents; product auditing remains paused.
+
+- **Live:** 10% sampling for routine completion logs; all HTTP 400+ and slow responses retained, with request/release IDs and `sampleRate`. `/api/health` returns healthy with no-store. Preview version `7131c9bb-1ae6-40a3-8c70-28ad13c3eedd`; production `17980135-9482-492a-8dd8-a97d6f31434d`, both at 100%.
+- **Validation:** existing 308-test full quality gate plus fresh environment builds, exact-config dry-runs, release smoke and 15 live checks per environment. Each filtered test request produced one correctly correlated completion log with the current release ID/tag and sample rate 1. Exact HTML/assets and all 251 source hashes match the frozen releases. No private product data was read.
+- **Preservation:** all live variables, six inherited secrets, owner-only integrations, resources, runtime and domains preserved. Only `CF_VERSION_METADATA` was added. No migrations ran; read-only recovery bookmarks captured. Release evidence: `/tmp/wantkit-monitoring-release-a0f23a2/`.
+- **Alerts:** $5 and $10 account-wide budget alerts are configured for the chosen email; existing $2 preserved. These notify, not cap spending. On 2026-09-21, after the user confirmed activation and signed in, the dashboard contained only the website monitor. Created the missing health monitor once through the free dashboard. Both now report Up, check every five minutes and have the chosen email enabled with no delay/repeat; account email notifications include Up and Down events. No paid monitoring subscription was added. The user confirmed completing the downtime/recovery email-delivery test on 2026-09-21. This closes the remaining uptime verification item based on user confirmation, not a new independent inbox inspection.
+- **Next:** monitoring is complete for the agreed first pass. The user deferred the all-nine-collections product audit and comparison/grouping work until tomorrow; resume only on their request and preserve the import-agent pause. Axiom/custom log alerts remain deferred. Keep the two existing monitors (website `804041104`, backend health `804042598`); do not resubmit setup requests or activate the old health email. Dashboard evidence: `/tmp/wantkit-monitoring-20260920/uptime-dashboard-verified.json`; email-delivery evidence is the user's confirmation in this task.
+- **Working tree:** documentation-only closeout in HANDOFF.md, MONITORING.md, PROJECT.md and RELEASE.md; prepared for the exact staged-tree commit approval gate. No runtime changes after the pushed commit.
+
+## Previous checkpoint: cost safeguards ready for commit; budget alerts configured
 
 Updated 2026-09-20. Verified user-pushed `349231a4c636bbbe190b206bffab38daab014fa1` on remote main, exactly matching the reviewed monitoring changes. The user then explicitly requested cost safeguards before release. No deployment, assistant commit/push or product reads/writes. No subagents.
 
