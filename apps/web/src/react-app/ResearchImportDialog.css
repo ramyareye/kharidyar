@@ -73,7 +73,7 @@
 .import-history__button--active {
 	border-color: var(--line);
 	color: var(--ink);
-	background: rgba(248, 245, 236, 0.76);
+	background: color-mix(in srgb, var(--paper-light) 76%, transparent);
 }
 
 .import-history__button > span {
@@ -156,8 +156,8 @@
 
 .import-status--applied {
 	border-color: var(--moss);
-	color: var(--paper-white);
-	background: var(--moss);
+	color: var(--on-accent);
+	background: var(--accent-fill);
 }
 
 .import-status--discarded {
@@ -182,7 +182,7 @@
 	padding-block: 1rem;
 	padding-inline: 1rem;
 	border: 1px solid var(--line);
-	background: rgba(248, 245, 236, 0.6);
+	background: color-mix(in srgb, var(--paper-light) 60%, transparent);
 }
 
 .import-warnings h4,
@@ -424,7 +424,7 @@
 	padding-inline: 0.9rem;
 	border-inline-start: 3px solid var(--moss);
 	color: var(--ink-muted);
-	background: rgba(78, 91, 67, 0.08);
+	background: var(--moss-wash);
 	font-size: 0.875rem;
 }
 

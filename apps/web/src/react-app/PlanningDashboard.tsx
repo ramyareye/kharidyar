@@ -29,6 +29,7 @@ import {
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { ProductThumbnail } from "./ProductThumbnail";
+import { ThemeSwitch } from "./ThemeSwitch";
 import { useLocale } from "./locale-context";
 import { CollaborationAdminDialog } from "./CollaborationAdminDialog";
 import { FloorPlans } from "./FloorPlans";
@@ -1486,6 +1487,7 @@ export function PlanningDashboard({
 								{t("connectors.title")}
 							</a>
 							<LocaleSwitch />
+							<ThemeSwitch />
 							<button
 								type="button"
 								className="text-button"

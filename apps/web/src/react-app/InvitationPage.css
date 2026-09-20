@@ -63,8 +63,8 @@
 	cursor: pointer;
 }
 .invitation-primary {
-	background: var(--moss-dark);
-	color: white;
+	background: var(--accent-fill);
+	color: var(--on-accent);
 }
 .invitation-secondary {
 	background: var(--paper-white);

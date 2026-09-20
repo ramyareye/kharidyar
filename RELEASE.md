@@ -1,5 +1,21 @@
 # Release runbook
 
+## Large photo previews and compact product details — 2026-09-10 (deployed)
+
+Released user-pushed `5062fe2a266bd1e7f2ad9de2504b2f5b81181a63` (`feat: add photo previews and compact product details`) to preview, then **https://wantkit.todoless.dev**. Product thumbnails open a large modal; item details expose saved brand/model, retailer links, prices, checked dates and expandable specifications. Horizontal comparison uses the same compact offer summary.
+
+| Environment | Active version (100%) | Previous version | Manifest SHA-256 |
+| --- | --- | --- | --- |
+| Preview | `fcb1d62b-1578-4305-97d9-1927c2574330` | `7f7667db-d1f7-48d0-bb75-5a1fb3a9fccf` | `a98c1492be7b7682df76fbe4573496fd39187be2ca55ad351949c6c1e5d2676b` |
+| Production | `34c3f3c6-5faf-440e-8ba8-204cdc6046eb` | `aaca173c-37c5-4a21-b68a-052654c2e3b6` | `7f0ca6bfdbc07ef44172e9bf4e5a2d52efe52d1ec0d19e1889037552653c6b0f` |
+
+- Both deployments ran once. Smoke and all 13 public checks pass in each environment, including exact served JS/CSS/logo bytes. Preview initially returned the prior cached index; read-only verification then passed without another deployment. All 246 source hashes and client asset hashes match across the two frozen releases, each containing 30 artifact files.
+- Validation covers the prior **56 UI and 5 localization tests**, lint, TypeScript, desktop/mobile/Persian RTL and keyboard/photo error-state QA, plus fresh environment builds and exact-configuration deployment dry-runs. Existing non-failing build annotation and bundle-size warnings remain.
+- Signed-in preview verification used existing disposable QA towels: planned brand, €20 per unit, retailer link, €5 shipping once per line, saved checked date, freshness, missing-photo fallback and collapsed history. Detail width equals scroll width at 734px; Compare loads two candidates and two offer summaries. Those QA candidates lack photos, so enlargement itself remains locally verified against the matching source. No preview record was edited. Production verification used public endpoints/assets; no production catalog was read or changed.
+- Preserved all live variables, owner-only integration settings, six inherited secrets, bindings, runtime settings and dashboard-managed domains. All 17 migrations were already applied; none ran. Before/after quick checks, foreign-key checks and migration metadata pass. Catalog totals were deliberately not queried or compared while another agent adds products.
+- Recovery: return to the previous Worker version above while retaining its live configuration. No schema rollback or database restore is needed for this UI release. Private evidence, frozen manifests and guarded scripts: `/tmp/wantkit-photo-preview-release/{preview,production}/`. Do not rerun completed deployments. Current documentation consulted: [versions and deployments](https://developers.cloudflare.com/workers/versions-and-deployments/) and [D1 migrations](https://developers.cloudflare.com/d1/reference/migrations/).
+- Only HANDOFF.md and RELEASE.md changed during this release, unstaged/uncommitted. No assistant commit/push. Product auditing and enrichment remain paused until the user explicitly resumes them; rating/review sorting is separate work.
+
 ## Compact item details and saved product photos — 2026-09-10 (deployed)
 
 Released user-pushed `53daa87c4122ad29ef3b3aeebfb1973483d45990` (`feat: simplify item details and show product photos`) to preview, then **https://wantkit.todoless.dev**. Item details display the saved product photo, compact facts/status controls, clickable HTTPS notes and collapsed history.

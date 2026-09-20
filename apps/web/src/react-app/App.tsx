@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { InvitationPage } from "./InvitationPage";
+import { ThemeSwitch } from "./ThemeSwitch";
 
 import { authClient } from "./auth-client";
 import { useLocale } from "./locale-context";
@@ -85,7 +86,10 @@ function SignedOutScreen({ sessionError }: { sessionError: boolean }) {
 			<section className="auth-story" aria-labelledby="auth-heading">
 				<div className="auth-story__topline">
 					<BrandMark />
-					<LocaleSwitch />
+					<div className="appearance-controls">
+						<ThemeSwitch />
+						<LocaleSwitch />
+					</div>
 				</div>
 
 				<div className="auth-story__copy">

@@ -1,3 +1,4 @@
+import { ThemeSwitch } from "./ThemeSwitch";
 import { useEffect, useState } from "react";
 import {
 	mcpActionReceiptSchema,
@@ -258,7 +259,10 @@ export function AssistantActionPage() {
 		<div className="studio-shell connector-shell">
 			<header className="studio-header">
 				<BrandMark compact />
-				<LocaleSwitch />
+				<div className="appearance-controls">
+					<ThemeSwitch />
+					<LocaleSwitch />
+				</div>
 			</header>
 			<main className="connectors-page assistant-review-page">
 				<a href="/connectors">{t("connectors.title")}</a>
@@ -344,7 +348,10 @@ export function ConnectorRecoveryPage() {
 		<div className="studio-shell connector-shell">
 			<header className="studio-header">
 				<BrandMark compact />
-				<LocaleSwitch />
+				<div className="appearance-controls">
+					<ThemeSwitch />
+					<LocaleSwitch />
+				</div>
 			</header>
 			<main className="connectors-page">
 				<h1>{t("connectors.recoveryTitle")}</h1>

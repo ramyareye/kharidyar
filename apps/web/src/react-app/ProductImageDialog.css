@@ -16,7 +16,7 @@
 	inset-block-end: 0.15rem;
 	padding: 0.05rem 0.2rem;
 	border-radius: 0.2rem;
-	background: rgb(255 255 255 / 90%);
+	background: var(--paper-white);
 	font-size: 0.75rem;
 	line-height: 1;
 }
@@ -28,7 +28,7 @@
 	padding: 0;
 	border: 1px solid var(--line);
 	border-radius: 0.85rem;
-	background: #fff;
+	background: var(--paper-white);
 	color: var(--ink);
 	box-shadow: 0 1rem 4rem rgb(0 0 0 / 20%);
 }
@@ -54,7 +54,7 @@
 	block-size: 2.75rem;
 	border: 1px solid var(--line);
 	border-radius: 0.5rem;
-	background: #fff;
+	background: var(--paper-white);
 	color: var(--ink);
 	font-size: 1.5rem;
 	cursor: pointer;

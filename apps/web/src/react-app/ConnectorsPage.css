@@ -27,8 +27,8 @@
 	padding: 0.75rem;
 	border: 1px solid var(--line, #ddd6ca);
 	border-radius: 0.5rem;
-	background: white;
-	color: #25231f;
+	background: var(--paper-white);
+	color: var(--ink);
 	font: inherit;
 }
 .connector-actions,

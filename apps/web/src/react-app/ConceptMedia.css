@@ -4,7 +4,7 @@
 	border: 1px solid var(--line-soft);
 	border-radius: 0.625rem;
 	overflow: hidden;
-	background: #fff;
+	background: var(--paper-white);
 	align-self: center;
 }
 .product-thumbnail img {
@@ -58,7 +58,7 @@
 	overflow: hidden;
 }
 .concept-image-card--cover {
-	border-color: #a8caba;
+	border-color: var(--success-line);
 }
 .concept-image-card__visual {
 	display: grid;

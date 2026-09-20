@@ -123,7 +123,7 @@
 }
 .workspace-link--active {
 	background: var(--moss-wash);
-	border-color: #c1dfce;
+	border-color: var(--success-line);
 	color: var(--moss-dark);
 }
 .workspace-link__archived {
@@ -339,7 +339,7 @@
 	background: var(--paper-white);
 }
 .group-chip--active {
-	background: var(--moss-dark);
+	background: var(--accent-fill);
 }
 .item-ledger {
 	gap: 1.25rem;

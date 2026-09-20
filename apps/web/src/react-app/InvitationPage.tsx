@@ -1,3 +1,4 @@
+import { ThemeSwitch } from "./ThemeSwitch";
 import { useEffect, useRef, useState } from "react";
 import type { InvitationPreviewResponse } from "@kharidyar/contracts";
 import { formatDateTime, type MessageKey } from "@kharidyar/i18n";
@@ -275,7 +276,10 @@ export function InvitationPage({
 		<main className="invitation-page">
 			<header>
 				<BrandMark />
-				<LocaleSwitch />
+				<div className="appearance-controls">
+					<ThemeSwitch />
+					<LocaleSwitch />
+				</div>
 			</header>
 			<InvitationReview
 				key={token}

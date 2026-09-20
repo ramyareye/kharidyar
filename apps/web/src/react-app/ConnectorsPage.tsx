@@ -1,3 +1,4 @@
+import { ThemeSwitch } from "./ThemeSwitch";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { authClient } from "./auth-client";
@@ -140,7 +141,10 @@ export function ConnectorsPage({ email }: { email: string }) {
 		<div className="studio-shell connector-shell">
 			<header className="studio-header">
 				<BrandMark compact />
-				<LocaleSwitch />
+				<div className="appearance-controls">
+					<ThemeSwitch />
+					<LocaleSwitch />
+				</div>
 			</header>
 			<main className="connectors-page">
 				<a href="/">{t("connectors.back")}</a>

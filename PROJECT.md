@@ -1,9 +1,24 @@
 # Kharidyar Project Specification
 
 - Status: Approved by the product owner
-- Last updated: 2026-09-07
-- Implementation status: Tasks 1 through 11 and the post-MVP Concept media foundation are complete and validated locally
-- Release status: Concept media is deployed to preview and production, with authenticated image checks confirmed by the product owner in both environments (see [RELEASE.md](./RELEASE.md#2026-09-05-concept-media-production-release)).
+- Last updated: 2026-09-20
+- Implementation status: Tasks 1 through 11, private media/floor plans, the bounded ChatGPT visual pilot, product photo imports, horizontal comparison and compact product details are implemented. Historical checkpoints below retain their original dates; HANDOFF and RELEASE describe the latest deployed state.
+- Release status: WantKit is deployed to preview and production at https://wantkit.todoless.dev from `5062fe2a266bd1e7f2ad9de2504b2f5b81181a63`. Launch verification is user-confirmed complete (2026-09-20); assistant integrations remain owner-only. Dark mode is implemented locally and has not been released. See [RELEASE.md](./RELEASE.md).
+
+## Current next tasks — 2026-09-20
+
+This is the current agreed order, superseding older queues below. The 2026-09-20 request authorizes dark mode only plus these plan/handoff updates; start the next implementation or verification task only on request. Product auditing remains paused until the user confirms the other product-import agent is finished.
+
+1. [x] **Launch verification — user-confirmed complete, 2026-09-20.** The user confirmed the fresh Google sign-in, invitation acceptance and scoped-access launch check is done. This records their confirmation, not a new independent audit. Assistant integrations remain owner-only; no access settings changed.
+2. [x] **Standard dark mode — implemented locally, release pending.** System / Light / Dark in Settings and entry/connector pages, neutral surfaces with WantKit green, browser-local saved preference, live system/cross-tab updates and pre-paint initialization. Includes dialogs, comparison, forms, status colours and photo previews; product images keep their original colours. Review/commit and deployment remain separate steps.
+3. [ ] **Production-plugin check and cleanup.** Confirm one production WantKit connection at `https://wantkit.todoless.dev/api/mcp` and that production data is accessible in this task. Later historical notes record a successful refresh; duplicate removal still needs confirmation. Do this as a separate task; do not inspect or update the product catalogue during the current import pause.
+4. [ ] **Axiom monitoring — requested TODO.** Add searchable structured backend logs with request/release IDs, status and duration, plus useful failure alerts. Preserve the current safe logging policy: no auth/invitation tokens, raw request bodies, personal notes or private media. Test ingestion and one controlled alert in preview; document sampling, retention and usage controls. Add an uptime check. Choose browser error reporting separately (Sentry or PostHog); neither is approved for installation by this TODO, and Axios is not the intended product. Reference: [Axiom for Cloudflare Workers](https://axiom.co/docs/apps/cloudflare-workers).
+5. [ ] **All-nine-collections product audit — waiting for the user.** After the other agent finishes, check exact-variant photos, working product URLs, brand/retailer, price/currency, shipping/availability, checked dates and useful attributes. Preserve good existing data and update gaps without duplicate imports. No product reads or writes are authorized by this planning update.
+6. [ ] **Group alternatives for useful comparisons.** Review moving competing products under one need, such as a Sofa Item with several Candidates. Preserve offers, notes, comments and decisions; present the concrete mapping before changing existing records.
+7. [ ] **Optional ratings and review sorting.** Add numeric rating/scale/review count with source, retailer/locale, variant scope and checked date, then highest-rated/most-reviewed sorting and a minimum-review filter. Missing values remain unknown; bestseller labels require retailer evidence. Data collection/refresh is separate from sorting.
+8. [ ] **Later product work.** PostHog usage analytics if needed; category-specific fields and prompt examples; broader visual/floor-plan interpretation; WantKit in-app chat and Claude validation. Expo/mobile, Apple sign-in, multi-currency and paid OpenAI API work remain deferred pending a concrete request. These features are not prerequisites for the current private beta.
+
+Release assessment: the last recorded production build is deployed and usable, with 13 public release checks and exact asset verification per environment on 2026-09-10. Launch verification is now closed based on the user's confirmation; it was not repeated in this task. Monitoring remains queued, product completeness remains unknown while auditing is paused, and AI integrations remain owner-only. The new dark-mode code is local and does not change live access, telemetry destinations, products or deployed resources.
 
 ## Purpose of this document
 
