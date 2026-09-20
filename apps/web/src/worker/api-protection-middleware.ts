@@ -63,6 +63,8 @@ export function requestLogFields(
 ): SafeLogFields {
 	return {
 		requestId: context.get("requestId"),
+		releaseId: context.env.CF_VERSION_METADATA?.id,
+		releaseTag: context.env.CF_VERSION_METADATA?.tag,
 		actorId: context.get("actorId"),
 		method: context.req.method,
 		route: context.req.routePath || "unmatched",
@@ -80,6 +82,7 @@ export function safeErrorName(error: unknown): string {
 
 export const protectApiResponse = createMiddleware<WorkerAppEnv>(
 	async (context, next) => {
+		const startedAt = performance.now();
 		const requestId = crypto.randomUUID();
 		context.set("requestId", requestId);
 		await next();
@@ -91,5 +94,24 @@ export const protectApiResponse = createMiddleware<WorkerAppEnv>(
 		if (!context.res.headers.has("cache-control")) {
 			context.header("cache-control", "no-store");
 		}
+
+		// Summarize the response without copying URLs, headers, bodies or user IDs.
+		// Duration ends when response headers are ready, not when a stream closes.
+		const durationMs = Math.max(0, Math.round(performance.now() - startedAt));
+		const entry = {
+			event: "http_request_completed",
+			requestId,
+			releaseId: context.env.CF_VERSION_METADATA?.id,
+			releaseTag: context.env.CF_VERSION_METADATA?.tag,
+			method: /^(GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS)$/.test(context.req.method)
+				? context.req.method
+				: "OTHER",
+			route: context.req.routePath || "unmatched",
+			status: context.res.status,
+			durationMs,
+			slow: durationMs >= 2_000,
+		};
+		if (entry.status >= 500) console.error(entry);
+		else console.info(entry);
 	},
 );

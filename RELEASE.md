@@ -1,5 +1,28 @@
 # Release runbook
 
+## Cloudflare monitoring — 2026-09-20 (local; not deployed)
+
+Request completion logs, release metadata and a minimal D1 health endpoint are ready locally. Full `bun run check` passes with 307 tests. This change requires the new `CF_VERSION_METADATA` binding in each frozen deployment config while preserving all existing live settings; regenerate/verify the manifest accordingly. No schema or dependency changes. The updated release smoke requires `/api/health`, so it is expected to fail against the older deployed build until release.
+
+Release preview first, verify one public request's safe log fields and healthy/no-store response, then production. Independent website uptime setup was submitted to UptimeRobot but email activation is not verified. Add the health-endpoint monitor only after deployment and verify email delivery separately. No production failure injection or domain-wide alert policy is authorized by this pass. See [MONITORING.md](./MONITORING.md) for the exact scope, pending steps and recovery considerations.
+
+## Saved System / Light / Dark appearance — 2026-09-20 (deployed)
+
+Released user-pushed `767c077b9353e692233350fbc59ee265a7906353` (`feat: add saved system, light, and dark appearance`) to preview, then **https://wantkit.todoless.dev**. Appearance is available in Settings and entry pages, with a browser-local preference, live System/cross-tab updates and a same-origin pre-paint initializer. Neutral surfaces retain WantKit green; product images keep their original colours.
+
+| Environment | Active version (100%) | Previous version | Manifest SHA-256 |
+| --- | --- | --- | --- |
+| Preview | `ea4df593-b0c7-4c7f-8faf-62f4276e16d4` | `fcb1d62b-1578-4305-97d9-1927c2574330` | `88617896fc536204e51dbe209e054a13cd8b675eb3fd164095422afde0956a46` |
+| Production | `91828030-89c5-40aa-bf09-e67ee1064b78` | `34c3f3c6-5faf-440e-8ba8-204cdc6046eb` | `2a0d8280d665e986bd37b09c63d0995ff7b184ca1ff2186d20360ac891c7a06e` |
+
+- Remote main, local HEAD and the clean source tree matched before deployment. Each frozen release contains 249 source hashes and 15 artifact hashes; source and client assets match across environments. Both deployments ran once, with preview verified before production.
+- Fresh `bun run check` passed: **298 tests** (domain 26, localization 5, web Workers 118, MCP 78, UI 64, local-Codex 7), lint, TypeScript, schema metadata, build and dry-run. Fresh preview/production builds and exact-config dry-runs also passed. Existing Zod annotation and bundle-size warnings remain. Pinned Wrangler warned about the API-returned `observability.logs.redact_query_string` field; post-deployment comparison confirms the full live setting was preserved.
+- Each environment passed **14 public release checks**: exact HTML on root/invitation/connector routes; security headers; public API; unauthenticated session/workspace/MCP rejection; correct protected-resource origin; invalid invitation-preview rejection; and exact logo, theme initializer, JS and CSS bytes. The initializer precedes the module bundle. Verification finished at 11:52:54 UTC in preview and 12:08:36 UTC in production.
+- Browser QA on each live `/invite` page confirmed Light/Dark rendering and colour scheme, saved Dark during and after reload, System selection and no console errors. The original System preference was restored in both origins and the temporary tab closed. No real invitation or product data was opened. Full dialogs/comparison/photo, mobile and Persian RTL QA used fictional local data before commit, as recorded in HANDOFF; fresh Google login and recipient acceptance were not repeated. Launch verification remains user-confirmed complete.
+- All live variables, sole-owner integration allowlists, six inherited secret bindings, D1/R2/Images/Browser/Workflow resources, runtime/asset settings and domain assignments compare equal before/after. Secret values were not read. Checked-in disabled integration defaults were not deployed. All **17 migrations** were already applied; none ran. Read-only recovery bookmarks and migration metadata were captured. No catalog reads/writes, aggregate queries, generation, connector registration or permissions changes occurred.
+- Recovery: return to the previous Worker version above while preserving live configuration; no schema rollback or database restore is needed. Evidence and one-shot scripts are under `/tmp/wantkit-dark-release-767c077/`, with per-environment `manifest.json`, `deployed.json`, `verified.json`, dry-run logs and recovery bookmarks. Completed deployment guards must remain intact; `verify.mjs` is read-only and may be rerun. Current documentation consulted: [versions and deployments](https://developers.cloudflare.com/workers/versions-and-deployments/), [Wrangler deploy](https://developers.cloudflare.com/workers/wrangler/commands/workers/#deploy) and [D1 migrations](https://developers.cloudflare.com/d1/reference/migrations/).
+- Only `HANDOFF.md`, `PROJECT.md` and `RELEASE.md` changed during release, unstaged/uncommitted. No assistant commit/push. Next task is the production-plugin check on request; product auditing remains paused until the user resumes it.
+
 ## Large photo previews and compact product details — 2026-09-10 (deployed)
 
 Released user-pushed `5062fe2a266bd1e7f2ad9de2504b2f5b81181a63` (`feat: add photo previews and compact product details`) to preview, then **https://wantkit.todoless.dev**. Product thumbnails open a large modal; item details expose saved brand/model, retailer links, prices, checked dates and expandable specifications. Horizontal comparison uses the same compact offer summary.

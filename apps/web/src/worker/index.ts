@@ -20,6 +20,7 @@ import { collaborationRoutes } from "./collaboration-routes";
 import { collectionDirectionRoutes } from "./collection-direction-routes";
 import { conceptMediaRoutes } from "./concept-media-routes";
 import { floorPlanRoutes } from "./floor-plan-routes";
+import { healthResponse } from "./health";
 import { commerceRoutes } from "./commerce-routes";
 import { coreWorkspaceRoutes } from "./core-workspace-routes";
 import { contextRoutes } from "./context-routes";
@@ -94,6 +95,7 @@ app.all("/.well-known/*", (context) => {
 });
 
 app.get("/api/", (c) => c.json({ name: "Cloudflare" }));
+app.get("/api/health", healthResponse);
 
 app.get("/api/session", requireSession, (context) => {
 	const current = context.get("session");

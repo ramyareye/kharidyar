@@ -55,9 +55,15 @@ expectHeader(publicApiResponse, "x-request-id", requestIdPattern);
 const publicApiBody = await publicApiResponse.json();
 expect(publicApiBody?.name === "Cloudflare", "/api/ returned an unexpected response body.");
 
+const healthResponse = await smoke("/api/health", 200);
+expectHeader(healthResponse, "cache-control", "no-store");
+expectHeader(healthResponse, "content-type", "application/json");
+expectHeader(healthResponse, "x-request-id", requestIdPattern);
+expect((await healthResponse.json())?.status === "ok", "Database health check did not pass.");
+
 const privateApiResponse = await smoke("/api/session", 401);
 expectHeader(privateApiResponse, "cache-control", "no-store");
 expectHeader(privateApiResponse, "content-type", "application/json");
 expectHeader(privateApiResponse, "x-request-id", requestIdPattern);
 
-console.log(`Release smoke passed for ${origin.origin}: document, public API, and authentication boundary.`);
+console.log(`Release smoke passed for ${origin.origin}: document, public API, database health, and authentication boundary.`);

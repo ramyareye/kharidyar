@@ -2,6 +2,14 @@ import { exports } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 
 describe("existing Worker API", () => {
+	it("exposes a minimal application/database health check without authentication", async () => {
+		const response = await exports.default.fetch("http://example.com/api/health");
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({ status: "ok" });
+		expect(response.headers.get("cache-control")).toBe("no-store");
+		expect(response.headers.get("x-request-id")).toBeTruthy();
+	});
+
 	it("preserves the scaffold response", async () => {
 		const response = await exports.default.fetch(
 			new Request("http://example.com/api/", {

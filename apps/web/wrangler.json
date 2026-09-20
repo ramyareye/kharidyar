@@ -7,6 +7,7 @@
 	"name": "kharidyar",
 	"preview_urls": true,
 	"main": "./src/worker/index.ts",
+	"version_metadata": { "binding": "CF_VERSION_METADATA" },
 	"compatibility_date": "2025-10-08",
 	"compatibility_flags": [
 		"nodejs_compat",
@@ -75,6 +76,7 @@
 	"env": {
 		"preview": {
 			"name": "kharidyar-preview",
+			"version_metadata": { "binding": "CF_VERSION_METADATA" },
 			"observability": {
 				"enabled": true,
 				"logs": {
@@ -138,6 +140,7 @@
 		},
 		"production": {
 			"name": "kharidyar",
+			"version_metadata": { "binding": "CF_VERSION_METADATA" },
 			"observability": {
 				"enabled": true,
 				"logs": {
