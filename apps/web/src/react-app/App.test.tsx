@@ -4,9 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { LocaleProvider } from "./LocaleProvider";
 
-const session = vi.hoisted(() => ({ signedIn: true }));
+const session = vi.hoisted(() => ({ signedIn: true, pending: false }));
 beforeEach(() => {
 	session.signedIn = true;
+	session.pending = false;
 });
 
 vi.mock("./auth-client", () => ({
@@ -15,7 +16,7 @@ vi.mock("./auth-client", () => ({
 			data: session.signedIn
 				? { user: { email: "invitee@example.com", name: "Invited person" } }
 				: null,
-			isPending: false,
+			isPending: session.pending,
 			error: null,
 		}),
 	},
@@ -25,6 +26,52 @@ vi.mock("./PlanningDashboard", () => ({
 }));
 
 afterEach(() => vi.unstubAllGlobals());
+
+describe("Public product page routing", () => {
+	it.each(["/about", "/about/"])("shows the public user page at %s even while session loading", (pathname) => {
+		session.pending = true;
+		vi.stubGlobal("window", { location: new URL(`https://wantkit.example${pathname}`) });
+		const html = renderToStaticMarkup(<LocaleProvider initialLocale="en"><App /></LocaleProvider>);
+		expect(html).toContain("Good decisions start with");
+		expect(html).not.toContain("The workspace before checkout.");
+		expect(html).not.toContain("Normal planning dashboard");
+		expect(html).toContain("Illustrative products and prices.");
+	});
+	it("offers Google sign-in on the anonymous home page", () => {
+		session.signedIn = false;
+		vi.stubGlobal("window", { location: new URL("https://wantkit.example/") });
+		const html = renderToStaticMarkup(<LocaleProvider initialLocale="en"><App /></LocaleProvider>);
+		expect(html).toContain("Good decisions start with");
+		expect(html).toContain("Continue with Google");
+		expect(html).toContain('id="get-started"');
+		expect(html).not.toContain("The workspace before checkout.");
+		expect(html).toContain('href="/partners"');
+	});
+	it.each([
+		{ pathname: "/partners", signedIn: false },
+		{ pathname: "/partners/", signedIn: false },
+		{ pathname: "/partners", signedIn: true },
+		{ pathname: "/partners/", signedIn: true },
+	])("keeps the partner story public at $pathname (signed in: $signedIn)", ({ pathname, signedIn }) => {
+		session.signedIn = signedIn;
+		session.pending = true;
+		vi.stubGlobal("window", { location: new URL(`https://wantkit.example${pathname}`) });
+		const html = renderToStaticMarkup(<LocaleProvider initialLocale="en"><App /></LocaleProvider>);
+		expect(html).toContain("A shared plan for");
+		expect(html).toContain("The workspace before checkout.");
+		expect(html).toContain('href="/about"');
+		expect(html).not.toContain("Good decisions start with");
+		expect(html).not.toContain("Normal planning dashboard");
+	});
+	it("preserves focused assistant sign-in instead of showing the landing page", () => {
+		session.signedIn = false;
+		vi.stubGlobal("window", { location: new URL("https://wantkit.example/connectors") });
+		const html = renderToStaticMarkup(<LocaleProvider initialLocale="en"><App /></LocaleProvider>);
+		expect(html).toContain("auth-story");
+		expect(html).toContain("Continue with Google");
+		expect(html).not.toContain("landing-hero");
+	});
+});
 
 describe("Invitation entry route", () => {
 	it.each(["/invite", "/invite/"])(

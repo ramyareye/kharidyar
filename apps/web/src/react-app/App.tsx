@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { LandingPage } from "./LandingPage";
 import { InvitationPage } from "./InvitationPage";
 import { ThemeSwitch } from "./ThemeSwitch";
 
@@ -53,7 +54,7 @@ function LoadingScreen() {
 	);
 }
 
-function SignedOutScreen({ sessionError }: { sessionError: boolean }) {
+function SignedOutScreen({ sessionError, landing = false }: { sessionError: boolean; landing?: boolean }) {
 	const { t } = useLocale();
 	const [isSigningIn, setIsSigningIn] = useState(false);
 	const [actionError, setActionError] = useState<string | null>(null);
@@ -81,6 +82,42 @@ function SignedOutScreen({ sessionError }: { sessionError: boolean }) {
 		}
 	}
 
+	const signInCard = (
+		<div className="auth-card">
+			<p className="auth-card__index" aria-hidden="true">
+				{t("auth.index")}
+			</p>
+			<h2 id="sign-in-heading">{t("auth.cardTitle")}</h2>
+			<p className="auth-card__body">{t("auth.cardBody")}</p>
+
+			<button
+				type="button"
+				className="google-button"
+				onClick={() => void signInWithGoogle()}
+				disabled={isSigningIn || sessionError}
+			>
+				<GoogleIcon />
+				<span>
+					{isSigningIn ? t("auth.openingGoogle") : t("auth.continueGoogle")}
+				</span>
+				<span className="button-arrow" aria-hidden="true">
+					↗
+				</span>
+			</button>
+
+			<div className="auth-message" aria-live="polite">
+				{sessionError ? (
+					<p>{t("auth.sessionError")}</p>
+				) : actionError || callbackError ? (
+					<p>{actionError ?? t("auth.genericError")}</p>
+				) : null}
+			</div>
+
+			<p className="auth-card__footer">{t("auth.footer")}</p>
+		</div>
+	);
+	if (landing) return <LandingPage signIn={signInCard} />;
+
 	return (
 		<main className="auth-page">
 			<section className="auth-story" aria-labelledby="auth-heading">
@@ -102,38 +139,7 @@ function SignedOutScreen({ sessionError }: { sessionError: boolean }) {
 			</section>
 
 			<section className="auth-entry" aria-labelledby="sign-in-heading">
-				<div className="auth-card">
-					<p className="auth-card__index" aria-hidden="true">
-						{t("auth.index")}
-					</p>
-					<h2 id="sign-in-heading">{t("auth.cardTitle")}</h2>
-					<p className="auth-card__body">{t("auth.cardBody")}</p>
-
-					<button
-						type="button"
-						className="google-button"
-						onClick={() => void signInWithGoogle()}
-						disabled={isSigningIn || sessionError}
-					>
-						<GoogleIcon />
-						<span>
-							{isSigningIn ? t("auth.openingGoogle") : t("auth.continueGoogle")}
-						</span>
-						<span className="button-arrow" aria-hidden="true">
-							↗
-						</span>
-					</button>
-
-					<div className="auth-message" aria-live="polite">
-						{sessionError ? (
-							<p>{t("auth.sessionError")}</p>
-						) : actionError || callbackError ? (
-							<p>{actionError ?? t("auth.genericError")}</p>
-						) : null}
-					</div>
-
-					<p className="auth-card__footer">{t("auth.footer")}</p>
-				</div>
+				{signInCard}
 			</section>
 		</main>
 	);
@@ -180,6 +186,13 @@ function App() {
 	if (window.location.pathname === "/connectors/error")
 		return <ConnectorRecoveryPage />;
 
+	if (/^\/about\/?$/.test(window.location.pathname)) {
+		return <LandingPage signedIn={Boolean(session)} />;
+	}
+	if (/^\/partners\/?$/.test(window.location.pathname)) {
+		return <LandingPage audience="partners" signedIn={Boolean(session)} />;
+	}
+
 	if (isPending) {
 		return <LoadingScreen />;
 	}
@@ -194,7 +207,7 @@ function App() {
 	}
 
 	if (!session) {
-		return <SignedOutScreen sessionError={Boolean(error)} />;
+		return <SignedOutScreen sessionError={Boolean(error)} landing={window.location.pathname === "/"} />;
 	}
 
 	if (window.location.pathname.startsWith("/connectors/actions/"))
