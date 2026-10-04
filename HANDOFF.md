@@ -1,4 +1,14 @@
-# Handoff: monitoring complete; product work deferred
+# Handoff: user and partner landing pages released
+
+Updated 2026-10-03. Released user-pushed `c0b4562` from the current folder through preview, then production. Anonymous `/` and public `/about` focus on users; public `/partners` has its own investor/partner positioning and brief. Links connect both pages, and the demo uses fictional products. Signed-in home continues to open the planning dashboard. See [MARKETING.md](./MARKETING.md) and [RELEASE.md](./RELEASE.md).
+
+- **Live versions:** preview `2f5314c4-2f57-4d61-a55d-a9786728e8b5`; production `8232de9d-f03f-469c-8fc3-344a78fe259a`, both at 100%. All live variables, inherited secret bindings, resource bindings, runtime and logging settings compare unchanged. No migrations ran.
+- **Validation:** fresh full check, both builds/dry-runs, release smoke and exact HTML/assets passed. Preview Google sign-in completed and read an existing collection. Production's existing Google session loaded its dashboard; fresh production re-login was not repeated. Live public pages, links and preview demo verified; production partner page had no console errors. Earlier English/Farsi/RTL, theme and desktop/mobile checks remain recorded in MARKETING.md.
+- **Limit:** the marketing page remains a client-rendered SPA. Existing build warnings remain; local auth secrets are absent, but live Google initiation/callback checks passed.
+- **Changed/dirty state:** this release updated MARKETING.md, PROJECT.md, HANDOFF.md and RELEASE.md only; all unstaged. Existing PRODUCT_AUDIT.md and .tmp artifacts preserved. Runtime source is clean at the pushed commit. No assistant commit/push.
+- **Next ordered task:** none selected. Optional General/Home mode design can be requested next; deferred product audit/grouping/ratings and Food implementation do not resume automatically.
+
+## Previous checkpoint: monitoring complete; product work deferred
 
 Updated 2026-09-21. Released user-pushed `a0f23a2c2818ac23dc8d15b19259f7c042618723` to preview, then **https://wantkit.todoless.dev**. Remote main matched the reviewed safeguards and the source tree was clean. No assistant commit/push or subagents; product auditing remains paused.
 

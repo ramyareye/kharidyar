@@ -1,6 +1,6 @@
 # WantKit landing page
 
-Updated 2026-10-03. Local implementation; not deployed. Following the first combined page, the user requested separate pages for users and investors/partners.
+Updated 2026-10-03. Deployed to preview and production from user-pushed `c0b4562`. Following the first combined page, the user requested separate pages for users and investors/partners. Live user introduction: https://wantkit.todoless.dev/about; partner brief: https://wantkit.todoless.dev/partners.
 
 ## Message and experience
 
@@ -20,7 +20,7 @@ WantKit is the workspace before checkout: save ideas, compare options and decide
 
 Local Google OAuth could not be exercised: this dev server lacks auth secrets. The existing callback/sign-in logic is reused. The build reports dependency annotation, missing local secrets and bundle-size warnings. No dependencies, bindings, migrations or backend code changed.
 
-Next: review the local page, then prepare the exact staged tree/commit through AGENTS.md's approval gate. Push and preview/production release remain separate actions; use the normal release checks and verify Google sign-in with configured auth before publishing. Review artifacts in `.tmp/` are not release source files.
+Release verification: fresh full checks and both preserved-config deployment dry-runs passed. Both origins passed smoke checks, five exact HTML route checks and four exact asset checks. Preview Google sign-in completed and loaded an existing collection; production's existing Google session loaded the dashboard. Fresh production re-login was not repeated. Both origins' Google initiation callbacks are correct; live configuration is preserved. See RELEASE.md for versions, recovery points and evidence. Review artifacts in `.tmp/` are not release source files. No next implementation task is selected.
 
 ## Future modes — agreed direction, not implementation
 

@@ -1,13 +1,15 @@
 # Kharidyar Project Specification
 
 - Status: Approved by the product owner
-- Last updated: 2026-09-21
+- Last updated: 2026-10-03
 - Implementation status: Tasks 1 through 11, private media/floor plans, the bounded ChatGPT visual pilot, product photo imports, horizontal comparison and compact product details are implemented. Historical checkpoints below retain their original dates; HANDOFF and RELEASE describe the latest deployed state.
-- Release status: WantKit, including saved appearance and sampled backend monitoring, is deployed to preview and production at https://wantkit.todoless.dev from `a0f23a2c2818ac23dc8d15b19259f7c042618723` (2026-09-20). Launch verification is user-confirmed complete; assistant integrations remain owner-only. Both uptime monitors are verified Up; email-delivery testing is user-confirmed complete. See [RELEASE.md](./RELEASE.md).
+- Release status: WantKit, including separate user and partner landing pages, saved appearance and sampled backend monitoring, is deployed to preview and production at https://wantkit.todoless.dev from `c0b456257f9710c8beedf7c4e27e401d1c9b6f3f` (2026-10-03). Launch verification is user-confirmed complete; assistant integrations remain owner-only. Both uptime monitors were verified Up; email-delivery testing is user-confirmed complete. See [RELEASE.md](./RELEASE.md).
 
 ## Current next tasks — 2026-09-21
 
 This is the current agreed order, superseding older queues below. Dark mode and the subsequently requested production-plugin check/cleanup are complete; start the next implementation or verification task only on request. The user deferred product auditing and comparison work until tomorrow; resume only on request, with product auditing still paused until they confirm the other product-import agent is finished.
+
+**Completed task — marketing landing pages, 2026-10-03:** deployed through preview, then production from user-pushed `c0b4562`. Anonymous `/` and public `/about` present user benefits/how-to/sign-in; public `/partners` presents the investor/partner story and brief. Both share a fictional interactive demo, English/Farsi and existing theme controls. Signed-in dashboard, invitation and connector flows are preserved. Fresh full checks, both build/dry-runs, release smoke and exact HTML/assets passed. Preview Google sign-in completed; production's existing Google session loaded the dashboard. Live settings compare unchanged. Earlier desktop/mobile browser checks are recorded in [MARKETING.md](./MARKETING.md). No next implementation task is selected. Food mode remains a future direction.
 
 1. [x] **Launch verification — user-confirmed complete, 2026-09-20.** The user confirmed the fresh Google sign-in, invitation acceptance and scoped-access launch check is done. This records their confirmation, not a new independent audit. Assistant integrations remain owner-only; no access settings changed.
 2. [x] **Standard dark mode — deployed and verified, 2026-09-20.** System / Light / Dark in Settings and entry/connector pages, neutral surfaces with WantKit green, browser-local saved preference, live system/cross-tab updates and pre-paint initialization. Includes dialogs, comparison, forms, status colours and photo previews; product images keep their original colours. User-pushed `767c077` passed the 298-test quality gate, then preview and production release checks and appearance/persistence browser QA.

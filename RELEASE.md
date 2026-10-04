@@ -1,5 +1,20 @@
 # Release runbook
 
+## User and partner landing pages — 2026-10-03 (deployed)
+
+Released user-pushed `c0b456257f9710c8beedf7c4e27e401d1c9b6f3f` from the current folder on `main`, preview first, then production, with tag `landing-c0b4562`. Operator: existing Cloudflare OAuth account. Runtime source matched the commit; pre-existing documentation and untracked review artifacts were preserved and excluded from the build. No assistant commit or push.
+
+| Environment | Previous version | Current version (100%) | Deployment UTC |
+| --- | --- | --- | --- |
+| Preview | `7131c9bb-1ae6-40a3-8c70-28ad13c3eedd` | `2f5314c4-2f57-4d61-a55d-a9786728e8b5` | 16:17:36 |
+| Production | `17980135-9482-492a-8dd8-a97d6f31434d` | `8232de9d-f03f-469c-8fc3-344a78fe259a` | 16:25:37 |
+
+- **Live:** anonymous home and public `/about` introduce WantKit to users; public `/partners` presents the partner/investor brief. Signed-in home continues to open the planning dashboard. Demo products remain fictional and do not save decisions. English/Farsi and existing appearance preferences are included.
+- **Validation:** fresh full `bun run check`, preview build/dry-run, production rebuild and preserved-config dry-runs passed. Both origins passed release smoke (document/security headers, public API, database health and unauthenticated session rejection). Root, both about URL variants and both partner URL variants serve the exact built HTML; logo, theme initializer, JS and CSS bytes match the build. Google sign-in initiation uses each origin's correct callback. Preview Google sign-in completed in the browser and loaded an existing collection; production's existing Google session loaded the dashboard and collection. Fresh production logout/re-login was not repeated. Browser verified public pages after sign-in, page navigation and preview comparison demo; production partner page had no console errors. Public artifact verification completed at 16:29:30 UTC.
+- **Configuration:** all 13 live variables, six inherited secret bindings, resource bindings, compatibility settings and full observability configuration compare equal before/after. Application-secret values were not retrieved. Dashboard integration enablement/owner allowlists were preserved instead of deploying disabled source defaults. The API-only `redact_query_string: false` is unchanged; production config omits the unsupported field and post-deploy comparison confirms it. Existing Zod annotation, absent local-secret and bundle-size build warnings remain. No dependency, schema or binding changes; no pending migrations and none ran. Planning reads were read-only; no catalogue writes or provider research.
+- **Recovery:** preview bookmark `000000e1-00000002-000050f9-596b4c70bbdf9724e1b68ded31a3305d`; production bookmark `000017b8-00000000-000050f9-2a42f34c973840d0987b916b6981bf5b`. Previous Worker versions above are rollback points; this release requires no schema rollback. Current-folder evidence is in `.tmp/preview-before.json`, `.tmp/preview-after.json`, `.tmp/production-before.json`, `.tmp/production-after.json` and corresponding `*-public.json`; live screenshots are `.tmp/landing-production-users.png` and `.tmp/landing-production-partners.png`. Keep these review artifacts unstaged.
+- **Handoff:** release complete. MARKETING, PROJECT, HANDOFF and RELEASE documentation is unstaged; earlier PRODUCT_AUDIT and review artifacts remain. General/Home mode implementation and Food remain future tasks, requiring a new request.
+
 ## Cloudflare monitoring and cost safeguards — 2026-09-20 (deployed)
 
 Released user-pushed `a0f23a2c2818ac23dc8d15b19259f7c042618723`, including initial monitoring `349231a`, through preview before production. Remote main and the clean source tree matched the reviewed binary diff. Both deployments ran once with tag `monitoring-a0f23a2`.
